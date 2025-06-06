@@ -68,7 +68,7 @@ openai_api_key = "env(OPENAI_API_KEY)"
 # Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
 # are monitored, and you can view the emails that would have been sent from the web interface.
 [inbucket]
-enabled = false
+enabled = true
 # Port to use for the email testing server web interface.
 port = 54324
 # Uncomment to expose additional ports for testing user applications that send emails.
@@ -97,9 +97,9 @@ file_size_limit = "50MiB"
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+additional_redirect_urls = ["http://localhost:3000", "http://127.0.0.1:3000"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # If disabled, the refresh token will never expire.
@@ -127,26 +127,30 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = true
 secure_password_change = true
-max_frequency = "1s"
+max_frequency = "0s"
 otp_length = 6
 otp_expiry = 3600
 
 # ✅ Correct placement of smtp block
 [auth.email.smtp]
-host = "smtp.postmarkapp.com"
+host = "env(SMTP_HOST)"
 port = 587
-user = "f6cc8d80-2ff5-470f-81a5-3c1686235ff1"
-pass = "f6cc8d80-2ff5-470f-81a5-3c1686235ff1"
-admin_email = "no_reply@auth.deluccis.com"
-sender_name = "Deluccis"
+user = "env(SENDGRID_API_USER)"
+pass = "env(SENDGRID_API_KEY)"
+admin_email = "env(MAILER_ADMIN_EMAIL)"
+sender_name = "env(SENDER_AUTH_NAME)"
 
 # Uncomment to customize email template
 [auth.email.template.invite]
 subject = "You have been invited"
 content_path = "./supabase/templates/invite.html"
 
+[auth.email.template.confirmation]
+subject = "Email Confirmation"
+content_path = "./supabase/templates/confirmation.html"
+
 [auth.email.template.recovery]
-subject = "Reset your Lancefortes password"
+subject = "Reset your password"
 content_path = "./supabase/templates/reset-password.html"
 
 [auth.sms]

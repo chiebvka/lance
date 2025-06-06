@@ -1,11 +1,11 @@
 const postmark = require("postmark");
 
 // Send an email:
-var client = new postmark.ServerClient("f6cc8d80-2ff5-470f-81a5-3c1686235ff1");
+var client = new postmark.ServerClient("5c7f9b86-66f8-43e5-a760-23dac1686212");
 
 client.sendEmail({
-  "From": "no_reply@auth.deluccis.com",
-  "To": "juniorbubu007@gmail.com",
+  "From": "ebuka@ebuzor.com",
+  "To": "ebuka@ebuzor.com",
   "Subject": "Hello from Postmark",
   "HtmlBody": "<strong>Hello</strong> dear Postmark user.",
   "TextBody": "Hello from Postmark!",
