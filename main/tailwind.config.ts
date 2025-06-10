@@ -29,7 +29,7 @@ const config = {
   				foreground: 'hsl(var(--primary-foreground))'
   			},
   			bexoni: {
-  				DEFAULT: 'oklch(0.597 0.248 298.9)',
+  				DEFAULT: '#9948fb',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
   			secondary: {

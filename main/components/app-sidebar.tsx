@@ -59,24 +59,10 @@ const data = {
     //   ],
     },
     {
-      title: "Membership",
-      url: "/protected/members",
+      title: "Customers",
+      url: "/protected/customers",
       icon: Logs,
       isActive: true,
-    //   items: [
-    //     {
-    //       title: "Members",
-    //       url: "/protected/members",
-    //     },
-    //     {
-    //       title: "Add to Feed",
-    //       url: "/protected/members/feed",
-    //     },
-    //     {
-    //       title: "Members Feed",
-    //       url: "/protected/members/feed/all",
-    //     }
-    //   ],
     },
     {
       title: "Projects & News",
