@@ -66,7 +66,7 @@ const data = {
     },
     {
       title: "Projects & News",
-      url: "/protected/blogs",
+      url: "/protected/projects",
       icon: Newspaper,
     //   items: [
     //     {

@@ -31,7 +31,7 @@ export default function Search({placeholder}: Props) {
         placeholder={placeholder}
         defaultValue={searchParams.get("query")?.toString() || ""}
         onChange={(e) => handleSearch(e.target.value)}
-        className="w-64"
+        className="w-64 border border-bexoni placeholder:text-bexoni"
       />
   )
 }
