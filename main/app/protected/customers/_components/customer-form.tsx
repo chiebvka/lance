@@ -1,9 +1,11 @@
 "use client"
 
 import React from 'react';
- 
-import { UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { toast } from "sonner";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
@@ -35,16 +37,51 @@ import { Building2, FileUser, Loader2, MapPin, Search, Warehouse } from 'lucide-
 import { Label } from '@/components/ui/label';
 import customerSchema from '@/validation/customer';
 
-
-
 type CustomerFormValues = z.infer<typeof customerSchema>;
 
 type Props = {
-  form: UseFormReturn<CustomerFormValues>;
-  onSubmit: (values: CustomerFormValues) => void;
+  onSuccess: () => void;
+  onLoadingChange: (isLoading: boolean) => void;
 }
 
-export default function CustomerForm({ form, onSubmit }: Props) {
+export default function CustomerForm({ onSuccess, onLoadingChange }: Props) {
+  const form = useForm<CustomerFormValues>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      website: "",
+      contactPerson: "",
+      taxId: "",
+      notes: "",
+      phone: "",
+      addressLine1: "",
+      unitNumber: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      country: "",
+    },
+  });
+
+  const onSubmit = async (values: CustomerFormValues) => {
+    onLoadingChange(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 4000));
+      const response = await axios.post('/api/customers/create', values);
+      toast.success(response.data.success || "Customer created successfully!");
+      form.reset();
+      onSuccess();
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        toast.error(error.response.data.error || "Failed to create customer.");
+      } else {
+        toast.error("An unexpected error occurred.");
+      }
+    } finally {
+      onLoadingChange(false);
+    }
+  };
 
   return (
     <Form {...form}>
@@ -171,7 +208,7 @@ export default function CustomerForm({ form, onSubmit }: Props) {
                       <Label htmlFor="adressline1"> Address Line 1</Label>
                       <FormField
                           control={form.control}
-                          name="adressline1"
+                          name="addressLine1"
                           render={({ field }) => (
                             <FormItem>
                               <FormControl><Input {...field} placeholder="123 Main Street" /></FormControl>

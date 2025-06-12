@@ -214,7 +214,7 @@ export default function RecentActivity() {
   ]
 
   return (
-    <div className="min-h-screen my-3">
+    <div className=" my-3">
       {/* Add custom CSS for pulsing animation */}
       <style jsx>{`
         @keyframes pulse {
@@ -278,12 +278,12 @@ export default function RecentActivity() {
                               <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                             </div>
                             {index !== filteredActivities.length - 1 && (
-                              <div className="w-0.5 bg-gray-200 h-full mt-1 mx-auto" />
+                              <div className="w-0.5 bg-primary h-full mt-1 mx-auto" />
                             )}
                           </div>
 
                           {/* Activity content with fixed height */}
-                          <div className="flex-1 bg-white border-2 p-4 hover:shadow-md transition-shadow min-h-[100px]">
+                          <div className="flex-1  border-bexoni border p-4 hover:shadow-md transition-shadow min-h-[100px]">
                             <div className="flex items-start justify-between">
                               <div className="flex items-center gap-3">
                                 <Avatar>

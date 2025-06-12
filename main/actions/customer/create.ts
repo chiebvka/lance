@@ -1,5 +1,6 @@
 "use server";
 
+import { createClient } from "@/utils/supabase/server";
 import customerSchema from "@/validation/customer";
 import { z } from "zod";
 
@@ -12,8 +13,17 @@ export async function createCustomer(values: z.infer<typeof customerSchema>) {
     };
   }
 
-  // In a real application, you would save the customer to a database here.
-  console.log("Server Action: Creating customer with data:", validatedFields.data);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("customers")
+    .insert([validatedFields.data]);
+
+  if (error) {
+    console.error("Supabase Error:", error.message);
+    return {
+      error: "Could not create customer in database.",
+    };
+  }
 
   return {
     success: "Customer created successfully!",

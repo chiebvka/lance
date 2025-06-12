@@ -1,11 +1,14 @@
-import React from 'react'
-import CreateCustomerView from './_components/create-customer-view'
-import CustomerLoading from './_components/customer-loading'
-import CustomerTable from './_components/customer-table'
-import RecentActivity from './_components/recent-activity'
+"use client"
+
+import Pagination from '@/components/pagination';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChevronLeft, ChevronRight, Clock, Filter, Search, Star } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 
-type Props = {}
 
 interface Customer {
   id: string
@@ -27,6 +30,7 @@ interface Customer {
   avatar?: string
   performanceScore?: number
 }
+
 
 const mockCustomers: Customer[] = [
   {
@@ -415,12 +419,250 @@ const mockCustomers: Customer[] = [
 ]
 
 
-export default function page({}: Props) {
+type Props = {
+  customer: Customer[] | null
+}
+
+export default function CustomerTable({ customer }: Props) {
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  const [sortBy, setSortBy] = useState<"lastActivity" | "dateCreated" | "rating">("lastActivity")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterBy, setFilterBy] = useState<"all" | "high" | "medium" | "low">("all")
+
+
+  if (!isClient) {
+    return null;
+  }
+
+  if (!customer) return null
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-800"
+      case "inactive":
+        return "bg-gray-100 text-gray-800"
+      case "pending":
+        return "bg-yellow-100 text-yellow-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
+    // Sort and filter customers based on selected criteria
+    const sortedCustomers = (customer || [])
+    .filter(
+      (customer) =>
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.email.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    .filter((customer) => {
+      if (filterBy === "all") return true
+      if (filterBy === "high") return customer.rating >= 4.5
+      if (filterBy === "medium") return customer.rating >= 4.0 && customer.rating < 4.5
+      if (filterBy === "low") return customer.rating < 4.0
+      return true
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "lastActivity":
+          // Simple sorting by activity string - in real app you'd use actual dates
+          const activityOrder = [
+            "minutes ago",
+            "hours ago",
+            "day ago",
+            "days ago",
+            "week ago",
+            "weeks ago",
+            "month ago",
+          ]
+          const aIndex = activityOrder.findIndex((term) => a.lastActivity.includes(term))
+          const bIndex = activityOrder.findIndex((term) => b.lastActivity.includes(term))
+          return aIndex - bIndex
+        case "dateCreated":
+          return new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
+        case "rating":
+          return b.rating - a.rating
+        default:
+          return 0
+      }
+    })
+
+  const totalPages = Math.ceil(sortedCustomers.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedCustomers = sortedCustomers.slice(startIndex, startIndex + itemsPerPage)
+
+
+  const getActivityColor = (activity: string) => {
+    if (activity.includes("minutes") || activity.includes("hour")) return "bg-green-500"
+    if (activity.includes("day")) return "bg-blue-500"
+    if (activity.includes("week")) return "bg-yellow-500"
+    return "bg-gray-500"
+  }
+
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star
+        key={i}
+        className={`h-3 w-3 ${i < Math.floor(rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+      />
+    ))
+  }
+
+
   return (
-    <div className='w-full py-4 px-6 border border-bexoni'>
-        <CreateCustomerView />
-        <RecentActivity />
-        <CustomerTable customer={mockCustomers} />
+    <div className="p-6 space-y-6">
+
+    <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/50 rounded-lg">
+      <div className="flex items-center gap-2">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium">Filters:</span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Sort by:</span>
+        <Select value={sortBy} onValueChange={(value: "lastActivity" | "dateCreated" | "rating") => setSortBy(value)}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="lastActivity">Last Activity</SelectItem>
+            <SelectItem value="dateCreated">Date Created</SelectItem>
+            <SelectItem value="rating">Rating Score</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Priority:</span>
+        <Select value={filterBy} onValueChange={(value: "all" | "high" | "medium" | "low") => setFilterBy(value)}>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Customers</SelectItem>
+            <SelectItem value="high">High Priority (4.5+)</SelectItem>
+            <SelectItem value="medium">Medium Priority (4.0-4.4)</SelectItem>
+            <SelectItem value="low">Low Priority (&lt;4.0)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span>Showing {sortedCustomers.length} customers</span>
+      </div>
     </div>
+
+    <div className="relative">
+
+      <div className="space-y-6">
+        {paginatedCustomers.map((customer, index) => (
+          <div key={customer.id} className="relative flex items-start gap-6">
+
+            {/* Customer card */}
+            <div
+              className="flex-1 cursor-pointer hover:shadow-md border-bexoni transition-shadow border  p-4"
+           
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-4 flex-1">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={customer.avatar || "/placeholder.svg"} />
+                    <AvatarFallback>
+                      {customer.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base text-muted-foreground mb-3 font-medium">{customer.email}</p>
+
+                    <div className="flex items-center gap-4 text-sm mb-2">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>Last activity: {customer.lastActivity}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {renderStars(customer.rating)}
+                      <span className="ml-1 text-sm">{customer.rating}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-6 text-center">
+                  <div>
+                    <div className="text-xl font-bold text-orange-600">{customer.pendingContracts}</div>
+                    <div className="text-xs text-muted-foreground">Pending</div>
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-purple-600">{customer.openProjects}</div>
+                    <div className="text-xs text-muted-foreground">Projects</div>
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-green-600">
+                      ${(customer.completedRevenue / 1000).toFixed(0)}k
+                    </div>
+                    <div className="text-xs text-muted-foreground">Completed</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <Pagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      pageSize={itemsPerPage}
+      totalItems={sortedCustomers.length}
+      onPageChange={setCurrentPage}
+      onPageSizeChange={setItemsPerPage}
+    />
+
+    {/* <div className="flex items-center justify-between">
+      <p className="text-sm text-muted-foreground">
+        Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, sortedCustomers.length)} of{" "}
+        {sortedCustomers.length} customers
+      </p>
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Previous
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          Page {currentPage} of {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          disabled={currentPage === totalPages}
+        >
+          Next
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div> */}
+
+    {/* <CustomerDetailSheet customer={selectedCustomer} open={sheetOpen} onOpenChange={setSheetOpen} /> */}
+  </div>
   )
 }

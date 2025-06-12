@@ -10,7 +10,7 @@ const customerSchema = z.object({
     notes: z.string().optional(),
     phone: z.string().optional(),
     address: z.string().optional(),
-    adressline1: z.string().optional(),
+    addressLine1: z.string().optional(),
     unitNumber: z.string().optional(),
     city: z.string().optional(),
     state: z.string().optional(),
