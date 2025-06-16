@@ -25,7 +25,7 @@ export default function Breadcrumbs({}: Props) {
     const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
 
   return (
-    <Breadcrumb className='-mt-8'>
+    <Breadcrumb className=''>
     <BreadcrumbList>
       {segments.map((segment, index) => {
         const isLast = index === segments.length - 1

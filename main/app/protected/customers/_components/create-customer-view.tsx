@@ -3,7 +3,6 @@
 import React, { useRef, useState } from 'react';
 import { z } from "zod";
 
-
 import PageHeaderWrapper from '@/components/page-header-wrapper';
 import CustomerForm from './customer-form';
 import customerSchema from '@/validation/customer';
@@ -13,7 +12,11 @@ import { Bubbles } from "lucide-react";
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
 
-export default function CreateCustomerView() {
+type Props = {
+  onSearch: (value: string) => void;
+}
+
+export default function CreateCustomerView({ onSearch }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -40,13 +43,16 @@ export default function CreateCustomerView() {
   );
 
   return (
-    <PageHeaderWrapper 
-      placeholder="Search customers" 
-      buttonText=" New Customer" 
-      formComponent={<CustomerForm onSuccess={handleSuccess} onLoadingChange={setIsSubmitting} />} 
-      sheetTitle="New Customer" 
-      sheetContentClassName="w-full sm:w-3/4 md:w-1/2 lg:w-[40%]"
-      footer={footer}
-    />
+    <div className='w-full'>
+      <PageHeaderWrapper 
+        placeholder='Search Customers...'
+        buttonText='New Customer'
+        sheetTitle='New Customer'
+        onSearch={onSearch}
+        formComponent={<CustomerForm onSuccess={handleSuccess} onLoadingChange={setIsSubmitting} />}
+        sheetContentClassName='w-full sm:w-3/4 md:w-1/2 lg:w-[40%]'
+        footer={footer}
+      />
+    </div>
   );
 } 

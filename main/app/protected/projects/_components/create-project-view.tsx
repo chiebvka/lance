@@ -1,19 +1,29 @@
-import PageHeaderWrapper from '@/components/page-header-wrapper'
-import React from 'react'
-import ProjectForm from './project-form'
+'use client'
+import PageHeader from '@/components/page-header';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import React from 'react';
 
-type Props = {}
+type Props = {
+    onSearch: (value: string) => void;
+}
 
-export default function CreateProjectView({}: Props) {
+export default function CreateProjectView({ onSearch }: Props) {
   return (
-    <div>
-        <PageHeaderWrapper 
-      placeholder="Search projects" 
-      buttonText=" New Project" 
-      formComponent={<ProjectForm  />} 
-      sheetTitle="New Project" 
-      sheetContentClassName="w-full sm:w-3/4 md:w-1/2 lg:w-[40%]"
-    />
+    <div className='w-full'>
+        <PageHeader 
+            placeholder="Search projects..." 
+            onSearch={onSearch} 
+            action={
+                <Button asChild>
+                    <Link href="/protected/projects/create">
+                        <Plus className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Create Project</span>
+                    </Link>
+                </Button>
+            }
+        />
     </div>
   )
 }

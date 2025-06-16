@@ -1,3 +1,4 @@
+'use client'
 import React from 'react'
 import CreateCustomerView from './_components/create-customer-view'
 import CustomerLoading from './_components/customer-loading'
@@ -415,10 +416,14 @@ const mockCustomers: Customer[] = [
 ]
 
 
-export default function page({}: Props) {
+export default function CustomersPage({}: Props) {
+  const handleSearch = (value: string) => {
+    // TODO: Implement customer search logic
+    console.log("Searching for customer:", value)
+  }
   return (
     <div className='w-full py-4 px-6 border border-bexoni'>
-        <CreateCustomerView />
+        <CreateCustomerView onSearch={handleSearch} />
         <RecentActivity />
         <CustomerTable customer={mockCustomers} />
     </div>
