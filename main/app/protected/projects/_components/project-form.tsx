@@ -654,47 +654,107 @@ export default function ProjectForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Create New Project</h1>
-              <p className="text-gray-600 mt-2">
-                Configure your project step by step using the accordion sections below
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen">
+      <div className=" mx-auto">
 
         {/* Progress Summary - Moved to top */}
-        <Card className="mb-6">
+        <Card className="mb-4">
           <CardHeader>
             <CardTitle className="text-lg">Project Creation Progress</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-              {[
+            {(() => {
+              const sections = [
                 { key: "customer", label: "Customer" },
                 { key: "project", label: "Project" },
                 ...(projectType === "customer" ? [{ key: "budget", label: "Budget" }] : []),
                 { key: "deliverables", label: "Deliverables" },
                 { key: "payment", label: "Payment" },
                 { key: "agreement", label: "Agreement" },
-              ].map(({ key, label }) => (
-                <div key={key} className="text-center">
-                  <div
-                    className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${
-                      getSectionStatus(key) === "complete" ? "bg-green-500 text-white" : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    {getSectionStatus(key) === "complete" ? <CheckCircle className="h-4 w-4" /> : getSectionIcon(key)}
+              ]
+              
+              const completedSections = sections.filter(({ key }) => getSectionStatus(key) === "complete").length
+              const totalSections = sections.length
+              const progressPercentage = Math.round((completedSections / totalSections) * 100)
+
+              return (
+                <div className="">
+                  {/* Desktop Layout */}
+                  <div className="hidden md:flex md:justify-center">
+                    <div className="flex items-center justify-center gap-8 max-w-4xl">
+                      {sections.map(({ key, label }) => (
+                        <div key={key} className="text-center">
+                          <div
+                            className={`w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center transition-all duration-300 ${
+                              getSectionStatus(key) === "complete" 
+                                ? "bg-green-500 text-white shadow-lg scale-110" 
+                                : "bg-gray-200 text-gray-600"
+                            }`}
+                          >
+                            {getSectionStatus(key) === "complete" ? (
+                              <CheckCircle className="h-6 w-6" />
+                            ) : (
+                              getSectionIcon(key)
+                            )}
+                          </div>
+                          <span className={`text-sm font-medium ${
+                            getSectionStatus(key) === "complete" ? "text-green-600" : "text-gray-600"
+                          }`}>
+                            {label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <span className="text-sm font-medium">{label}</span>
+
+                  {/* Mobile Layout - Horizontal */}
+                  <div className="md:hidden">
+                    <div className="flex justify-between items-center mb-4">
+                      {sections.map(({ key, label }) => (
+                        <div key={key} className="text-center flex-1">
+                          <div
+                            className={`w-4 h-4 rounded-full mx-auto flex items-center justify-center transition-all duration-300 ${
+                              getSectionStatus(key) === "complete" 
+                                ? "bg-green-500 text-white shadow-md" 
+                                : "bg-gray-200 text-gray-600"
+                            }`}
+                          >
+                            {getSectionStatus(key) === "complete" ? (
+                              <CheckCircle className="h-4 w-4" />
+                            ) : (
+                              <div className="h-4 w-4 flex items-center justify-center">
+                                {getSectionIcon(key)}
+                              </div>
+                            )}
+                          </div>
+                          <span className={`text-[9px] font-light ${
+                            getSectionStatus(key) === "complete" ? "text-green-600" : "text-gray-600"
+                          }`}>
+                            {label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Progress Bar and Stats */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-medium text-gray-700">Progress</span>
+                      <span className="text-[9px] font-medium text-gray-900">
+                        {completedSections} of {totalSections} complete
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-green-500 h-2 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${progressPercentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
+              )
+            })()}
           </CardContent>
         </Card>
 
@@ -709,27 +769,64 @@ export default function ProjectForm() {
                     <CollapsibleTrigger asChild>
                       <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {getSectionIcon("customer")}
-                            <CardTitle
-                              className={`text-lg ${getSectionStatus("customer") === "complete" ? "text-primary" : ""}`}
-                            >
-                              Customer Selection
-                            </CardTitle>
-                            {getSectionStatus("customer") === "complete" && (
-                              <CheckCircle className="h-5 w-5 text-green-500" />
-                            )}
+                          <div className="flex flex-col md:flex-row md:items-center gap-3">
+                            <div className="flex items-center gap-3">
+                              {getSectionIcon("customer")}
+                              <CardTitle
+                                className={`text-sm md:text-lg ${getSectionStatus("customer") === "complete" ? "text-primary" : ""}`}
+                              >
+                                Customer Selection
+                              </CardTitle>
+                              {getSectionStatus("customer") === "complete" && (
+                                <CheckCircle className="h-5 w-5 text-green-500 hidden md:block" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 md:hidden">
+                              {getSectionStatus("customer") === "complete" && (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                              {getSectionStatus("customer") === "complete" ? (
+                                <span className="text-xs font-medium text-green-600">Completed</span>
+                              ) : (
+                                <span className="text-xs font-medium text-yellow-600">Incomplete</span>
+                              )}
+                              {projectType === "personal" && (
+                                <Badge
+                                  variant="secondary"
+                                  className={getSectionStatus("customer") === "complete" 
+                                    ? "bg-purple-600 text-white" 
+                                    : "bg-purple-100 text-purple-800"
+                                  }
+                                >
+                                  Personal Project
+                                </Badge>
+                              )}
+                              {projectType === "customer" && selectedCustomer && (
+                                <Badge
+                                  variant="secondary"
+                                  className={getSectionStatus("customer") === "complete" 
+                                    ? "bg-purple-600 text-white" 
+                                    : "bg-yellow-100 text-yellow-800"
+                                  }
+                                >
+                                  {selectedCustomer.name}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {getSectionStatus("customer") === "complete" ? (
-                              <span className="text-sm font-medium text-green-600">Completed</span>
+                              <span className="text-sm font-medium text-green-600 hidden md:block">Completed</span>
                             ) : (
-                              <span className="text-sm font-medium text-yellow-600">Incomplete</span>
+                              <span className="text-sm font-medium text-yellow-600 hidden md:block">Incomplete</span>
                             )}
                             {projectType === "personal" && (
                               <Badge
                                 variant="secondary"
-                                className={getSectionStatus("customer") !== "complete" ? "bg-yellow-100 text-yellow-800" : ""}
+                                className={`hidden md:block ${getSectionStatus("customer") === "complete" 
+                                  ? "bg-purple-600 text-white" 
+                                  : "bg-purple-100 text-purple-800"
+                                }`}
                               >
                                 Personal Project
                               </Badge>
@@ -737,7 +834,10 @@ export default function ProjectForm() {
                             {projectType === "customer" && selectedCustomer && (
                               <Badge
                                 variant="secondary"
-                                className={getSectionStatus("customer") !== "complete" ? "bg-yellow-100 text-yellow-800" : ""}
+                                className={`hidden md:block ${getSectionStatus("customer") === "complete" 
+                                  ? "bg-purple-600 text-white" 
+                                  : "bg-yellow-100 text-yellow-800"
+                                }`}
                               >
                                 {selectedCustomer.name}
                               </Badge>
@@ -907,27 +1007,53 @@ export default function ProjectForm() {
                     <CollapsibleTrigger asChild>
                       <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {getSectionIcon("project")}
-                            <CardTitle
-                              className={`text-lg ${getSectionStatus("project") === "complete" ? "text-primary" : ""}`}
-                            >
-                              Project Details
-                            </CardTitle>
-                            {getSectionStatus("project") === "complete" && (
-                              <CheckCircle className="h-5 w-5 text-green-500" />
-                            )}
+                          <div className="flex flex-col md:flex-row md:items-center gap-3">
+                            <div className="flex items-center gap-3">
+                              {getSectionIcon("project")}
+                              <CardTitle
+                                className={`text-sm md:text-lg ${getSectionStatus("project") === "complete" ? "text-primary" : ""}`}
+                              >
+                                Project Details
+                              </CardTitle>
+                              {getSectionStatus("project") === "complete" && (
+                                <CheckCircle className="h-5 w-5 text-green-500 hidden md:block" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 md:hidden">
+                              {getSectionStatus("project") === "complete" && (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                              {getSectionStatus("project") === "complete" ? (
+                                <span className="text-xs font-medium text-green-600">Completed</span>
+                              ) : (
+                                <span className="text-xs font-medium text-yellow-600">Incomplete</span>
+                              )}
+                              {projectName && (
+                                <Badge
+                                  variant="secondary"
+                                  className={getSectionStatus("project") === "complete" 
+                                    ? "bg-purple-600 text-white" 
+                                    : "bg-yellow-100 text-yellow-800"
+                                  }
+                                >
+                                  {projectName}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {getSectionStatus("project") === "complete" ? (
-                              <span className="text-sm font-medium text-green-600">Completed</span>
+                              <span className="text-sm font-medium text-green-600 hidden md:block">Completed</span>
                             ) : (
-                              <span className="text-sm font-medium text-yellow-600">Incomplete</span>
+                              <span className="text-sm font-medium text-yellow-600 hidden md:block">Incomplete</span>
                             )}
                             {projectName && (
                               <Badge
                                 variant="secondary"
-                                className={getSectionStatus("project") !== "complete" ? "bg-yellow-100 text-yellow-800" : ""}
+                                className={`hidden md:block ${getSectionStatus("project") === "complete" 
+                                  ? "bg-purple-600 text-white" 
+                                  : "bg-yellow-100 text-yellow-800"
+                                }`}
                               >
                                 {projectName}
                               </Badge>
@@ -1063,27 +1189,53 @@ export default function ProjectForm() {
                       <CollapsibleTrigger asChild>
                         <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              {getSectionIcon("budget")}
-                              <CardTitle
-                                className={`text-lg ${getSectionStatus("budget") === "complete" ? "text-primary" : ""}`}
-                              >
-                                Project Budget
-                              </CardTitle>
-                              {getSectionStatus("budget") === "complete" && (
-                                <CheckCircle className="h-5 w-5 text-green-500" />
-                              )}
+                            <div className="flex flex-col md:flex-row md:items-center gap-3">
+                              <div className="flex items-center gap-3">
+                                {getSectionIcon("budget")}
+                                <CardTitle
+                                  className={`text-sm md:text-lg ${getSectionStatus("budget") === "complete" ? "text-primary" : ""}`}
+                                >
+                                  Project Budget
+                                </CardTitle>
+                                {getSectionStatus("budget") === "complete" && (
+                                  <CheckCircle className="h-5 w-5 text-green-500 hidden md:block" />
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 md:hidden">
+                                {getSectionStatus("budget") === "complete" && (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                )}
+                                {getSectionStatus("budget") === "complete" ? (
+                                  <span className="text-xs font-medium text-green-600">Completed</span>
+                                ) : (
+                                  <span className="text-xs font-medium text-yellow-600">Incomplete</span>
+                                )}
+                                {budget > 0 && (
+                                  <Badge
+                                    variant="secondary"
+                                    className={getSectionStatus("budget") === "complete" 
+                                      ? "bg-purple-600 text-white" 
+                                      : "bg-yellow-100 text-yellow-800"
+                                    }
+                                  >
+                                    {currencyEnabled ? selectedCurrency : "$"} {(budget || 0).toLocaleString()}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center gap-2">
                               {getSectionStatus("budget") === "complete" ? (
-                                <span className="text-sm font-medium text-green-600">Completed</span>
+                                <span className="text-sm font-medium text-green-600 hidden md:block">Completed</span>
                               ) : (
-                                <span className="text-sm font-medium text-yellow-600">Incomplete</span>
+                                <span className="text-sm font-medium text-yellow-600 hidden md:block">Incomplete</span>
                               )}
                               {budget > 0 && (
                                 <Badge
                                   variant="secondary"
-                                  className={getSectionStatus("budget") !== "complete" ? "bg-yellow-100 text-yellow-800" : ""}
+                                  className={`hidden md:block ${getSectionStatus("budget") === "complete" 
+                                    ? "bg-purple-600 text-white" 
+                                    : "bg-yellow-100 text-yellow-800"
+                                  }`}
                                 >
                                   {currencyEnabled ? selectedCurrency : "$"} {(budget || 0).toLocaleString()}
                                 </Badge>
@@ -1153,29 +1305,58 @@ export default function ProjectForm() {
                     <CollapsibleTrigger asChild>
                       <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {getSectionIcon("deliverables")}
-                            <CardTitle
-                              className={`text-lg ${getSectionStatus("deliverables") === "complete" ? "text-primary" : ""}`}
-                            >
-                              Deliverables
-                            </CardTitle>
-                            {getSectionStatus("deliverables") === "complete" && (
-                              <CheckCircle className="h-5 w-5 text-green-500" />
-                            )}
+                          <div className="flex flex-col md:flex-row md:items-center gap-3">
+                            <div className="flex items-center gap-3">
+                              {getSectionIcon("deliverables")}
+                              <CardTitle
+                                className={`text-sm md:text-lg ${getSectionStatus("deliverables") === "complete" ? "text-primary" : ""}`}
+                              >
+                                Deliverables
+                              </CardTitle>
+                              {getSectionStatus("deliverables") === "complete" && (
+                                <CheckCircle className="h-5 w-5 text-green-500 hidden md:block" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 md:hidden">
+                              {getSectionStatus("deliverables") === "complete" && (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                              {getSectionStatus("deliverables") === "complete" ? (
+                                <span className="text-xs font-medium text-green-600">Completed</span>
+                              ) : (
+                                <span className="text-xs font-medium text-yellow-600">Incomplete</span>
+                              )}
+                              {!deliverablesEnabled && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-gray-100 text-gray-800"
+                                >
+                                  Disabled
+                                </Badge>
+                              )}
+                              {deliverablesEnabled && (
+                                <Badge
+                                  variant="secondary"
+                                  className={getSectionStatus("deliverables") === "complete" 
+                                    ? "bg-purple-600 text-white" 
+                                    : "bg-yellow-100 text-yellow-800"
+                                  }
+                                >
+                                  {deliverables.length} items
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {getSectionStatus("deliverables") === "complete" ? (
-                              <span className="text-sm font-medium text-green-600">Completed</span>
+                              <span className="text-sm font-medium text-green-600 hidden md:block">Completed</span>
                             ) : (
-                              <span className="text-sm font-medium text-yellow-600">Incomplete</span>
+                              <span className="text-sm font-medium text-yellow-600 hidden md:block">Incomplete</span>
                             )}
                             {!deliverablesEnabled && (
                               <Badge
                                 variant="secondary"
-                                className={
-                                  getSectionStatus("deliverables") !== "complete" ? "bg-yellow-100 text-yellow-800" : ""
-                                }
+                                className="hidden md:block bg-gray-100 text-gray-800"
                               >
                                 Disabled
                               </Badge>
@@ -1183,9 +1364,10 @@ export default function ProjectForm() {
                             {deliverablesEnabled && (
                               <Badge
                                 variant="secondary"
-                                className={
-                                  getSectionStatus("deliverables") !== "complete" ? "bg-yellow-100 text-yellow-800" : ""
-                                }
+                                className={`hidden md:block ${getSectionStatus("deliverables") === "complete" 
+                                  ? "bg-purple-600 text-white" 
+                                  : "bg-yellow-100 text-yellow-800"
+                                }`}
                               >
                                 {deliverables.length} items
                               </Badge>
@@ -1290,7 +1472,7 @@ export default function ProjectForm() {
                                         )}
                                       </div>
                                       <div className="space-y-3">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
                                           <FormField
                                             control={form.control}
                                             name={`deliverables.${index}.name`}
@@ -1374,33 +1556,71 @@ export default function ProjectForm() {
                     <CollapsibleTrigger asChild>
                       <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {getSectionIcon("payment")}
-                            <CardTitle
-                              className={`text-lg ${getSectionStatus("payment") === "complete" ? "text-primary" : ""}`}
-                            >
-                              Payment Structure
-                            </CardTitle>
-                            {getSectionStatus("payment") === "complete" && (
-                              <CheckCircle className="h-5 w-5 text-green-500" />
-                            )}
+                          <div className="flex flex-col md:flex-row md:items-center gap-3">
+                            <div className="flex items-center gap-3">
+                              {getSectionIcon("payment")}
+                              <CardTitle
+                                className={`text-sm md:text-lg ${getSectionStatus("payment") === "complete" ? "text-primary" : ""}`}
+                              >
+                                Payment Structure
+                              </CardTitle>
+                              {getSectionStatus("payment") === "complete" && (
+                                <CheckCircle className="h-5 w-5 text-green-500 hidden md:block" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 md:hidden">
+                              {getSectionStatus("payment") === "complete" && (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                              {getSectionStatus("payment") === "complete" ? (
+                                <span className="text-xs font-medium text-green-600">Completed</span>
+                              ) : (
+                                <span className="text-xs font-medium text-yellow-600">Incomplete</span>
+                              )}
+                              <Badge
+                                variant="secondary"
+                                className={getSectionStatus("payment") === "complete" 
+                                  ? "bg-purple-600 text-white" 
+                                  : "bg-yellow-100 text-yellow-800"
+                                }
+                              >
+                                {paymentStructure === "none" ? "No Payment" : `${getTotalPercentage()}%`}
+                              </Badge>
+                              {projectType === "customer" && budget > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className={getSectionStatus("payment") === "complete" 
+                                    ? "border-purple-600 text-purple-600" 
+                                    : "border-yellow-600 text-yellow-600"
+                                  }
+                                >
+                                  {currencyEnabled ? selectedCurrency : "$"} {getTotalAmount().toLocaleString()}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {getSectionStatus("payment") === "complete" ? (
-                              <span className="text-sm font-medium text-green-600">Completed</span>
+                              <span className="text-sm font-medium text-green-600 hidden md:block">Completed</span>
                             ) : (
-                              <span className="text-sm font-medium text-yellow-600">Incomplete</span>
+                              <span className="text-sm font-medium text-yellow-600 hidden md:block">Incomplete</span>
                             )}
                             <Badge
                               variant="secondary"
-                              className={getSectionStatus("payment") !== "complete" ? "bg-yellow-100 text-yellow-800" : ""}
+                              className={`hidden md:block ${getSectionStatus("payment") === "complete" 
+                                ? "bg-purple-600 text-white" 
+                                : "bg-yellow-100 text-yellow-800"
+                              }`}
                             >
                               {paymentStructure === "none" ? "No Payment" : `${getTotalPercentage()}%`}
                             </Badge>
                             {projectType === "customer" && budget > 0 && (
                               <Badge
                                 variant="outline"
-                                className={getSectionStatus("payment") !== "complete" ? "bg-yellow-100 text-yellow-800" : ""}
+                                className={`hidden md:block ${getSectionStatus("payment") === "complete" 
+                                  ? "border-purple-600 text-purple-600" 
+                                  : "border-yellow-600 text-yellow-600"
+                                }`}
                               >
                                 {currencyEnabled ? selectedCurrency : "$"} {getTotalAmount().toLocaleString()}
                               </Badge>
@@ -1781,28 +2001,56 @@ export default function ProjectForm() {
                     <CollapsibleTrigger asChild>
                       <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {getSectionIcon("agreement")}
-                            <CardTitle
-                              className={`text-lg ${getSectionStatus("agreement") === "complete" ? "text-primary" : ""}`}
-                            >
-                              Service Agreement
-                            </CardTitle>
-                            {getSectionStatus("agreement") === "complete" && (
-                              <CheckCircle className="h-5 w-5 text-green-500" />
-                            )}
+                          <div className="flex flex-col md:flex-row md:items-center gap-3">
+                            <div className="flex items-center gap-3">
+                              {getSectionIcon("agreement")}
+                              <CardTitle
+                                className={`text-sm md:text-lg ${getSectionStatus("agreement") === "complete" ? "text-primary" : ""}`}
+                              >
+                                Service Agreement
+                              </CardTitle>
+                              {getSectionStatus("agreement") === "complete" && (
+                                <CheckCircle className="h-5 w-5 text-green-500 hidden md:block" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 md:hidden">
+                              {getSectionStatus("agreement") === "complete" && (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              )}
+                              {getSectionStatus("agreement") === "complete" ? (
+                                <span className="text-xs font-medium text-green-600">Completed</span>
+                              ) : (
+                                <span className="text-xs font-medium text-yellow-600">Incomplete</span>
+                              )}
+                              <Badge
+                                variant={serviceAgreementEnabled ? "default" : "secondary"}
+                                className={
+                                  serviceAgreementEnabled 
+                                    ? getSectionStatus("agreement") === "complete" 
+                                      ? "bg-purple-600 text-white" 
+                                      : "bg-purple-100 text-purple-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }
+                              >
+                                {serviceAgreementEnabled ? "Enabled" : "Disabled"}
+                              </Badge>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             {getSectionStatus("agreement") === "complete" ? (
-                              <span className="text-sm font-medium text-green-600">Completed</span>
+                              <span className="text-sm font-medium text-green-600 hidden md:block">Completed</span>
                             ) : (
-                              <span className="text-sm font-medium text-yellow-600">Incomplete</span>
+                              <span className="text-sm font-medium text-yellow-600 hidden md:block">Incomplete</span>
                             )}
                             <Badge
                               variant={serviceAgreementEnabled ? "default" : "secondary"}
-                              className={
-                                getSectionStatus("agreement") !== "complete" ? "bg-yellow-100 text-yellow-800" : ""
-                              }
+                              className={`hidden md:block ${
+                                serviceAgreementEnabled 
+                                  ? getSectionStatus("agreement") === "complete" 
+                                    ? "bg-purple-600 text-white" 
+                                    : "bg-purple-100 text-purple-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
                             >
                               {serviceAgreementEnabled ? "Enabled" : "Disabled"}
                             </Badge>
@@ -1938,29 +2186,41 @@ export default function ProjectForm() {
           </Form>
 
         {/* Action Buttons */}
-        <div className="mt-8 flex justify-center gap-4 flex-wrap">
-          <Button variant="outline" onClick={handleSaveDraft} disabled={isSaving} className="w-full max-w-xs">
+        <div className="mt-8 flex justify-center gap-2 sm:gap-4">
+          <Button variant="outline" onClick={handleSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
             <Save className="h-4 w-4 mr-2" />
             {isSaving ? "Saving..." : "Save Draft"}
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button disabled={!isFormValid() || isSaving} className="w-full max-w-xs">
-                {isSaving ? "Publishing..." : "Publish Project"}
-                <ChevronDown className="h-4 w-4 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handlePublishProject(false)}>Publish Project</DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handlePublishProject(true)}
-                disabled={projectType !== "customer" || !selectedCustomer}
-              >
-                Publish & Email to Customer
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="inline-flex rounded-md shadow-sm">
+            <Button
+              onClick={() => handlePublishProject(false)}
+              disabled={!isFormValid() || isSaving}
+              className="rounded-r-none px-3 sm:px-4"
+            >
+              {isSaving ? "Publishing..." : "Publish Project"}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  disabled={!isFormValid() || isSaving}
+                  className="rounded-l-none border-l border-purple-700 px-3"
+                >
+                  <span className="sr-only">Open options</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handlePublishProject(false)}>Publish Project</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handlePublishProject(true)}
+                  disabled={projectType !== "customer" || !selectedCustomer}
+                >
+                  Publish & Email to Customer
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </div>

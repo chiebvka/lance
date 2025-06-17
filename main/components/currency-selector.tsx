@@ -46,47 +46,47 @@ export function CurrencySelector({ value, onValueChange }: CurrencySelectorProps
   const selectedCurrency = currencies.find((currency) => currency.code === value)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
-          {selectedCurrency ? (
-            <span>
-              {selectedCurrency.symbol} {selectedCurrency.code} - {selectedCurrency.name}
-            </span>
-          ) : (
-            "Select currency..."
-          )}
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search currency..." />
-          <CommandList>
-            <CommandEmpty>No currency found.</CommandEmpty>
-            <CommandGroup>
-              {currencies.map((currency) => (
-                <CommandItem
-                  key={currency.code}
-                  value={`${currency.code} ${currency.name} ${currency.searchTerms}`.toLowerCase()}
-                  onSelect={() => {
-                    onValueChange(currency.code)
-                    setOpen(false)
-                  }}
-                >
-                  <Check className={cn("mr-2 h-4 w-4", value === currency.code ? "opacity-100" : "opacity-0")} />
-                  <div className="flex items-center justify-between w-full">
-                    <span>
-                      {currency.symbol} {currency.code}
-                    </span>
-                    <span className="text-sm text-muted-foreground">{currency.name}</span>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
+            {selectedCurrency ? (
+              <span>
+                {selectedCurrency.symbol} {selectedCurrency.code} - {selectedCurrency.name}
+              </span>
+            ) : (
+              "Select currency..."
+            )}
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-full p-0" align="start">
+          <Command>
+            <CommandInput placeholder="Search currency..." />
+            <CommandList>
+              <CommandEmpty>No currency found.</CommandEmpty>
+              <CommandGroup>
+                {currencies.map((currency) => (
+                  <CommandItem
+                    key={currency.code}
+                    value={`${currency.code} ${currency.name} ${currency.searchTerms}`.toLowerCase()}
+                    onSelect={() => {
+                      onValueChange(currency.code)
+                      setOpen(false)
+                    }}
+                  >
+                    <Check className={cn("mr-2 h-4 w-4", value === currency.code ? "opacity-100" : "opacity-0")} />
+                    <div className="flex items-center justify-between w-full">
+                      <span>
+                        {currency.symbol} {currency.code}
+                      </span>
+                      <span className="text-sm text-muted-foreground">{currency.name}</span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
   )
 }
