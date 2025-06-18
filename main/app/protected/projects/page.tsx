@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import ProjectForm from './_components/project-form';
+import { RichTextEditor } from '@/components/tiptap/rich-text-editor';
 
 export default function ProjectsPage() {
   const handleSearch = (value: string) => {
@@ -28,6 +29,7 @@ export default function ProjectsPage() {
             }
         />
 
+        
         {/* <CreateProjectView onSearch={handleSearch} /> */}
     </div>
   )

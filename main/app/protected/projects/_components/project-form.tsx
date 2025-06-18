@@ -59,6 +59,7 @@ import type paymentTermSchema from "@/validation/payment"
 import axios from "axios"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { v4 as uuidv4 } from 'uuid';
 
 type ProjectFormValues = z.infer<typeof projectCreateSchema>
 type DeliverableFormValues = z.infer<typeof deliverableSchema>
@@ -127,7 +128,7 @@ export default function ProjectForm() {
       deliverablesEnabled: true,
       deliverables: [
         {
-          id: "1",
+          id: uuidv4(),
           name: "",
           description: "",
           dueDate: undefined,
@@ -138,8 +139,8 @@ export default function ProjectForm() {
       ],
       paymentStructure: "noPayment",
       paymentMilestones: [
-        { id: "1", name: "Initial Payment", percentage: 0, amount: 0, dueDate: null, description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
-        { id: "2", name: "Final Payment", percentage: 0, amount: 0, dueDate: null, description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
+        { id: uuidv4(), name: "Initial Payment", percentage: 0, amount: 0, dueDate: null, description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
+        { id: uuidv4(), name: "Final Payment", percentage: 0, amount: 0, dueDate: null, description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
       ],
       hasServiceAgreement: false,
       serviceAgreement: "<p>Standard service agreement terms...</p>",
@@ -256,7 +257,7 @@ export default function ProjectForm() {
         const amount = calculateAmountFromPercentage(percentage)
 
         return {
-          id: `del-${deliverable.id}`,
+          id: uuidv4(),
           name: deliverable.name || `Deliverable ${deliverable.position} Payment`,
           percentage,
           amount,
@@ -295,7 +296,7 @@ export default function ProjectForm() {
     // Get the highest position and add 1
     const maxPosition = Math.max(...currentDeliverables.map((d) => d.position || 0), 0)
     const newDeliverable: DeliverableFormValues = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       name: "",
       description: "",
       dueDate: undefined,
@@ -340,7 +341,7 @@ export default function ProjectForm() {
 
   const addPaymentMilestone = () => {
     const newMilestone: PaymentTermFormValues = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       name: "",
       description: null,
       amount: 0,

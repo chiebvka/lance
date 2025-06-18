@@ -6,8 +6,8 @@ export interface Customer {
 }
 
 export const customers: Customer[] = [
-  { id: "1", name: "Bellina", email: "accounting@bellina.com", company: "Bellina Solutions" },
-  { id: "2", name: "Junior test", email: "juniorbubu007@gmail.com", company: "Junior Inc." },
+  { id: "9e1c255c-2e6b-4e4a-8d7b-4d5c6f7g8h9i", name: "Bellina", email: "accounting@bellina.com", company: "Bellina Solutions" },
+  { id: "0a08f93a-7af3-49f6-9d73-98974f6efb71", name: "Junior test", email: "juniorbubu007@gmail.com", company: "Junior Inc." },
   { id: "3", name: "Quantum Corp", email: "finance@quantum.com", company: "Quantum Corp" },
   { id: "4", name: "Vertex Ltd.", email: "payments@vertex.com", company: "Vertex Ltd." },
   { id: "5", name: "Nexus Group", email: "accounts@nexus.com", company: "Nexus Group" },

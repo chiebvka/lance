@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { render } from "@react-email/components";
 import sendgrid from "@sendgrid/mail";
 import IssueProject from '../../../../emails/IssueProject';
-
+import crypto from "crypto";
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
             emailToCustomer = false,
           } = validatedFields.data;
 
+          console.log("Attempting to insert into 'projects' table...");
           const { data: project, error: projectError } = await supabase
           .from("projects")
           .insert({
@@ -89,57 +90,77 @@ export async function POST(request: Request) {
                 return NextResponse.json({ success: false, error: "Failed to create project; project data is null after insert." }, { status: 500 });
             }
 
+            console.log("Project inserted successfully. Project ID:", project.id);
+
     // Insert deliverables if enabled
+    let createdDeliverables: any[] = [];
     if (deliverablesEnabled && deliverables && deliverables.length > 0) {
-        const { error: deliverablesError } = await supabase
+        console.log("Attempting to insert into 'deliverables' table...");
+        const { data: insertedDeliverables, error: deliverablesError } = await supabase
           .from("deliverables")
           .insert(
             deliverables.map((d) => ({
               projectId: project?.id,
               name: d.name,
               description: d.description,
-              dueDate: d.dueDate || null, // Supabase handles Date to date conversion
+              dueDate: d.dueDate || null,
               status: d.status || "pending",
               position: d.position,
               isPublished: d.isPublished || false,
               lastSaved: d.lastSaved || null,
               createdBy: user.id,
             }))
-          );
+          )
+          .select();
         if (deliverablesError) {
             console.error("Supabase Deliverables Insert Error:", deliverablesError);
-            // Ideally, you might want to roll back the project creation here
             return NextResponse.json({ success: false, error: deliverablesError.message }, { status: 500 });
         }
+        createdDeliverables = insertedDeliverables || [];
+        console.log("Deliverables inserted successfully.");
       }
 
       // Insert payment terms based on paymentStructure
     if (paymentStructure === "milestonePayment" || paymentStructure === "deliverablePayment") {
-        // Process paymentMilestones only for milestonePayment or deliverablePayment
+        console.log("Attempting to insert into 'paymentTerms' table (milestone/deliverable)...");
         if (paymentMilestones && paymentMilestones.length > 0) {
+          const paymentTermsToInsert = paymentMilestones.map((m, index) => {
+            let deliverableId = null;
+            
+            // For deliverable-based payments, link to the actual created deliverable
+            if (paymentStructure === "deliverablePayment" && createdDeliverables.length > 0) {
+              // Match by position since deliverables are sorted by position
+              const matchingDeliverable = createdDeliverables.find(d => d.position === (index + 1));
+              deliverableId = matchingDeliverable?.id || null;
+            }
+
+            return {
+              id: m.id,
+              projectId: project?.id,
+              deliverableId: deliverableId,
+              name: m.name,
+              description: m.description,
+              amount: m.amount || null,
+              percentage: m.percentage || null,
+              dueDate: m.dueDate || null,
+              status: m.status || "Pending",
+              type: m.type,
+              hasPaymentTerms: m.hasPaymentTerms || false,
+              createdBy: user.id,
+            };
+          });
+
           const { error: paymentTermsError } = await supabase
             .from("paymentTerms")
-            .insert(
-              paymentMilestones.map((m) => ({
-                projectId : project?.id,
-                deliverableId: m.deliverableId || null,
-                name: m.name,
-                description: m.description,
-                amount: m.amount || null,
-                percentage: m.percentage || null,
-                dueDate: m.dueDate || null,
-                status: m.status || "Pending",
-                type: m.type,
-                hasPaymentTerms: m.hasPaymentTerms || false,
-                createdBy: user.id,
-              }))
-            );
+            .insert(paymentTermsToInsert);
+            
           if (paymentTermsError) {
             console.error("Supabase Payment Terms Insert Error:", paymentTermsError);
             return NextResponse.json({ success: false, error: paymentTermsError.message }, { status: 500 });
           }
         }
       } else if (paymentStructure === "fullDownPayment" || paymentStructure === "paymentOnCompletion") {
+        console.log("Attempting to insert into 'paymentTerms' table (single payment)...");
         // Handle single payment term for full down payment or payment on completion
         const { error: paymentTermsError } = await supabase
           .from("paymentTerms")
@@ -158,12 +179,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, error: paymentTermsError.message }, { status: 500 });
         }
       }
+      console.log("Payment terms processed successfully.");
       // noPaymentOption is implicitly handled by doing nothing
   
       // Prepare response data
       const responseData = {
         ...project,
-        deliverables: deliverables || [],
+        deliverables: createdDeliverables || [],
         paymentMilestones: paymentMilestones || [],
       };
 
@@ -221,7 +243,7 @@ export async function POST(request: Request) {
           }
         }
 
-            return NextResponse.json({ success: true, data: project }, { status: 200 });
+            return NextResponse.json({ success: true, data: responseData }, { status: 200 });
 
     } catch (error) {
         console.error("Error during project creation:", error);
