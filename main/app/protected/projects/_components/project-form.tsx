@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -54,106 +54,68 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
-// import { CurrencySelector } from "./components/currency-selector"
-// import { RichTextEditor } from "./components/rich-text-editor"
+import type { z as zod } from "zod"
+import type paymentTermSchema from "@/validation/payment"
+import axios from "axios"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
-const projectFormSchema = z.object({
-  customer: z.any().nullable(),
-  currency: z.string(),
-  currencyEnabled: z.boolean(),
-  type: z.enum(["personal", "customer"]),
-  budget: z.number(),
-  name: z.string().min(1, "Project name is required."),
-  description: z.string().min(1, "Project description is required."),
-  startDate: z.date().optional().nullable(),
-  endDate: z.date().optional().nullable(),
-  deliverablesEnabled: z.boolean(),
-  deliverables: z.array(deliverableSchema),
-  paymentStructure: z.string(),
-  paymentMilestones: z.array(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      percentage: z.number(),
-      amount: z.number(),
-      dueDate: z.string().optional().nullable(),
-    }),
-  ),
-  hasServiceAgreement: z.boolean(),
-  serviceAgreement: z.string(),
-  agreementTemplate: z.string(),
-  hasAgreedToTerms: z.boolean(),
-  published: z.boolean(),
-  status: z.enum(["pending", "in_progress", "completed"]),
-  priority: z.enum(["low", "medium", "high"]),
-  hasPaymentTerms: z.boolean(),
-  signedStatus: z.enum(["signed", "not_signed"]),
-  documents: z.string(),
-  notes: z.string(),
-  customFields: z.object({
-    name: z.string(),
-    value: z.string(),
-  }),
-  state: z.string(),
-  paymentTerms: z.string().optional().nullable(),
-})
-
-type ProjectFormValues = z.infer<typeof projectFormSchema>
+type ProjectFormValues = z.infer<typeof projectCreateSchema>
 type DeliverableFormValues = z.infer<typeof deliverableSchema>
+type PaymentTermFormValues = zod.infer<typeof paymentTermSchema>
 
-interface Deliverable {
+// Payload-specific interfaces
+interface PayloadPaymentMilestone {
+  id?: string
+  name: string | null
+  percentage: number | null
+  amount: number | null
+  dueDate: string
+  description?: string | null
+  status?: string | null
+  type?: "milestone" | "deliverable" | null
+}
+
+interface PayloadDeliverable {
   id: string
   name: string
   description: string
   dueDate: string
   position: number
   isPublished: boolean
-  lastSaved?: Date
-}
-
-interface PaymentMilestone {
-  id: string
-  name: string
-  percentage: number
-  amount: number
-  dueDate: string
+  status: "pending" | "in_progress" | "completed"
 }
 
 interface ProjectData {
   id?: string
-  customer: any
-  currency: string
-  currencyEnabled: boolean
-  projectType: "personal" | "customer"
-  budget: number
-  project: {
-    projectName: string
-    projectDescription: string
-    startDate: string
-    endDate: string
-  }
-  deliverables: Deliverable[]
-  deliverablesEnabled: boolean
-  payment: {
-    structure: string
-    milestones: PaymentMilestone[]
-  }
-  serviceAgreement: {
-    enabled: boolean
-    text: string
-    template: string
-    agreed: boolean
-  }
-  published: boolean
-  lastSaved?: Date
+  customerId?: string | null
+  currency?: string
+  currencyEnabled?: boolean
+  projectType?: "personal" | "customer"
+  budget?: number
+  projectName?: string
+  projectDescription?: string
+  startDate?: string
+  endDate?: string
+  deliverables?: PayloadDeliverable[]
+  deliverablesEnabled?: boolean
+  paymentStructure?: string
+  paymentMilestones?: PayloadPaymentMilestone[]
+  hasServiceAgreement?: boolean
+  serviceAgreement?: string
+  agreementTemplate?: string
+  hasAgreedToTerms?: boolean
+  isPublished?: boolean
+  state?: "draft" | "published"
+  emailToCustomer?: boolean
 }
 
-
 export default function ProjectForm() {
+  const router = useRouter()
   const form = useForm<ProjectFormValues>({
-    resolver: zodResolver(projectFormSchema),
+    resolver: zodResolver(projectCreateSchema),
     defaultValues: {
-      customer: null,
+      customerId: null,
       currency: "USD",
       currencyEnabled: false,
       type: "personal",
@@ -174,18 +136,18 @@ export default function ProjectForm() {
           isPublished: false,
         },
       ],
-      paymentStructure: "milestone",
+      paymentStructure: "noPayment",
       paymentMilestones: [
-        { id: "1", name: "Initial Payment", percentage: 0, amount: 0, dueDate: "" },
-        { id: "2", name: "Final Payment", percentage: 0, amount: 0, dueDate: "" },
+        { id: "1", name: "Initial Payment", percentage: 0, amount: 0, dueDate: null, description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
+        { id: "2", name: "Final Payment", percentage: 0, amount: 0, dueDate: null, description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
       ],
       hasServiceAgreement: false,
       serviceAgreement: "<p>Standard service agreement terms...</p>",
       agreementTemplate: "standard",
       hasAgreedToTerms: false,
-      published: false,
+      isPublished: false,
       status: "pending",
-      priority: "low",
+  
       hasPaymentTerms: true,
       signedStatus: "not_signed",
       documents: "",
@@ -224,16 +186,11 @@ export default function ProjectForm() {
   const paymentMilestones = form.watch("paymentMilestones")
   const serviceAgreementEnabled = form.watch("hasServiceAgreement")
   const hasAgreedToTerms = form.watch("hasAgreedToTerms")
-  const selectedCustomer = form.watch("customer")
+  const selectedCustomerId = form.watch("customerId")
+  const selectedCustomer = customers.find(c => c.id === selectedCustomerId)
   const selectedCurrency = form.watch("currency")
   const deliverables = form.watch("deliverables")
   const agreementTemplate = form.watch("agreementTemplate")
-
-  useEffect(() => {
-    if (projectType === "personal") {
-      form.setValue("currencyEnabled", false)
-    }
-  }, [projectType, form])
 
   // UI State - Updated to open first 3 sections by default
   const [openSections, setOpenSections] = useState({
@@ -253,7 +210,7 @@ export default function ProjectForm() {
 
   // Helper function to calculate percentage from amount
   const calculatePercentageFromAmount = (amount: number): number => {
-    if (budget === 0) return 0
+    if (!budget) return 0
     return Math.round((amount / budget) * 100)
   }
 
@@ -264,7 +221,7 @@ export default function ProjectForm() {
 
   // Helper function to get sorted deliverables by position
   const getSortedDeliverables = () => {
-    const currentDeliverables = form.getValues("deliverables")
+    const currentDeliverables = form.getValues("deliverables") || []
     if (!currentDeliverables || !Array.isArray(currentDeliverables)) {
       return []
     }
@@ -284,7 +241,7 @@ export default function ProjectForm() {
     const currentPaymentStructure = form.getValues("paymentStructure")
     const currentDeliverablesEnabled = form.getValues("deliverablesEnabled")
 
-    if (currentPaymentStructure === "deliverable" && currentDeliverablesEnabled) {
+    if (currentPaymentStructure === "deliverablePayment" && currentDeliverablesEnabled) {
       // Create a payment milestone for each deliverable (sorted by position)
       const sortedDeliverables = getSortedDeliverables()
       const newMilestones = sortedDeliverables.map((deliverable, index) => {
@@ -303,7 +260,12 @@ export default function ProjectForm() {
           name: deliverable.name || `Deliverable ${deliverable.position} Payment`,
           percentage,
           amount,
-          dueDate: deliverable.dueDate ? format(deliverable.dueDate, "yyyy-MM-dd") : "",
+          dueDate: deliverable.dueDate,
+          description: null, 
+          status: 'pending', 
+          type: 'deliverable',
+          hasPaymentTerms: false,
+          deliverableId: deliverable.id
         }
       })
 
@@ -323,15 +285,15 @@ export default function ProjectForm() {
     form.setValue("deliverablesEnabled", value)
 
     // If disabling deliverables and payment structure is deliverable-based, change it
-    if (!value && form.getValues("paymentStructure") === "deliverable") {
-      form.setValue("paymentStructure", "milestone")
+    if (!value && form.getValues("paymentStructure") === "deliverablePayment") {
+      form.setValue("paymentStructure", "milestonePayment")
     }
   }
 
   const addDeliverable = () => {
-    const currentDeliverables = form.getValues("deliverables")
+    const currentDeliverables = form.getValues("deliverables") || []
     // Get the highest position and add 1
-    const maxPosition = Math.max(...(currentDeliverables || []).map((d) => d.position || 0), 0)
+    const maxPosition = Math.max(...currentDeliverables.map((d) => d.position || 0), 0)
     const newDeliverable: DeliverableFormValues = {
       id: Date.now().toString(),
       name: "",
@@ -345,22 +307,22 @@ export default function ProjectForm() {
     appendDeliverable(newDeliverable)
 
     // Update payment milestones if needed
-    if (form.getValues("paymentStructure") === "deliverable") {
+    if (form.getValues("paymentStructure") === "deliverablePayment") {
       updatePaymentMilestonesFromDeliverables()
     }
   }
 
   const removeDeliverable = (index: number) => {
     const currentDeliverables = form.getValues("deliverables")
-    if (currentDeliverables.length > 1) {
+    if (currentDeliverables && currentDeliverables.length > 1) {
       removeDeliverableField(index)
       // Reassign positions after removal
-      const updatedDeliverables = form.getValues("deliverables").filter((_, i) => i !== index)
+      const updatedDeliverables = (form.getValues("deliverables") || []).filter((_, i) => i !== index)
       const reorderedDeliverables = reassignPositions(updatedDeliverables)
       form.setValue("deliverables", reorderedDeliverables)
 
       // Update payment milestones if needed
-      if (form.getValues("paymentStructure") === "deliverable") {
+      if (form.getValues("paymentStructure") === "deliverablePayment") {
         updatePaymentMilestonesFromDeliverables()
       }
     }
@@ -368,27 +330,33 @@ export default function ProjectForm() {
 
   // Enhanced payment structure handlers
   const setPaymentStructureWithUpdates = (value: string) => {
-    form.setValue("paymentStructure", value)
+    form.setValue("paymentStructure", value as any)
 
     // If switching to deliverable-based payments, update milestones
-    if (value === "deliverable" && form.getValues("deliverablesEnabled")) {
+    if (value === "deliverablePayment" && form.getValues("deliverablesEnabled")) {
       updatePaymentMilestonesFromDeliverables()
     }
   }
 
   const addPaymentMilestone = () => {
-    const newMilestone: PaymentMilestone = {
+    const newMilestone: PaymentTermFormValues = {
       id: Date.now().toString(),
       name: "",
-      percentage: 0,
+      description: null,
       amount: 0,
-      dueDate: "",
+      percentage: 0,
+      dueDate: null,
+      status: null,
+      type: "milestone",
+      hasPaymentTerms: false,
+      deliverableId: null,
     }
     appendMilestone(newMilestone)
   }
 
-  const updatePaymentMilestone = (index: number, field: keyof PaymentMilestone, value: string | number) => {
+  const updatePaymentMilestone = (index: number, field: keyof PayloadPaymentMilestone, value: string | number | Date | null) => {
     const currentMilestones = form.getValues("paymentMilestones")
+    if (!currentMilestones) return
     const updatedMilestone = { ...currentMilestones[index], [field]: value }
 
     // If updating percentage, calculate amount
@@ -406,7 +374,7 @@ export default function ProjectForm() {
 
   const removePaymentMilestone = (index: number) => {
     const currentMilestones = form.getValues("paymentMilestones")
-    if (currentMilestones.length > 1) {
+    if (currentMilestones && currentMilestones.length > 1) {
       removeMilestoneField(index)
     }
   }
@@ -421,60 +389,66 @@ export default function ProjectForm() {
 
   const handleSaveDraft = async () => {
     setIsSaving(true)
-
     try {
       const values = form.getValues()
 
-      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map((d) => ({
+      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
         ...d,
         id: d.id || "",
         name: d.name,
         description: d.description,
-        dueDate: d.dueDate ? format(d.dueDate, "yyyy-MM-dd") : "",
+        dueDate: d.dueDate, 
         position: d.position || 0,
         isPublished: d.isPublished || false,
-      }))
+      }));
+      
+      const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones) 
+        ? values.paymentMilestones.map(m => ({
+            ...m,
+            id: m.id,
+            name: m.name,
+            percentage: m.percentage,
+            amount: m.amount,
+            dueDate: m.dueDate,
+          }))
+        : [];
 
-      const milestonesData = values.paymentMilestones.map((m) => ({
-        ...m,
-        dueDate: m.dueDate || "",
-      }))
+      const customFieldsData = (values.customFields?.name && values.customFields?.value) 
+        ? values.customFields 
+        : undefined;
 
-      // Prepare project data
-      const projectData: ProjectData = {
-        customer: values.customer,
-        currency: values.currency,
-        currencyEnabled: values.currencyEnabled,
-        projectType: values.type,
-        budget: values.budget,
-        project: {
-          projectName: values.name,
-          projectDescription: values.description,
-          startDate: values.startDate ? format(values.startDate, "yyyy-MM-dd") : "",
-          endDate: values.endDate ? format(values.endDate, "yyyy-MM-dd") : "",
-        },
+      const projectData = {
+        ...values,
+        startDate: values.startDate,
+        endDate: values.endDate,
         deliverables: deliverablesData,
-        deliverablesEnabled: values.deliverablesEnabled,
-        payment: {
-          structure: values.paymentStructure,
-          milestones: milestonesData,
-        },
-        serviceAgreement: {
-          enabled: values.hasServiceAgreement,
-          text: values.serviceAgreement,
-          template: values.agreementTemplate,
-          agreed: values.hasAgreedToTerms,
-        },
-        published: false,
+        paymentMilestones: milestonesData,
+        customFields: customFieldsData,
+        isPublished: false,
+        state: "draft",
       }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log("Saving draft:", projectData)
+      const response = await axios.post("/api/projects/create", projectData)
 
-      // Show success message or handle response
+      if (response.data.success) {
+        toast.success("Draft saved successfully!")
+        // Redirecting to the main projects page.
+        // You might want to redirect to an edit page in the future.
+        router.push(`/protected/projects`)
+      } else {
+        toast.error("Failed to save draft.", {
+          description: response.data.error || "An unknown error occurred.",
+        })
+      }
     } catch (error) {
       console.error("Error saving draft:", error)
+      const errorDescription =
+        axios.isAxiosError(error) && error.response?.data?.error
+          ? error.response.data.error
+          : "An unexpected error occurred. Please try again."
+      toast.error("Error saving draft.", {
+        description: errorDescription,
+      })
     } finally {
       setIsSaving(false)
     }
@@ -486,58 +460,58 @@ export default function ProjectForm() {
     try {
       const values = form.getValues()
 
-      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map((d) => ({
+      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
         ...d,
         id: d.id || "",
         name: d.name,
         description: d.description,
-        dueDate: d.dueDate ? format(d.dueDate, "yyyy-MM-dd") : "",
+        dueDate: d.dueDate,
         position: d.position || 0,
         isPublished: d.isPublished || false,
-      }))
+      }));
 
-      const milestonesData = values.paymentMilestones.map((m) => ({
-        ...m,
-        dueDate: m.dueDate || "",
-      }))
+      const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones)
+        ? values.paymentMilestones.map(m => ({
+          ...m,
+          id: m.id,
+          name: m.name,
+          percentage: m.percentage,
+          amount: m.amount,
+          dueDate: m.dueDate,
+        }))
+        : [];
 
       // Prepare project data with sorted deliverables
-      const projectData: ProjectData = {
-        id: undefined,
-        customer: values.customer,
-        currency: values.currency,
-        currencyEnabled: values.currencyEnabled,
-        projectType: values.type,
-        budget: values.budget,
-        project: {
-          projectName: values.name,
-          projectDescription: values.description,
-          startDate: values.startDate ? format(values.startDate, "yyyy-MM-dd") : "",
-          endDate: values.endDate ? format(values.endDate, "yyyy-MM-dd") : "",
-        },
+      const projectData = {
+        ...values,
+        startDate: values.startDate,
+        endDate: values.endDate,
         deliverables: deliverablesData,
-        deliverablesEnabled: values.deliverablesEnabled,
-        payment: {
-          structure: values.paymentStructure,
-          milestones: milestonesData,
-        },
-        serviceAgreement: {
-          enabled: values.hasServiceAgreement,
-          text: values.serviceAgreement,
-          template: values.agreementTemplate,
-          agreed: values.hasAgreedToTerms,
-        },
-        published: true,
+        paymentMilestones: milestonesData,
+        isPublished: true,
+        state: "published",
+        emailToCustomer,
       }
 
-      // Simulate API call with a delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const response = await axios.post("/api/projects/create", projectData)
 
-      console.log("Publishing project:", projectData, "Email to customer:", emailToCustomer)
-
-      // In a real app, you would handle the response and redirect
+      if (response.data.success) {
+        toast.success(emailToCustomer ? "Project published and sent to customer!" : "Project published successfully!")
+        router.push(`/protected/projects`)
+      } else {
+        toast.error("Failed to publish project.", {
+          description: response.data.error || "An unknown error occurred.",
+        })
+      }
     } catch (error) {
       console.error("Error publishing project:", error)
+      const errorDescription =
+        axios.isAxiosError(error) && error.response?.data?.error
+          ? error.response.data.error
+          : "An unexpected error occurred. Please try again."
+      toast.error("Error publishing project.", {
+        description: errorDescription,
+      })
     } finally {
       setIsSaving(false)
     }
@@ -548,8 +522,10 @@ export default function ProjectForm() {
     const hasValidBudget = projectType === "personal" || (budget || 0) > 0
     const hasValidDeliverables = !deliverablesEnabled || (deliverables || []).every((d) => d.name)
     const hasValidPayment =
-      paymentStructure === "none" ||
-      ((paymentStructure === "milestone" || paymentStructure === "deliverable") && getTotalPercentage() === 100)
+      paymentStructure === "noPayment" ||
+      ((paymentStructure === "milestonePayment" || paymentStructure === "deliverablePayment") && getTotalPercentage() === 100) ||
+      paymentStructure === "fullDownPayment" ||
+      paymentStructure === "paymentOnCompletion"
     const hasAgreement = !serviceAgreementEnabled || hasAgreedToTerms
 
     return hasBasicInfo && hasValidBudget && hasValidDeliverables && hasValidPayment && hasAgreement
@@ -586,8 +562,10 @@ export default function ProjectForm() {
       case "deliverables":
         return !deliverablesEnabled || (deliverables || []).every((d) => d.name) ? "complete" : "incomplete"
       case "payment":
-        return paymentStructure === "none" ||
-          ((paymentStructure === "milestone" || paymentStructure === "deliverable") && getTotalPercentage() === 100)
+        return paymentStructure === "noPayment" ||
+          ((paymentStructure === "milestonePayment" || paymentStructure === "deliverablePayment") && getTotalPercentage() === 100) ||
+          paymentStructure === "fullDownPayment" ||
+          paymentStructure === "paymentOnCompletion"
           ? "complete"
           : "incomplete"
       case "agreement":
@@ -632,12 +610,12 @@ export default function ProjectForm() {
       moveDeliverable(draggedIndex, targetIndex)
 
       // Reassign positions based on new order
-      const newDeliverablesOrder = form.getValues("deliverables")
+      const newDeliverablesOrder = form.getValues("deliverables") || []
       const reorderedDeliverables = reassignPositions(newDeliverablesOrder)
       form.setValue("deliverables", reorderedDeliverables, { shouldDirty: true })
 
       // Update payment milestones if needed
-      if (form.getValues("paymentStructure") === "deliverable") {
+      if (form.getValues("paymentStructure") === "deliverablePayment") {
         updatePaymentMilestonesFromDeliverables()
       }
     } catch (error) {
@@ -859,10 +837,18 @@ export default function ProjectForm() {
                             name="type"
                             render={({ field }) => (
                               <FormItem className="flex items-center space-x-4 mb-4">
-                                <FormLabel>Project Type</FormLabel>
                                 <FormControl>
                                   <RadioGroup
-                                    onValueChange={field.onChange}
+                                    onValueChange={(value) => {
+                                      field.onChange(value)
+                                      if (value === "personal") {
+                                        form.setValue("currencyEnabled", false)
+                                        form.setValue("paymentStructure", "noPayment")
+                                      } else {
+                                        // Revert to a sensible default for customer projects
+                                        form.setValue("paymentStructure", "milestonePayment")
+                                      }
+                                    }}
                                     value={field.value}
                                     className="flex items-center space-x-4"
                                   >
@@ -887,7 +873,7 @@ export default function ProjectForm() {
                           {projectType === "customer" && (
                             <FormField
                               control={form.control}
-                              name="customer"
+                              name="customerId"
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Select Customer</FormLabel>
@@ -899,9 +885,9 @@ export default function ProjectForm() {
                                         label: c.name,
                                         searchValue: `${c.name} ${c.company} ${c.email}`,
                                       }))}
-                                      value={field.value?.id ?? null}
+                                      value={field.value ?? null}
                                       onValueChange={(customerId) => {
-                                        field.onChange(customers.find((c) => c.id === customerId) || null)
+                                        field.onChange(customerId || null)
                                       }}
                                       placeholder="Select customer..."
                                       searchPlaceholder="Search by name, company, or email..."
@@ -982,7 +968,7 @@ export default function ProjectForm() {
                                           label: `${c.code} - ${c.name}`,
                                           searchValue: `${c.code} ${c.name}`,
                                         }))}
-                                        value={field.value}
+                                        value={field.value ?? null}
                                         onValueChange={field.onChange}
                                         placeholder="Select currency..."
                                         searchPlaceholder="Search by code or name..."
@@ -1210,7 +1196,7 @@ export default function ProjectForm() {
                                 ) : (
                                   <span className="text-xs font-medium text-yellow-600">Incomplete</span>
                                 )}
-                                {budget > 0 && (
+                                {(budget || 0) > 0 && (
                                   <Badge
                                     variant="secondary"
                                     className={getSectionStatus("budget") === "complete" 
@@ -1229,7 +1215,7 @@ export default function ProjectForm() {
                               ) : (
                                 <span className="text-sm font-medium text-yellow-600 hidden md:block">Incomplete</span>
                               )}
-                              {budget > 0 && (
+                              {(budget || 0) > 0 && (
                                 <Badge
                                   variant="secondary"
                                   className={`hidden md:block ${getSectionStatus("budget") === "complete" 
@@ -1273,7 +1259,7 @@ export default function ProjectForm() {
                                           // Update all payment milestone amounts when budget changes
                                           const updatedMilestones = (form.getValues("paymentMilestones") || []).map((milestone) => ({
                                             ...milestone,
-                                            amount: calculateAmountFromPercentage(milestone.percentage),
+                                            amount: calculateAmountFromPercentage(milestone.percentage || 0),
                                           }))
                                           form.setValue("paymentMilestones", updatedMilestones)
                                         }}
@@ -1342,7 +1328,7 @@ export default function ProjectForm() {
                                     : "bg-yellow-100 text-yellow-800"
                                   }
                                 >
-                                  {deliverables.length} items
+                                  {(deliverables || []).length} items
                                 </Badge>
                               )}
                             </div>
@@ -1369,7 +1355,7 @@ export default function ProjectForm() {
                                   : "bg-yellow-100 text-yellow-800"
                                 }`}
                               >
-                                {deliverables.length} items
+                                {(deliverables || []).length} items
                               </Badge>
                             )}
                             {openSections.deliverables ? (
@@ -1456,7 +1442,7 @@ export default function ProjectForm() {
                                             Dragging...
                                           </span>
                                         )}
-                                        {deliverables.length > 1 && (
+                                        {(deliverables || []).length > 1 && (
                                           <Button
                                             type="button"
                                             variant="ghost"
@@ -1584,9 +1570,9 @@ export default function ProjectForm() {
                                   : "bg-yellow-100 text-yellow-800"
                                 }
                               >
-                                {paymentStructure === "none" ? "No Payment" : `${getTotalPercentage()}%`}
+                                {paymentStructure === "noPayment" ? "No Payment" : `${getTotalPercentage()}%`}
                               </Badge>
-                              {projectType === "customer" && budget > 0 && (
+                              {projectType === "customer" && (budget || 0) > 0 && (
                                 <Badge
                                   variant="outline"
                                   className={getSectionStatus("payment") === "complete" 
@@ -1612,9 +1598,9 @@ export default function ProjectForm() {
                                 : "bg-yellow-100 text-yellow-800"
                               }`}
                             >
-                              {paymentStructure === "none" ? "No Payment" : `${getTotalPercentage()}%`}
+                              {paymentStructure === "noPayment" ? "No Payment" : `${getTotalPercentage()}%`}
                             </Badge>
-                            {projectType === "customer" && budget > 0 && (
+                            {projectType === "customer" && (budget || 0) > 0 && (
                               <Badge
                                 variant="outline"
                                 className={`hidden md:block ${getSectionStatus("payment") === "complete" 
@@ -1651,6 +1637,7 @@ export default function ProjectForm() {
                                         setPaymentStructureWithUpdates(value)
                                       }}
                                       defaultValue={field.value}
+                                      disabled={projectType === "personal"}
                                     >
                                       <FormControl>
                                         <SelectTrigger>
@@ -1658,13 +1645,13 @@ export default function ProjectForm() {
                                         </SelectTrigger>
                                       </FormControl>
                                       <SelectContent>
-                                        <SelectItem value="none">No payment required</SelectItem>
-                                        <SelectItem value="milestone">Milestone-based payments</SelectItem>
+                                        <SelectItem value="noPayment">No payment required</SelectItem>
+                                        <SelectItem value="milestonePayment">Milestone-based payments</SelectItem>
                                         {deliverablesEnabled && (
-                                          <SelectItem value="deliverable">Deliverable-based payments</SelectItem>
+                                          <SelectItem value="deliverablePayment">Deliverable-based payments</SelectItem>
                                         )}
-                                        <SelectItem value="upfront">Full payment upfront</SelectItem>
-                                        <SelectItem value="completion">Payment on completion</SelectItem>
+                                        <SelectItem value="fullDownPayment">Full payment upfront</SelectItem>
+                                        <SelectItem value="paymentOnCompletion">Payment on completion</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </FormControl>
@@ -1673,7 +1660,7 @@ export default function ProjectForm() {
                             />
                           </div>
 
-                          {paymentStructure === "milestone" && (
+                          {paymentStructure === "milestonePayment" && (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
                                 <span className="font-medium">Payment Milestones</span>
@@ -1681,7 +1668,7 @@ export default function ProjectForm() {
                                   <Badge variant={getTotalPercentage() === 100 ? "default" : "destructive"}>
                                     Total: {getTotalPercentage()}%
                                   </Badge>
-                                  {projectType === "customer" && budget > 0 && (
+                                  {projectType === "customer" && (budget || 0) > 0 && (
                                     <Badge variant="outline">
                                       {currencyEnabled ? selectedCurrency : "$"} {getTotalAmount().toLocaleString()}
                                     </Badge>
@@ -1692,7 +1679,7 @@ export default function ProjectForm() {
                                 <div key={milestone.id} className="border rounded-lg p-4 bg-white">
                                   <div className="flex items-center gap-2 mb-3">
                                     <span className="font-medium">Milestone {index + 1}</span>
-                                    {paymentMilestones.length > 1 && (
+                                    {(paymentMilestones || []).length > 1 && (
                                       <Button
                                         type="button"
                                         variant="ghost"
@@ -1706,7 +1693,7 @@ export default function ProjectForm() {
                                   </div>
                                   <div
                                     className={`grid grid-cols-1 ${
-                                      projectType === "customer" && budget > 0 ? "md:grid-cols-4" : "md:grid-cols-3"
+                                      projectType === "customer" && (budget || 0) > 0 ? "md:grid-cols-4" : "md:grid-cols-3"
                                     } gap-3 items-end`}
                                   >
                                     <FormField
@@ -1716,7 +1703,7 @@ export default function ProjectForm() {
                                         <FormItem>
                                           <FormLabel>Name</FormLabel>
                                           <FormControl>
-                                            <Input {...field} placeholder="Milestone name" />
+                                            <Input {...field} value={field.value || ""} placeholder="Milestone name" />
                                           </FormControl>
                                         </FormItem>
                                       )}
@@ -1744,7 +1731,7 @@ export default function ProjectForm() {
                                         </FormItem>
                                       )}
                                     />
-                                    {projectType === "customer" && budget > 0 && (
+                                    {projectType === "customer" && (budget || 0) > 0 && (
                                       <FormField
                                         control={form.control}
                                         name={`paymentMilestones.${index}.amount`}
@@ -1801,7 +1788,7 @@ export default function ProjectForm() {
                                               <Calendar
                                                 mode="single"
                                                 selected={field.value ? new Date(field.value) : undefined}
-                                                onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
+                                                onSelect={(date) => field.onChange(date)}
                                                 captionLayout="dropdown"
                                                 fromYear={2015}
                                                 toYear={2045}
@@ -1822,7 +1809,7 @@ export default function ProjectForm() {
                             </div>
                           )}
 
-                          {paymentStructure === "deliverable" && deliverablesEnabled && (
+                          {paymentStructure === "deliverablePayment" && deliverablesEnabled && (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
                                 <span className="font-medium">Deliverable-Based Payments</span>
@@ -1830,7 +1817,7 @@ export default function ProjectForm() {
                                   <Badge variant={getTotalPercentage() === 100 ? "default" : "destructive"}>
                                     Total: {getTotalPercentage()}%
                                   </Badge>
-                                  {projectType === "customer" && budget > 0 && (
+                                  {projectType === "customer" && (budget || 0) > 0 && (
                                     <Badge variant="outline">
                                       {currencyEnabled ? selectedCurrency : "$"} {getTotalAmount().toLocaleString()}
                                     </Badge>
@@ -1848,7 +1835,8 @@ export default function ProjectForm() {
                                   className="mt-2"
                                   onClick={() => {
                                     // Redistribute percentages evenly
-                                    const currentMilestones = form.getValues("paymentMilestones")
+                                    const currentMilestones = form.getValues("paymentMilestones") || []
+                                    if(currentMilestones.length === 0) return
                                     const basePercentage = Math.floor(100 / currentMilestones.length)
                                     const remainder = 100 % currentMilestones.length
 
@@ -1860,7 +1848,7 @@ export default function ProjectForm() {
                                         amount: calculateAmountFromPercentage(percentage),
                                       }
                                     })
-                                    form.setValue("paymentMilestones", newMilestones as any)
+                                    form.setValue("paymentMilestones", newMilestones)
                                   }}
                                 >
                                   Redistribute Evenly
@@ -1888,7 +1876,7 @@ export default function ProjectForm() {
                                     </div>
                                     <div
                                       className={`grid grid-cols-1 ${
-                                        projectType === "customer" && budget > 0 ? "md:grid-cols-3" : "md:grid-cols-2"
+                                        projectType === "customer" && (budget || 0) > 0 ? "md:grid-cols-3" : "md:grid-cols-2"
                                       } gap-3 items-end`}
                                     >
                                       <FormField
@@ -1915,7 +1903,7 @@ export default function ProjectForm() {
                                           </FormItem>
                                         )}
                                       />
-                                      {projectType === "customer" && budget > 0 && (
+                                      {projectType === "customer" && (budget || 0) > 0 && (
                                         <FormField
                                           control={form.control}
                                           name={`paymentMilestones.${index}.amount`}
@@ -1972,7 +1960,7 @@ export default function ProjectForm() {
                                                 <Calendar
                                                   mode="single"
                                                   selected={field.value ? new Date(field.value) : undefined}
-                                                  onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : null)}
+                                                  onSelect={(date) => field.onChange(date)}
                                                   captionLayout="dropdown"
                                                   fromYear={2015}
                                                   toYear={2045}

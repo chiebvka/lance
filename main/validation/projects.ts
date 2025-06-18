@@ -1,33 +1,52 @@
 import { z } from "zod";
+import deliverableSchema from "./deliverables";
+import paymentTermSchema from "./payment";
 
 const projectCreateSchema = z.object({
-    name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-    description: z.string().min(2, { message: "Description must be at least 2 characters." }),
-    // Optional fields
-    startDate: z.date().optional(),
-    dueDate: z.date().optional(),
-    effectiveDate: z.date().optional(),
-    status: z.enum(["pending", "in_progress", "completed"]),
-    priority: z.enum(["low", "medium", "high"]),
-    customerId: z.string().optional(),
-    budget: z.number().optional(),
-    serviceAgreement: z.string().optional(),
-    signedStatus: z.enum(["signed", "not_signed"]),
-    signedOn: z.date().optional(),
-    documents: z.string().optional(),
-    notes: z.string().optional(),
-    customFields: z.object({
-        name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-        value: z.string().min(2, { message: "Value must be at least 2 characters." }),
-    }).optional(),
-    state: z.enum(["draft", "published"]),
-    type: z.enum(["personal", "customer"]),
-    hasServiceAgreement: z.boolean().optional(),
-    hasPaymentTerms: z.boolean().optional(),
-    currency: z.string().optional(),
-    paymentTerms: z.string().optional(),
-    paymentMethod: z.string().optional(),
-    paymentFrequency: z.string().optional(),
-  });
+  // Customer and Currency
+  customerId: z.string().nullable(),
+  currency: z.string().optional(),
+  currencyEnabled: z.boolean().optional(),
 
-  export default projectCreateSchema;
+  // Project Type and Details
+  type: z.enum(["personal", "customer"]),
+  name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
+  description: z.string().min(2, { message: "Description must be at least 2 characters." }),
+  budget: z.number().optional(),
+  startDate: z.coerce.date().optional().nullable(),
+  endDate: z.coerce.date().optional().nullable(),
+  notes: z.string().optional(),
+
+  // Deliverables
+  deliverablesEnabled: z.boolean().optional(),
+  deliverables: z.array(deliverableSchema).optional(),
+
+  // Payment
+  paymentStructure: z.string().optional(),
+  paymentMilestones: z.array(paymentTermSchema).optional(),
+  paymentTerms: z.string().optional(), 
+  hasPaymentTerms: z.boolean().optional(),
+
+
+  // Service Agreement
+  hasServiceAgreement: z.boolean().optional(),
+  serviceAgreement: z.string().optional(),
+  agreementTemplate: z.string().optional(),
+  hasAgreedToTerms: z.boolean().optional(),
+
+  // Status and State
+  isPublished: z.boolean().optional(),
+  status: z.string().optional(),
+  signedStatus: z.string().optional(),
+  state: z.enum(["draft", "published"]).optional(),
+
+  // Other
+  documents: z.string().optional(),
+  customFields: z.object({
+      name: z.string().min(2, "Name must be at least 2 characters."),
+      value: z.string().min(2, "Value must be at least 2 characters."),
+  }).optional(),
+  emailToCustomer: z.boolean().optional(),
+});
+
+export default projectCreateSchema;

@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronRight,  type LucideIcon } from "lucide-react"
-import async from '../app/protected/layout';
+
 
 import {
   Collapsible,

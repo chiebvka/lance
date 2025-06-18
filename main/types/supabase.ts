@@ -212,6 +212,7 @@ export type Database = {
       deliverables: {
         Row: {
           created_at: string
+          createdBy: string | null
           description: string | null
           dueDate: string | null
           id: string
@@ -225,6 +226,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          createdBy?: string | null
           description?: string | null
           dueDate?: string | null
           id?: string
@@ -238,6 +240,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          createdBy?: string | null
           description?: string | null
           dueDate?: string | null
           id?: string
@@ -250,6 +253,12 @@ export type Database = {
           updatedAt?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "deliverables_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "deliverables_projectId_fkey"
             columns: ["projectId"]
@@ -349,6 +358,7 @@ export type Database = {
           country: string | null
           created_at: string
           createdBy: string | null
+          email: string | null
           id: string
           logoUrl: string | null
           name: string | null
@@ -359,6 +369,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           createdBy?: string | null
+          email?: string | null
           id?: string
           logoUrl?: string | null
           name?: string | null
@@ -369,6 +380,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           createdBy?: string | null
+          email?: string | null
           id?: string
           logoUrl?: string | null
           name?: string | null
@@ -387,6 +399,7 @@ export type Database = {
         Row: {
           amount: number | null
           created_at: string
+          createdBy: string | null
           deliverableId: string | null
           description: string | null
           dueDate: string | null
@@ -402,6 +415,7 @@ export type Database = {
         Insert: {
           amount?: number | null
           created_at?: string
+          createdBy?: string | null
           deliverableId?: string | null
           description?: string | null
           dueDate?: string | null
@@ -417,6 +431,7 @@ export type Database = {
         Update: {
           amount?: number | null
           created_at?: string
+          createdBy?: string | null
           deliverableId?: string | null
           description?: string | null
           dueDate?: string | null
@@ -430,6 +445,12 @@ export type Database = {
           updatedAt?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "paymentTerms_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "paymentTerms_deliverableId_fkey"
             columns: ["deliverableId"]
@@ -471,17 +492,26 @@ export type Database = {
           created_at: string
           createdBy: string | null
           currency: string | null
+          currencyEnabled: boolean | null
           customerId: string | null
           customFields: Json | null
+          deliverables: Json | null
+          deliverablesEnabled: boolean | null
           description: string | null
           documents: Json | null
-          dueDate: string | null
           effectiveDate: string | null
+          emailToCustomer: boolean | null
+          endDate: string | null
+          hasAgreedToTerms: boolean | null
+          hasPaymentTerms: boolean | null
           hasServiceAgreement: boolean | null
           id: string
+          isArchived: boolean | null
+          isPublished: boolean | null
           name: string | null
           notes: string | null
-          priority: string | null
+          paymentMilestones: Json | null
+          paymentStructure: string | null
           projectTypeId: string | null
           serviceAgreement: Json | null
           signedOn: string | null
@@ -497,17 +527,26 @@ export type Database = {
           created_at?: string
           createdBy?: string | null
           currency?: string | null
+          currencyEnabled?: boolean | null
           customerId?: string | null
           customFields?: Json | null
+          deliverables?: Json | null
+          deliverablesEnabled?: boolean | null
           description?: string | null
           documents?: Json | null
-          dueDate?: string | null
           effectiveDate?: string | null
+          emailToCustomer?: boolean | null
+          endDate?: string | null
+          hasAgreedToTerms?: boolean | null
+          hasPaymentTerms?: boolean | null
           hasServiceAgreement?: boolean | null
           id?: string
+          isArchived?: boolean | null
+          isPublished?: boolean | null
           name?: string | null
           notes?: string | null
-          priority?: string | null
+          paymentMilestones?: Json | null
+          paymentStructure?: string | null
           projectTypeId?: string | null
           serviceAgreement?: Json | null
           signedOn?: string | null
@@ -523,17 +562,26 @@ export type Database = {
           created_at?: string
           createdBy?: string | null
           currency?: string | null
+          currencyEnabled?: boolean | null
           customerId?: string | null
           customFields?: Json | null
+          deliverables?: Json | null
+          deliverablesEnabled?: boolean | null
           description?: string | null
           documents?: Json | null
-          dueDate?: string | null
           effectiveDate?: string | null
+          emailToCustomer?: boolean | null
+          endDate?: string | null
+          hasAgreedToTerms?: boolean | null
+          hasPaymentTerms?: boolean | null
           hasServiceAgreement?: boolean | null
           id?: string
+          isArchived?: boolean | null
+          isPublished?: boolean | null
           name?: string | null
           notes?: string | null
-          priority?: string | null
+          paymentMilestones?: Json | null
+          paymentStructure?: string | null
           projectTypeId?: string | null
           serviceAgreement?: Json | null
           signedOn?: string | null

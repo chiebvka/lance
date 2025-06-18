@@ -3,7 +3,14 @@ import customerSchema from "@/validation/customer";
 import { createClient } from "@/utils/supabase/server";
 
 export async function POST(request: Request) {
+  const supabase = await createClient();
   try {
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+    
     const body = await request.json();
     const validatedFields = customerSchema.safeParse(body);
 
@@ -14,7 +21,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = await createClient();
     const { data, error } = await supabase
       .from("customers")
       .insert([validatedFields.data])

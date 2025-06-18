@@ -1,0 +1,229 @@
+import {
+    Body,
+    Button,
+    Container,
+    Column,
+    Head,
+    Heading,
+    Html,
+    Img,
+    Preview,
+    Row,
+    Section,
+    Text,
+  } from "@react-email/components"
+  import * as React from "react";
+  import { baseUrl } from "@/utils/universal";
+  
+  interface IssueProjectEmailProps {
+    senderName?: string
+    clientName?: string
+    projectName?: string
+
+    projectId?: string
+    logoUrl?: string
+  }
+  
+  export default function IssueProject({
+    senderName = "Development Team",
+    clientName = "Client",
+    projectName = "Your Project",
+    projectId = "123",
+
+    logoUrl = "https://www.bexoni.com/favicon.ico",
+  }: IssueProjectEmailProps) {
+    const previewText = `Project ${projectName} has been initiated.`
+    const paymentLink = `${baseUrl}/payments/invoices/${projectId}`;
+  
+    return (
+      <Html>
+        <Head />
+        <Preview>{previewText}</Preview>
+        <Body style={main}>
+          <Container style={container}>
+            {/* Header */}
+            <Section style={headerStyle}>
+              <Row>
+                <Column>
+                  <Img src={logoUrl} alt="logo" width="48" height="48" />
+                </Column>
+                <Column style={{ paddingLeft: "20px" }}>
+                  <Heading as="h1" style={headerTitleStyle}>
+                    Your Project Is Underway!
+                  </Heading>
+                  <Text style={headerSubtitleStyle}>
+                    {projectName} • From {senderName}
+                  </Text>
+                </Column>
+              </Row>
+            </Section>
+  
+            {/* Content */}
+            <Section style={contentStyle}>
+              <Text style={greetingStyle}>Hello {clientName},</Text>
+  
+              <Section style={codeBlockStyle}>
+                <Text style={codeHeaderStyle}>{"You've got mail!"}</Text>
+                <Text style={codeLineStyle}>
+                  {"We're pleased to inform you that your project " +
+                    projectName +
+                    " has been initiated, We're kicking off today and would really apppreciate you going through the fine print to make sure that everything is to your liking and sign off on it."}
+                </Text>
+              </Section>
+  
+              <Button href={paymentLink} style={buttonStyle}>
+                VIEW PROJECT
+              </Button>
+  
+              <Text style={signatureStyle}>
+                Thanks,
+                <br />
+                From your friends at {senderName}
+              </Text>
+            </Section>
+  
+            {/* Footer */}
+            <Section style={footerStyle}>
+              <Text style={footerTextStyle}>Powered by © Bexforte 2025</Text>
+              <Text style={footerTextStyle}>RPO Unversity Avenue Charlottetown PE C1A 9H6</Text>
+            </Section>
+          </Container>
+        </Body>
+      </Html>
+    )
+  }
+  
+  // Styles
+  const main = {
+    backgroundColor: "#faf8f5",
+    fontFamily: "'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
+  }
+  
+  const container = {
+    maxWidth: "700px",
+    margin: "0 auto",
+    border: "1px solid #e8e3db",
+    borderRadius: "0px",
+    overflow: "hidden",
+    boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+    color: "#44413f",
+    lineHeight: "1.5",
+  }
+  
+  const headerStyle = {
+    padding: "30px",
+    background: "linear-gradient(135deg, #9948fb 0%, #a855f7 100%)",
+    color: "#e0e0e0",
+    position: "relative" as const,
+    overflow: "hidden",
+  }
+  
+  const logoContainerStyle = {
+    width: "60px",
+    height: "30px",
+    background: "linear-gradient(135deg, #00ff00 0%, #00cc00 100%)",
+    borderRadius: "0px",
+  }
+  
+  const logoTextStyle = {
+    fontSize: "24px",
+    fontWeight: "bold",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    color: "#000",
+    padding: "18px 0",
+    textAlign: "center" as const,
+    lineHeight: "1",
+  }
+  
+  const headerTitleStyle = {
+    margin: "0 0 5px 0",
+    fontSize: "18px",
+    fontWeight: "600",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    color: "#e0e0e0",
+  }
+  
+  const headerSubtitleStyle = {
+    margin: "0",
+    opacity: "0.8",
+    fontSize: "12px",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  }
+  
+  const contentStyle = {
+    padding: "40px",
+    backgroundColor: "#faf8f5",
+  }
+  
+  const greetingStyle = {
+    color: "#8b949e",
+    marginBottom: "30px",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontSize: "14px",
+  }
+  
+  const codeBlockStyle = {
+    background: "#fff",
+    border: "1px solid #e8e3db",
+    borderRadius: "0px",
+    padding: "20px",
+    margin: "20px 0",
+    overflowX: "auto" as const,
+  }
+  
+  const codeHeaderStyle = {
+    color: "#8b949e",
+    fontSize: "12px",
+    marginBottom: "15px",
+    paddingBottom: "8px",
+    borderBottom: "1px solid #e8e3db",
+  }
+  
+  const codeLineStyle = {
+    margin: "5px 0",
+    display: "flex",
+    alignItems: "center",
+    color: "#44413f",
+    fontSize: "14px",
+    lineHeight: "1.6",
+  }
+  
+  const buttonStyle = {
+    display: "block",
+    background: "linear-gradient(135deg, #9948fb 0%, #a855f7 100%)",
+    color: "#ffffff",
+    textDecoration: "none",
+    padding: "16px 32px",
+    borderRadius: "0px",
+    fontSize: "14px",
+    fontWeight: "600",
+    margin: "30px 0",
+    textAlign: "center" as const,
+    textTransform: "uppercase" as const,
+    letterSpacing: "2px",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    border: "1px solid #9948fb",
+  }
+  
+  const signatureStyle = {
+    marginTop: "30px",
+    fontSize: "12px",
+    color: "#8b949e",
+    textAlign: "left" as const,
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  }
+  
+  const footerStyle = {
+    padding: "30px 40px",
+    textAlign: "left" as const,
+    backgroundColor: "#f5f2ed",
+    borderTop: "1px solid #e8e3db",
+  }
+  
+  const footerTextStyle = {
+    margin: "5px 0",
+    fontSize: "11px",
+    color: "#8b949e",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  }
+    
