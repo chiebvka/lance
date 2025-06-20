@@ -671,7 +671,7 @@ export default function ProjectForm() {
 
       moveDeliverable(draggedIndex, targetIndex)
 
-      // Reassign positions based on new order
+      // Reassign positions based on  order
       const newDeliverablesOrder = form.getValues("deliverables") || []
       const reorderedDeliverables = reassignPositions(newDeliverablesOrder)
       form.setValue("deliverables", reorderedDeliverables, { shouldDirty: true })
