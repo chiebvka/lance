@@ -2,17 +2,40 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import {
   ChevronDown,
   ChevronRight,
@@ -30,9 +53,10 @@ import {
   Edit,
   Handshake,
   CalendarIcon,
+  Bubbles,
 } from "lucide-react"
 import ComboBox from "@/components/combobox"
-import { RichTextEditor } from "@/components/tiptap/rich-text-editor"
+import { TipTapEditor } from "@/components/tiptap/tip-tap-editor"
 import { z } from "zod"
 import projectCreateSchema from "@/validation/projects"
 import deliverableSchema from "@/validation/deliverables"
@@ -48,7 +72,6 @@ import {
 } from "@/components/ui/form"
 import { format } from "date-fns"
 import { Switch } from "@/components/ui/switch"
-import { customers } from "@/data/customer"
 import { currencies } from "@/data/currency"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -59,7 +82,9 @@ import type paymentTermSchema from "@/validation/payment"
 import axios from "axios"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid"
+import { projectCustomerFetch } from "@/actions/customer/fetch"
+import CustomerForm from "../../customers/_components/customer-form"
 
 type ProjectFormValues = z.infer<typeof projectCreateSchema>
 type DeliverableFormValues = z.infer<typeof deliverableSchema>
@@ -111,8 +136,44 @@ interface ProjectData {
   emailToCustomer?: boolean
 }
 
+interface Customer {
+  id: string
+  name: string
+  email: string | null
+}
+
 export default function ProjectForm() {
   const router = useRouter()
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [isCreateCustomerSheetOpen, setCreateCustomerSheetOpen] = useState(false)
+  const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false)
+
+  useEffect(() => {
+    async function fetchCustomers() {
+      const result = await projectCustomerFetch()
+      if (result.customers) {
+        setCustomers(result.customers as Customer[])
+      } else if (result.error) {
+        toast.error("Failed to load customers", { description: result.error })
+      }
+    }
+    fetchCustomers()
+  }, [])
+
+  const handleCustomerCreated = async () => {
+    setCreateCustomerSheetOpen(false)
+    const result = await projectCustomerFetch()
+    if (result.customers) {
+      setCustomers(result.customers as Customer[])
+      toast.success("Customer created and list updated!")
+    }
+  }
+  const agreementTemplates = {
+    standard: "<h2>Standard Service Agreement</h2><p>This document outlines the standard terms and conditions for our services, including scope, payment, and confidentiality.</p>",
+    consulting: "<h2>Consulting Agreement</h2><p>This agreement details the specifics of the consulting services to be provided, including deliverables, timelines, and fees.</p>",
+    development: "<h2>Development Agreement</h2><p>This agreement covers the terms for software development projects, including intellectual property, milestones, and acceptance criteria.</p>",
+    custom: "<h2>Custom Agreement</h2><p>Please use this space to create a custom agreement tailored to your project's unique needs.</p>",
+  };
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectCreateSchema),
     defaultValues: {
@@ -845,6 +906,7 @@ export default function ProjectForm() {
                                       if (value === "personal") {
                                         form.setValue("currencyEnabled", false)
                                         form.setValue("paymentStructure", "noPayment")
+                                        form.setValue("hasServiceAgreement", false)
                                       } else {
                                         // Revert to a sensible default for customer projects
                                         form.setValue("paymentStructure", "milestonePayment")
@@ -879,46 +941,88 @@ export default function ProjectForm() {
                                 <FormItem>
                                   <FormLabel>Select Customer</FormLabel>
                                   <FormControl>
-                                    <ComboBox
-                                      items={customers.map((c) => ({
-                                        ...c,
-                                        value: c.id,
-                                        label: c.name,
-                                        searchValue: `${c.name} ${c.company} ${c.email}`,
-                                      }))}
-                                      value={field.value ?? null}
-                                      onValueChange={(customerId) => {
-                                        field.onChange(customerId || null)
-                                      }}
-                                      placeholder="Select customer..."
-                                      searchPlaceholder="Search by name, company, or email..."
-                                      emptyMessage="No customer found."
-                                      onCreate={{
-                                        label: "Create customer",
-                                        action: () => console.log("Create customer"),
-                                      }}
-                                      itemRenderer={(item) => (
-                                        <div className="flex items-center justify-between w-full">
-                                          <div>
-                                            <div className="font-medium">{item.label}</div>
-                                            <div className="text-sm text-muted-foreground">
-                                              {item.company} • {item.email}
+                                    <Sheet
+                                      open={isCreateCustomerSheetOpen}
+                                      onOpenChange={setCreateCustomerSheetOpen}
+                                    >
+                                      <ComboBox
+                                        items={customers.map((c) => ({
+                                          ...c,
+                                          value: c.id,
+                                          label: c.name,
+                                          searchValue: `${c.name} ${c.email || ""}`,
+                                        }))}
+                                        value={field.value ?? null}
+                                        onValueChange={(customerId) => {
+                                          field.onChange(customerId || null)
+                                        }}
+                                        placeholder="Select customer..."
+                                        searchPlaceholder="Search by name, company, or email..."
+                                        emptyMessage="No customer found."
+                                        onCreate={{
+                                          label: "Create customer",
+                                          action: () => setCreateCustomerSheetOpen(true),
+                                        }}
+                                        itemRenderer={(item) => (
+                                          <div className="flex items-center justify-between w-full">
+                                            <div>
+                                              <div className="font-medium">{item.label}</div>
+                                              <div className="text-sm text-muted-foreground">
+                                                {item.email}
+                                              </div>
                                             </div>
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                console.log("Edit customer", item.id)
+                                              }}
+                                            >
+                                              <Edit className="h-3 w-3" />
+                                            </Button>
                                           </div>
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              console.log("Edit customer", item.id)
-                                            }}
-                                          >
-                                            <Edit className="h-3 w-3" />
-                                          </Button>
+                                        )}
+                                      />
+                                      <SheetContent withGap={true} bounce="right" className="flex flex-col w-full sm:w-3/4 md:w-1/2 lg:w-[40%]">
+                                        <SheetHeader>
+                                          <SheetTitle>New Customer</SheetTitle>
+                                          <SheetDescription>
+                                            Fill in the details below to create a new customer. This customer will be
+                                            available for future projects.
+                                          </SheetDescription>
+                                        </SheetHeader>
+                                        <div className="flex-grow overflow-y-auto py-4 pr-4">
+                                          <CustomerForm
+                                            onSuccess={handleCustomerCreated}
+                                            onLoadingChange={setIsSubmittingCustomer}
+                                          />
                                         </div>
-                                      )}
-                                    />
+                                        <SheetFooter>
+                                          <Button
+                                            variant="ghost"
+                                            onClick={() => setCreateCustomerSheetOpen(false)}
+                                          >
+                                            Cancel
+                                          </Button>
+                                          <Button
+                                            type="submit"
+                                            form="customer-form"
+                                            disabled={isSubmittingCustomer}
+                                          >
+                                            {isSubmittingCustomer ? (
+                                              <>
+                                                <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.8s]" />
+                                                Creating customer...
+                                              </>
+                                            ) : (
+                                              "Create Customer"
+                                            )}
+                                          </Button>
+                                        </SheetFooter>
+                                      </SheetContent>
+                                    </Sheet>
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -2065,6 +2169,7 @@ export default function ProjectForm() {
                                     id="serviceAgreement"
                                     checked={field.value}
                                     onCheckedChange={field.onChange}
+                                    disabled={projectType === "personal"}
                                   />
                                 </FormControl>
                                 <FormLabel
@@ -2073,7 +2178,7 @@ export default function ProjectForm() {
                                     field.value
                                       ? "text-[#9948fb] font-medium scale-[1.1] transform"
                                       : "text-gray-700 scale-100 transform"
-                                  }`}
+                                  } ${projectType === "personal" ? "cursor-not-allowed opacity-50" : ""}`}
                                 >
                                   Enable Service Agreement
                                 </FormLabel>
@@ -2081,7 +2186,7 @@ export default function ProjectForm() {
                             )}
                           />
 
-                          {serviceAgreementEnabled && (
+                          {serviceAgreementEnabled && projectType === "customer" && (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
                                 <FormField
@@ -2090,10 +2195,131 @@ export default function ProjectForm() {
                                   render={({ field }) => (
                                     <FormItem>
                                       <FormLabel>Agreement Template</FormLabel>
-                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <Select
+                                        onValueChange={(value) => {
+                                          field.onChange(value)
+
+                                          const currentDate = format(new Date(), "PPP 'at' p z");
+                                          const customerName = selectedCustomer?.name || "[Client Name]";
+                                          const projectName = form.watch("name") || "[Project Name]";
+                                          const projectDescription = form.watch("description") || "[Project Description]";
+                                          const startDate = form.watch("startDate");
+                                          const endDate = form.watch("endDate");
+                                          const deliverables = form.watch("deliverables") || [];
+                                          const deliverablesEnabled = form.watch("deliverablesEnabled");
+                                          const paymentStructure = form.watch("paymentStructure");
+                                          const paymentMilestones = form.watch("paymentMilestones") || [];
+                                          const budget = form.watch("budget") || 0;
+                                          const currency = form.watch("currencyEnabled") ? form.watch("currency") : "$";
+                                          let newContent = "";
+                                          
+                                          const deliverablesList = deliverablesEnabled && deliverables.length > 0
+                                            ? deliverables.map(d => `<li><strong>${d.name || 'Untitled Deliverable'}:</strong> ${d.description || 'No description.'} (Due: ${d.dueDate ? format(new Date(d.dueDate), 'PPP') : 'Not set'})</li>`).join('')
+                                            : '<li>No deliverables have been specified for this project.</li>';
+                                            
+                                          let paymentTermsSection = '';
+                                          switch (paymentStructure) {
+                                            case 'fullDownPayment':
+                                              paymentTermsSection = `<p>Full payment of ${currency}${budget.toLocaleString()} is due upon the signing of this Agreement.</p>`;
+                                              break;
+                                            case 'paymentOnCompletion':
+                                              paymentTermsSection = `<p>Full payment of ${currency}${budget.toLocaleString()} is due upon successful completion and delivery of all project deliverables.</p>`;
+                                              break;
+                                            case 'milestonePayment':
+                                            case 'deliverablePayment':
+                                              const milestonesList = paymentMilestones.length > 0
+                                                ? paymentMilestones.map(m => `<li><strong>${m.name || 'Untitled Milestone'}:</strong> ${m.percentage}% of the total budget (${currency}${m.amount?.toLocaleString() || 'N/A'}) is due on or before ${m.dueDate ? format(new Date(m.dueDate), 'PPP') : 'Not set'}.</li>`).join('')
+                                                : '<li>No payment milestones have been specified.</li>';
+                                              paymentTermsSection = `
+                                                <p>Payment will be made according to the following milestones, based on a total project budget of ${currency}${budget.toLocaleString()}:</p>
+                                                <ul>${milestonesList}</ul>`;
+                                              break;
+                                            default: // 'noPayment' or other cases
+                                              paymentTermsSection = '<p>No payment is required for this project.</p>';
+                                              break;
+                                          }
+
+                                          const signatureBlock = `
+                                            <h3>10. Signatures</h3>
+                                            <p>IN WITNESS WHEREOF, the Parties have executed this Agreement as of the Effective Date.</p>
+                                            <table style="width: 100%; border-collapse: collapse; margin-top: 2rem;">
+                                              <tbody>
+                                                <tr>
+                                                  <td style="width: 50%; vertical-align: top; padding-right: 1rem;">
+                                                    <p><strong>The Client:</strong> ${customerName}</p>
+                                                    <p style="margin-top: 2rem;"><strong>Date:</strong> ____________________</p>
+                                                    <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
+                                                  </td>
+                                                  <td style="width: 50%; vertical-align: top; padding-left: 1rem;">
+                                                    <p><strong>The Provider:</strong> [Your Company Name]</p>
+                                                    <p style="margin-top: 2rem;"><strong>Date:</strong> ${currentDate}</p>
+                                                    <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
+                                                  </td>
+                                                </tr>
+                                              </tbody>
+                                            </table>`;
+
+                                          switch (value) {
+                                            case "standard":
+                                              newContent = `
+                                                <h2>Standard Service Agreement</h2>
+                                                <p>This Service Agreement ("Agreement") is made and entered into as of ${currentDate} ("Effective Date"), by and between <strong>[Your Company Name]</strong> ("Provider") and <strong>${customerName}</strong> ("Client").</p>
+                                                <h3>1. Services</h3><p>Provider agrees to perform services ("Services") for the project known as <strong>${projectName}</strong>, described as: ${projectDescription}.</p>
+                                                <h3>2. Project Deliverables</h3><p>The Provider will deliver the following items:</p><ul>${deliverablesList}</ul>
+                                                <h3>3. Term of Agreement</h3><p>This Agreement will begin on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} and will continue until ${endDate ? format(new Date(endDate), "PPP") : 'the completion of the Services'}, unless terminated earlier.</p>
+                                                <h3>4. Payment Terms</h3>${paymentTermsSection}
+                                                <h3>5. Confidentiality</h3><p>Each party agrees to keep confidential all non-public information obtained from the other party.</p>
+                                                <h3>6. Ownership of Work Product</h3><p>Upon full payment, the Client will own all rights to the final deliverables. The Provider retains the right to use the work for portfolio purposes.</p>
+                                                <h3>7. Independent Contractor</h3><p>The Provider is an independent contractor, not an employee of the Client.</p>
+                                                <h3>8. Termination</h3><p>Either party may terminate this Agreement with 30 days written notice. The Client agrees to pay for all Services performed up to the date of termination.</p>
+                                                <h3>9. Governing Law</h3><p>This Agreement shall be governed by the laws of [Your State/Jurisdiction].</p>
+                                                ${signatureBlock}`;
+                                              break;
+                                            case "consulting":
+                                              newContent = `
+                                                <h2>Consulting Agreement</h2>
+                                                <p>This Consulting Agreement ("Agreement") is effective ${currentDate} ("Effective Date"), between <strong>[Your Company Name]</strong> ("Consultant") and <strong>${customerName}</strong> ("Client").</p>
+                                                <h3>1. Consulting Services</h3><p>Consultant will provide strategic advice and expertise for the project: <strong>${projectName}</strong>. The objective is: ${projectDescription}.</p>
+                                                <h3>2. Key Activities & Reports</h3><p>Consulting activities will include:</p><ul>${deliverablesList}</ul>
+                                                <h3>3. Term</h3><p>The consulting period shall commence on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} ${endDate ? `and conclude on ${format(new Date(endDate), "PPP")}` : 'and continue until terminated'}.</p>
+                                                <h3>4. Fees and Payment</h3>${paymentTermsSection}
+                                                <h3>5. Client Responsibilities</h3><p>The Client agrees to provide timely access to necessary personnel and documentation required for the Consultant to perform the services.</p>
+                                                <h3>6. Confidential Information</h3><p>Both parties agree to protect and not disclose any confidential information received during the term of this engagement.</p>
+                                                <h3>7. Status of Consultant</h3><p>The Consultant is an independent contractor. Nothing in this Agreement shall be construed as creating an employer-employee relationship.</p>
+                                                <h3>8. Limitation of Liability</h3><p>The Consultant's liability shall be limited to the total fees paid under this Agreement.</p>
+                                                <h3>9. Termination</h3><p>This Agreement may be terminated by either party upon 14 days written notice.</p>
+                                                ${signatureBlock}`;
+                                              break;
+                                            case "development":
+                                              newContent = `
+                                                <h2>Software Development Agreement</h2>
+                                                <p>This Software Development Agreement ("Agreement") is entered into on ${currentDate} ("Effective Date") by <strong>[Your Company Name]</strong> ("Developer") and <strong>${customerName}</strong> ("Client").</p>
+                                                <h3>1. Development Services</h3><p>Developer will design, develop, and test the software for the project <strong>${projectName}</strong>, with the goal of: ${projectDescription}.</p>
+                                                <h3>2. Technical Specifications & Deliverables</h3><p>The software will be developed according to the following specifications:</p><ul>${deliverablesList}</ul>
+                                                <h3>3. Project Timeline</h3><p>The project will commence on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'}. ${endDate ? `The target completion date is ${format(new Date(endDate), "PPP")}.` : 'A completion date has not been set.'}</p>
+                                                <h3>4. Compensation</h3>${paymentTermsSection}
+                                                <h3>5. Acceptance Testing</h3><p>The Client shall have 14 days following delivery to test the software. The software will be deemed accepted if no material defects are reported within this period.</p>
+                                                <h3>6. Intellectual Property Rights</h3><p>Upon full and final payment, the Developer grants the Client a perpetual, worldwide license to use the developed software. The Developer retains ownership of all pre-existing code and tools used in the project.</p>
+                                                <h3>7. Confidentiality</h3><p>Both parties agree to hold each other's proprietary information in strict confidence.</p>
+                                                <h3>8. Warranties</h3><p>The Developer warrants that the software will be free from material defects for a period of 90 days following acceptance.</p>
+                                                <h3>9. General Provisions</h3><p>This agreement constitutes the entire understanding between the parties and is governed by the laws of [Your State/Jurisdiction].</p>
+                                                ${signatureBlock}`;
+                                              break;
+                                            case "custom":
+                                              newContent = `
+                                                <h2>Custom Agreement</h2>
+                                                <p>This Agreement is made on ${currentDate} between <strong>[Your Company Name]</strong> and <strong>${customerName}</strong>.</p>
+                                                <p><em>Please use this space to create a custom agreement tailored to your project's unique needs.</em></p>
+                                                ${signatureBlock}`;
+                                              break;
+                                          }
+                                          form.setValue("serviceAgreement", newContent)
+                                        }}
+                                        defaultValue={field.value}
+                                      >
                                         <FormControl>
                                           <SelectTrigger className="w-48">
-                                            <SelectValue />
+                                            <SelectValue placeholder="Select a template" />
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
@@ -2119,25 +2345,20 @@ export default function ProjectForm() {
                                     <FormItem>
                                       <FormLabel>Agreement Content</FormLabel>
                                       <FormControl>
-                                        {typeof RichTextEditor !== "undefined" ? (
-                                          <RichTextEditor value={field.value || ""} onChange={field.onChange} />
-                                        ) : (
-                                          <Textarea
-                                            {...field}
-                                            value={field.value || ""}
-                                            rows={10}
-                                            placeholder="Enter agreement content..."
-                                          />
-                                        )}
+                                        <TipTapEditor content={field.value || ""} onChange={field.onChange} />
                                       </FormControl>
                                       <FormMessage />
                                     </FormItem>
                                   )}
                                 />
-                              ) : (
+                              ) 
+                              : (
                                 <div>
                                   <Label>Agreement Content</Label>
-                                  <div dangerouslySetInnerHTML={{ __html: form.getValues("serviceAgreement") || "" }} />
+                                  <div
+                                    className="prose prose-sm max-w-none rounded-md border p-4 line-clamp-3"
+                                    dangerouslySetInnerHTML={{ __html: form.getValues("serviceAgreement") || "" }}
+                                  />
                                 </div>
                               )}
 

@@ -14,6 +14,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedFields = customerSchema.safeParse(body);
 
+    const profileId = user.id;
+
     if (!validatedFields.success) {
       return NextResponse.json(
         { error: "Invalid fields!", details: validatedFields.error.flatten() },
@@ -21,9 +23,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const customerData = {
+      ...validatedFields.data,
+      createdBy: profileId, // Ensure updated_at is set if not provided
+    };
+
     const { data, error } = await supabase
       .from("customers")
-      .insert([validatedFields.data])
+      .insert([customerData])
       .select()
       .single();
 

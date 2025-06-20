@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import ProjectForm from './_components/project-form';
 import { RichTextEditor } from '@/components/tiptap/rich-text-editor';
+import { TipTapEditor } from '@/components/tiptap/tip-tap-editor';
 
 export default function ProjectsPage() {
   const handleSearch = (value: string) => {
@@ -29,8 +30,7 @@ export default function ProjectsPage() {
             }
         />
 
-        
-        {/* <CreateProjectView onSearch={handleSearch} /> */}
+        <TipTapEditor content="" onChange={(content) => {}} />
     </div>
   )
 }

@@ -61,7 +61,7 @@ export type Database = {
         Row: {
           amount: number | null
           created_at: string
-          creatorId: string | null
+          createdBy: string | null
           customerId: string | null
           details: Json | null
           id: string
@@ -78,7 +78,7 @@ export type Database = {
         Insert: {
           amount?: number | null
           created_at?: string
-          creatorId?: string | null
+          createdBy?: string | null
           customerId?: string | null
           details?: Json | null
           id?: string
@@ -95,7 +95,7 @@ export type Database = {
         Update: {
           amount?: number | null
           created_at?: string
-          creatorId?: string | null
+          createdBy?: string | null
           customerId?: string | null
           details?: Json | null
           id?: string
@@ -111,10 +111,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "customer_activities_creatorId_fkey"
-            columns: ["creatorId"]
+            foreignKeyName: "customer_activities_createdBy_fkey"
+            columns: ["createdBy"]
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "customer_activities_customerId_fkey"
@@ -199,7 +199,7 @@ export type Database = {
             foreignKeyName: "customers_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "customers_organizationId_fkey"
@@ -257,7 +257,7 @@ export type Database = {
             foreignKeyName: "deliverables_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "deliverables_projectId_fkey"
@@ -270,6 +270,7 @@ export type Database = {
       invoices: {
         Row: {
           created_at: string
+          createdBy: string | null
           currency: string | null
           customerId: string | null
           dueDate: string | null
@@ -293,6 +294,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          createdBy?: string | null
           currency?: string | null
           customerId?: string | null
           dueDate?: string | null
@@ -316,6 +318,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          createdBy?: string | null
           currency?: string | null
           customerId?: string | null
           dueDate?: string | null
@@ -338,6 +341,12 @@ export type Database = {
           vatRate?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "invoices_customerId_fkey"
             columns: ["customerId"]
@@ -391,7 +400,7 @@ export type Database = {
             foreignKeyName: "organization_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedColumns: ["profile_id"]
           },
         ]
       }
@@ -597,7 +606,7 @@ export type Database = {
             foreignKeyName: "projects_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "projects_customerId_fkey"
@@ -610,6 +619,7 @@ export type Database = {
       receipts: {
         Row: {
           created_at: string
+          createdBy: string | null
           creationMethod: string | null
           currency: string | null
           customerId: string | null
@@ -636,6 +646,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          createdBy?: string | null
           creationMethod?: string | null
           currency?: string | null
           customerId?: string | null
@@ -662,6 +673,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          createdBy?: string | null
           creationMethod?: string | null
           currency?: string | null
           customerId?: string | null
@@ -687,6 +699,12 @@ export type Database = {
           vatRate?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "receipts_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "receipts_customerId_fkey"
             columns: ["customerId"]
