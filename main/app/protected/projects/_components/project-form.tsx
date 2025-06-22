@@ -494,9 +494,9 @@ export default function ProjectForm() {
 
       if (response.data.success) {
         toast.success("Draft saved successfully!")
-        // Redirecting to the main projects page.
-        // You might want to redirect to an edit page in the future.
-        router.push(`/protected/projects`)
+        // Redirecting to the project's edit page to avoid duplicate key issues.
+        const projectId = response.data.data.id;
+        router.push(`/protected/projects/${projectId}`);
       } else {
         toast.error("Failed to save draft.", {
           description: response.data.error || "An unknown error occurred.",
@@ -543,6 +543,10 @@ export default function ProjectForm() {
         }))
         : [];
 
+      const customFieldsData = (values.customFields?.name && values.customFields?.value) 
+        ? values.customFields 
+        : undefined;
+
       // Prepare project data with sorted deliverables
       const projectData = {
         ...values,
@@ -550,6 +554,7 @@ export default function ProjectForm() {
         endDate: values.endDate,
         deliverables: deliverablesData,
         paymentMilestones: milestonesData,
+        customFields: customFieldsData,
         isPublished: true,
         state: "published",
         emailToCustomer,
@@ -596,17 +601,17 @@ export default function ProjectForm() {
   const getSectionIcon = (section: string) => {
     switch (section) {
       case "customer":
-        return <User className="h-4 w-4" />
+        return <User className="h-4 w-4 text-primary" />
       case "project":
-        return <FileText className="h-4 w-4" />
+        return <FileText className="h-4 w-4 text-primary" />
       case "budget":
-        return <DollarSign className="h-4 w-4" />
+        return <DollarSign className="h-4 w-4 text-primary" />
       case "deliverables":
-        return <Package className="h-4 w-4" />
+        return <Package className="h-4 w-4 text-primary" />
       case "payment":
-        return <CreditCard className="h-4 w-4" />
+        return <CreditCard className="h-4 w-4 text-primary" />
       case "agreement":
-        return <FileCheck className="h-4 w-4" />
+        return <FileCheck className="h-4 w-4 text-primary" />
       default:
         return null
     }
@@ -725,20 +730,20 @@ export default function ProjectForm() {
                       {sections.map(({ key, label }) => (
                         <div key={key} className="text-center">
                           <div
-                            className={`w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center transition-all duration-300 ${
+                            className={`w-10 h-10 rounded-full mx-auto mb-3 flex items-center justify-center transition-all duration-300 ${
                               getSectionStatus(key) === "complete" 
-                                ? "bg-green-500 text-white shadow-lg scale-110" 
-                                : "bg-gray-200 text-gray-600"
+                                ? "bg-green-500  shadow-lg scale-110" 
+                                : "bg-gray-200"
                             }`}
                           >
                             {getSectionStatus(key) === "complete" ? (
-                              <CheckCircle className="h-6 w-6" />
+                              <CheckCircle className="h-5 w-5 text-white" />
                             ) : (
                               getSectionIcon(key)
                             )}
                           </div>
                           <span className={`text-sm font-medium ${
-                            getSectionStatus(key) === "complete" ? "text-green-600" : "text-gray-600"
+                            getSectionStatus(key) === "complete" ? "text-green-600" : ""
                           }`}>
                             {label}
                           </span>
@@ -780,8 +785,8 @@ export default function ProjectForm() {
                   {/* Progress Bar and Stats */}
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-medium text-gray-700">Progress</span>
-                      <span className="text-[9px] font-medium text-gray-900">
+                      <span className="text-[9px] font-medium ">Progress</span>
+                      <span className="text-[9px] font-medium ">
                         {completedSections} of {totalSections} complete
                       </span>
                     </div>
@@ -807,7 +812,7 @@ export default function ProjectForm() {
                 <Card>
                   <Collapsible open={openSections.customer} onOpenChange={() => toggleSection("customer")}>
                     <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+                      <CardHeader className="cursor-pointer transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="flex flex-col md:flex-row md:items-center gap-3">
                             <div className="flex items-center gap-3">
@@ -1096,7 +1101,7 @@ export default function ProjectForm() {
                 <Card>
                   <Collapsible open={openSections.project} onOpenChange={() => toggleSection("project")}>
                     <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+                      <CardHeader className="cursor-pointer transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="flex flex-col md:flex-row md:items-center gap-3">
                             <div className="flex items-center gap-3">
@@ -1278,7 +1283,7 @@ export default function ProjectForm() {
                   <Card>
                     <Collapsible open={openSections.budget} onOpenChange={() => toggleSection("budget")}>
                       <CollapsibleTrigger asChild>
-                        <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+                        <CardHeader className="cursor-pointer transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex flex-col md:flex-row md:items-center gap-3">
                               <div className="flex items-center gap-3">
@@ -1376,7 +1381,7 @@ export default function ProjectForm() {
                                       </span>
                                     </div>
                                   </FormControl>
-                                  <p className="text-sm text-gray-600 mt-1">
+                                  <p className="text-sm  mt-1">
                                     This budget will be used to calculate payment amounts automatically based on percentages.
                                   </p>
                                   <FormMessage />
@@ -1394,7 +1399,7 @@ export default function ProjectForm() {
                 <Card>
                   <Collapsible open={openSections.deliverables} onOpenChange={() => toggleSection("deliverables")}>
                     <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+                      <CardHeader className="cursor-pointer transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="flex flex-col md:flex-row md:items-center gap-3">
                             <div className="flex items-center gap-3">
@@ -1495,7 +1500,7 @@ export default function ProjectForm() {
                                   className={`cursor-pointer transition-all duration-300 ease-in-out ${
                                     field.value
                                       ? "text-[#9948fb] font-medium scale-[1.1] transform"
-                                      : "text-gray-700 scale-100 transform"
+                                      : " scale-100 transform"
                                   }`}
                                 >
                                   Enable Deliverables
@@ -1506,8 +1511,8 @@ export default function ProjectForm() {
 
                           {deliverablesEnabled && (
                             <>
-                              <div className="bg-gray-50 p-3 rounded-lg mb-4">
-                                <p className="text-sm text-gray-600">
+                              <div className="bg-bexoni/10 dark:bg-bexoni/20 p-3 mb-4">
+                                <p className="text-sm text-primary">
                                   💡 <strong>Tip:</strong> Drag and drop deliverables using the grip handle to reorder them.
                                   Positions are automatically saved.
                                 </p>
@@ -1526,7 +1531,7 @@ export default function ProjectForm() {
                                       onDragLeave={handleDragLeave}
                                       onDrop={(e) => handleDrop(e, deliverable.id!)}
                                       onDragEnd={handleDragEnd}
-                                      className={`border rounded-lg p-4 bg-white transition-all duration-200 ${
+                                      className={`border p-4 transition-all duration-200 ${
                                         draggedItem === deliverable.id ? "opacity-50 scale-95" : ""
                                       } ${dragOverItem === deliverable.id ? "border-blue-500 bg-blue-50" : ""} ${
                                         deliverablesEnabled ? "cursor-move" : ""
@@ -1535,7 +1540,7 @@ export default function ProjectForm() {
                                       <div className="flex items-center gap-2 mb-3">
                                         <GripVertical
                                           className={`h-4 w-4 ${
-                                            deliverablesEnabled ? "text-gray-400 hover:text-gray-600" : "text-gray-300"
+                                            deliverablesEnabled ? "text-primary hover:text-gray-600" : "text-bexoni/60"
                                           }`}
                                         />
                                         <span className="font-medium">Deliverable {deliverable.position}</span>
@@ -1558,7 +1563,7 @@ export default function ProjectForm() {
                                             }}
                                             className="ml-auto"
                                           >
-                                            <Trash2 className="h-4 w-4" />
+                                            <Trash2 className="h-4 w-4 text-red-500" />
                                           </Button>
                                         )}
                                       </div>
@@ -1629,7 +1634,7 @@ export default function ProjectForm() {
                                     </div>
                                   )
                                 })}
-                              <Button type="button" variant="outline" onClick={addDeliverable} className="w-full">
+                              <Button type="button" onClick={addDeliverable} className="w-full">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Add Deliverable
                               </Button>
@@ -1645,7 +1650,7 @@ export default function ProjectForm() {
                 <Card>
                   <Collapsible open={openSections.payment} onOpenChange={() => toggleSection("payment")}>
                     <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+                      <CardHeader className="cursor-pointer transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="flex flex-col md:flex-row md:items-center gap-3">
                             <div className="flex items-center gap-3">
@@ -1781,7 +1786,7 @@ export default function ProjectForm() {
                                 </div>
                               </div>
                               {milestoneFields.map((milestone, index) => (
-                                <div key={milestone.id} className="border rounded-lg p-4 bg-white">
+                                <div key={milestone.id} className="border p-4 ">
                                   <div className="flex items-center gap-2 mb-3">
                                     <span className="font-medium">Milestone {index + 1}</span>
                                     {(paymentMilestones || []).length > 1 && (
@@ -1792,7 +1797,7 @@ export default function ProjectForm() {
                                         onClick={() => removePaymentMilestone(index)}
                                         className="ml-auto"
                                       >
-                                        <Trash2 className="h-4 w-4" />
+                                        <Trash2 className="h-4 w-4 text-red-500" />
                                       </Button>
                                     )}
                                   </div>
@@ -1907,7 +1912,7 @@ export default function ProjectForm() {
                                   </div>
                                 </div>
                               ))}
-                              <Button type="button" variant="outline" onClick={addPaymentMilestone} className="w-full">
+                              <Button type="button"  onClick={addPaymentMilestone} className="w-full">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Add Milestone
                               </Button>
@@ -1929,15 +1934,14 @@ export default function ProjectForm() {
                                   )}
                                 </div>
                               </div>
-                              <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                                <p className="text-sm text-blue-700">
+                              <div className="bg-bexoni/10 dark:bg-bexoni/20 p-4 mb-4">
+                                <p className="text-sm text-primary">
                                   Payments are tied to your deliverables in order. Ensure percentages total 100%.
                                 </p>
                                 <Button
                                   type="button"
-                                  variant="outline"
                                   size="sm"
-                                  className="mt-2"
+                                  className="mt-2 rounded-none"
                                   onClick={() => {
                                     // Redistribute percentages evenly
                                     const currentMilestones = form.getValues("paymentMilestones") || []
@@ -1966,7 +1970,7 @@ export default function ProjectForm() {
                                 const correspondingDeliverable = sortedDeliverables[index]
 
                                 return (
-                                  <div key={milestone.id} className="border rounded-lg p-4 bg-white">
+                                  <div key={milestone.id} className="border p-4">
                                     <div className="flex items-center gap-2 mb-3">
                                       <span className="font-medium">
                                         Payment for:{" "}
@@ -2092,7 +2096,7 @@ export default function ProjectForm() {
                 <Card>
                   <Collapsible open={openSections.agreement} onOpenChange={() => toggleSection("agreement")}>
                     <CollapsibleTrigger asChild>
-                      <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+                      <CardHeader className="cursor-pointer transition-colors">
                         <div className="flex items-center justify-between">
                           <div className="flex flex-col md:flex-row md:items-center gap-3">
                             <div className="flex items-center gap-3">
@@ -2332,7 +2336,7 @@ export default function ProjectForm() {
                                     </FormItem>
                                   )}
                                 />
-                                <Button type="button" variant="outline" onClick={() => setIsEditingAgreement(!isEditingAgreement)}>
+                                <Button type="button" variant="outlinebrimary" onClick={() => setIsEditingAgreement(!isEditingAgreement)}>
                                   {isEditingAgreement ? "Preview" : "Edit Agreement"}
                                 </Button>
                               </div>
@@ -2356,7 +2360,7 @@ export default function ProjectForm() {
                                 <div>
                                   <Label>Agreement Content</Label>
                                   <div
-                                    className="prose prose-sm max-w-none rounded-md border p-4 line-clamp-3"
+                                    className="prose prose-sm max-w-none  border border-primary p-4 line-clamp-5"
                                     dangerouslySetInnerHTML={{ __html: form.getValues("serviceAgreement") || "" }}
                                   />
                                 </div>
@@ -2366,7 +2370,7 @@ export default function ProjectForm() {
                                 control={form.control}
                                 name="hasAgreedToTerms"
                                 render={({ field }) => (
-                                  <FormItem className="rounded-lg bg-purple-50 p-4">
+                                  <FormItem className=" bg-bexoni/10 dark:bg-bexoni/20 p-4">
                                     <div className="flex items-center space-x-2">
                                       <FormControl>
                                         <Checkbox
@@ -2376,7 +2380,7 @@ export default function ProjectForm() {
                                           variant="agreement"
                                         />
                                       </FormControl>
-                                      <Label htmlFor="agreeTerms" className="text-sm">
+                                      <Label htmlFor="agreeTerms" className="text-sm text-primary">
                                         I agree to the service agreement terms and conditions
                                       </Label>
                                     </div>
@@ -2397,7 +2401,7 @@ export default function ProjectForm() {
 
         {/* Action Buttons */}
         <div className="mt-8 flex justify-center gap-2 sm:gap-4">
-          <Button variant="outline" onClick={handleSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
+          <Button variant="outlinebrimary" onClick={handleSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
             <Save className="h-4 w-4 mr-2" />
             {isSaving ? "Saving..." : "Save Draft"}
           </Button>

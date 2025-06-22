@@ -60,7 +60,7 @@ export type Database = {
       customer_activities: {
         Row: {
           amount: number | null
-          created_at: string
+          created_at: string | null
           createdBy: string | null
           customerId: string | null
           details: Json | null
@@ -77,7 +77,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           customerId?: string | null
           details?: Json | null
@@ -94,7 +94,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           customerId?: string | null
           details?: Json | null
@@ -111,13 +111,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "customer_activities_createdBy_fkey"
+            foreignKeyName: "customer_activities_createdby_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "customer_activities_customerId_fkey"
+            foreignKeyName: "customer_activities_customerid_fkey"
             columns: ["customerId"]
             referencedRelation: "customers"
             referencedColumns: ["id"]
@@ -132,7 +132,7 @@ export type Database = {
           city: string | null
           contactPerson: string | null
           country: string | null
-          created_at: string
+          created_at: string | null
           createdBy: string | null
           email: string | null
           fullAddress: string | null
@@ -155,7 +155,7 @@ export type Database = {
           city?: string | null
           contactPerson?: string | null
           country?: string | null
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           email?: string | null
           fullAddress?: string | null
@@ -178,7 +178,7 @@ export type Database = {
           city?: string | null
           contactPerson?: string | null
           country?: string | null
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           email?: string | null
           fullAddress?: string | null
@@ -196,13 +196,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "customers_createdBy_fkey"
+            foreignKeyName: "customers_createdby_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "customers_organizationId_fkey"
+            foreignKeyName: "customers_organizationid_fkey"
             columns: ["organizationId"]
             referencedRelation: "organization"
             referencedColumns: ["id"]
@@ -211,7 +211,7 @@ export type Database = {
       }
       deliverables: {
         Row: {
-          created_at: string
+          created_at: string | null
           createdBy: string | null
           description: string | null
           dueDate: string | null
@@ -225,7 +225,7 @@ export type Database = {
           updatedAt: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           description?: string | null
           dueDate?: string | null
@@ -239,7 +239,7 @@ export type Database = {
           updatedAt?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           description?: string | null
           dueDate?: string | null
@@ -254,13 +254,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "deliverables_createdBy_fkey"
+            foreignKeyName: "deliverables_createdby_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "deliverables_projectId_fkey"
+            foreignKeyName: "deliverables_projectid_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -269,7 +269,7 @@ export type Database = {
       }
       invoices: {
         Row: {
-          created_at: string
+          created_at: string | null
           createdBy: string | null
           currency: string | null
           customerId: string | null
@@ -283,7 +283,7 @@ export type Database = {
           paymentDetails: Json | null
           paymentLink: string | null
           paymentType: string | null
-          projectId: string | null
+          projectid: string | null
           sentViaEmail: boolean | null
           status: string | null
           subTotalAmount: number | null
@@ -293,7 +293,7 @@ export type Database = {
           vatRate: number | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           currency?: string | null
           customerId?: string | null
@@ -307,7 +307,7 @@ export type Database = {
           paymentDetails?: Json | null
           paymentLink?: string | null
           paymentType?: string | null
-          projectId?: string | null
+          projectid?: string | null
           sentViaEmail?: boolean | null
           status?: string | null
           subTotalAmount?: number | null
@@ -317,7 +317,7 @@ export type Database = {
           vatRate?: number | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           currency?: string | null
           customerId?: string | null
@@ -331,7 +331,7 @@ export type Database = {
           paymentDetails?: Json | null
           paymentLink?: string | null
           paymentType?: string | null
-          projectId?: string | null
+          projectid?: string | null
           sentViaEmail?: boolean | null
           status?: string | null
           subTotalAmount?: number | null
@@ -342,20 +342,20 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "invoices_createdBy_fkey"
+            foreignKeyName: "invoices_createdby_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "invoices_customerId_fkey"
+            foreignKeyName: "invoices_customerid_fkey"
             columns: ["customerId"]
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "invoices_projectId_fkey"
-            columns: ["projectId"]
+            foreignKeyName: "invoices_projectid_fkey"
+            columns: ["projectid"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -365,7 +365,7 @@ export type Database = {
         Row: {
           baseCurrency: string | null
           country: string | null
-          created_at: string
+          created_at: string | null
           createdBy: string | null
           email: string | null
           id: string
@@ -376,7 +376,7 @@ export type Database = {
         Insert: {
           baseCurrency?: string | null
           country?: string | null
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           email?: string | null
           id?: string
@@ -387,7 +387,7 @@ export type Database = {
         Update: {
           baseCurrency?: string | null
           country?: string | null
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           email?: string | null
           id?: string
@@ -397,7 +397,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "organization_createdBy_fkey"
+            foreignKeyName: "organization_createdby_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
@@ -407,7 +407,7 @@ export type Database = {
       paymentTerms: {
         Row: {
           amount: number | null
-          created_at: string
+          created_at: string | null
           createdBy: string | null
           deliverableId: string | null
           description: string | null
@@ -423,7 +423,7 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           deliverableId?: string | null
           description?: string | null
@@ -439,7 +439,7 @@ export type Database = {
         }
         Update: {
           amount?: number | null
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           deliverableId?: string | null
           description?: string | null
@@ -455,19 +455,19 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "paymentTerms_createdBy_fkey"
+            foreignKeyName: "paymentterms_createdby_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "paymentTerms_deliverableId_fkey"
+            foreignKeyName: "paymentterms_deliverableid_fkey"
             columns: ["deliverableId"]
             referencedRelation: "deliverables"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "paymentTerms_projectId_fkey"
+            foreignKeyName: "paymentterms_projectid_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -498,7 +498,7 @@ export type Database = {
       projects: {
         Row: {
           budget: number | null
-          created_at: string
+          created_at: string | null
           createdBy: string | null
           currency: string | null
           currencyEnabled: boolean | null
@@ -533,7 +533,7 @@ export type Database = {
         }
         Insert: {
           budget?: number | null
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           currency?: string | null
           currencyEnabled?: boolean | null
@@ -568,7 +568,7 @@ export type Database = {
         }
         Update: {
           budget?: number | null
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           currency?: string | null
           currencyEnabled?: boolean | null
@@ -603,13 +603,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "projects_createdBy_fkey"
+            foreignKeyName: "projects_createdby_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "projects_customerId_fkey"
+            foreignKeyName: "projects_customerid_fkey"
             columns: ["customerId"]
             referencedRelation: "customers"
             referencedColumns: ["id"]
@@ -618,7 +618,7 @@ export type Database = {
       }
       receipts: {
         Row: {
-          created_at: string
+          created_at: string | null
           createdBy: string | null
           creationMethod: string | null
           currency: string | null
@@ -629,7 +629,7 @@ export type Database = {
           invoiceId: string | null
           issueDate: string | null
           notes: string | null
-          paymentConfirmedAt: string | null
+          paymentConfirmedat: string | null
           paymentDetails: Json | null
           paymentLink: string | null
           paymentType: string | null
@@ -638,14 +638,14 @@ export type Database = {
           receiptNumber: string | null
           sentViaEmail: boolean | null
           status: string | null
-          subtotalAmount: number | null
+          subTotalAmount: number | null
           taxAmount: number | null
-          totalAmount: number | null
+          totalamount: number | null
           updatedAt: string | null
           vatRate: number | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           creationMethod?: string | null
           currency?: string | null
@@ -656,7 +656,7 @@ export type Database = {
           invoiceId?: string | null
           issueDate?: string | null
           notes?: string | null
-          paymentConfirmedAt?: string | null
+          paymentConfirmedat?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
           paymentType?: string | null
@@ -665,14 +665,14 @@ export type Database = {
           receiptNumber?: string | null
           sentViaEmail?: boolean | null
           status?: string | null
-          subtotalAmount?: number | null
+          subTotalAmount?: number | null
           taxAmount?: number | null
-          totalAmount?: number | null
+          totalamount?: number | null
           updatedAt?: string | null
           vatRate?: number | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           createdBy?: string | null
           creationMethod?: string | null
           currency?: string | null
@@ -683,7 +683,7 @@ export type Database = {
           invoiceId?: string | null
           issueDate?: string | null
           notes?: string | null
-          paymentConfirmedAt?: string | null
+          paymentConfirmedat?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
           paymentType?: string | null
@@ -692,33 +692,33 @@ export type Database = {
           receiptNumber?: string | null
           sentViaEmail?: boolean | null
           status?: string | null
-          subtotalAmount?: number | null
+          subTotalAmount?: number | null
           taxAmount?: number | null
-          totalAmount?: number | null
+          totalamount?: number | null
           updatedAt?: string | null
           vatRate?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "receipts_createdBy_fkey"
+            foreignKeyName: "receipts_createdby_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "receipts_customerId_fkey"
+            foreignKeyName: "receipts_customerid_fkey"
             columns: ["customerId"]
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "receipts_invoiceId_fkey"
+            foreignKeyName: "receipts_invoiceid_fkey"
             columns: ["invoiceId"]
             referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "receipts_projectId_fkey"
+            foreignKeyName: "receipts_projectid_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -742,20 +742,26 @@ export type Database = {
       customer_activity_type_enum:
         | "invoice_sent"
         | "invoice_paid"
+        | "invoice_viewed"
         | "invoice_overdue"
         | "invoice_link_clicked"
         | "receipt_sent"
         | "receipt_link_clicked"
+        | "receipt_viewed"
         | "project_started"
         | "project_completed"
         | "project_link_clicked"
         | "agreement_sent"
         | "agreement_signed"
+        | "agreement_viewed"
         | "agreement_link_clicked"
         | "feedback_requested"
         | "feedback_received"
+        | "feedback_viewed"
         | "feedback_link_clicked"
         | "email_opened"
+        | "project_sent"
+        | "project_viewed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1298,20 +1304,26 @@ export const Constants = {
       customer_activity_type_enum: [
         "invoice_sent",
         "invoice_paid",
+        "invoice_viewed",
         "invoice_overdue",
         "invoice_link_clicked",
         "receipt_sent",
         "receipt_link_clicked",
+        "receipt_viewed",
         "project_started",
         "project_completed",
         "project_link_clicked",
         "agreement_sent",
         "agreement_signed",
+        "agreement_viewed",
         "agreement_link_clicked",
         "feedback_requested",
         "feedback_received",
+        "feedback_viewed",
         "feedback_link_clicked",
         "email_opened",
+        "project_sent",
+        "project_viewed",
       ],
     },
   },

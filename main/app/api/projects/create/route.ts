@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { render } from "@react-email/components";
 import sendgrid from "@sendgrid/mail";
 import IssueProject from '../../../../emails/IssueProject';
-import crypto from "crypto";
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
@@ -114,6 +113,7 @@ export async function POST(request: Request) {
           .select();
         if (deliverablesError) {
             console.error("Supabase Deliverables Insert Error:", deliverablesError);
+            await supabase.from("projects").delete().eq("id", project.id);
             return NextResponse.json({ success: false, error: deliverablesError.message }, { status: 500 });
         }
         createdDeliverables = insertedDeliverables || [];
@@ -156,6 +156,11 @@ export async function POST(request: Request) {
             
           if (paymentTermsError) {
             console.error("Supabase Payment Terms Insert Error:", paymentTermsError);
+            if (createdDeliverables.length > 0) {
+              const deliverableIds = createdDeliverables.map((d) => d.id);
+              await supabase.from("deliverables").delete().in("id", deliverableIds);
+            }
+            await supabase.from("projects").delete().eq("id", project.id);
             return NextResponse.json({ success: false, error: paymentTermsError.message }, { status: 500 });
           }
         }
@@ -176,6 +181,7 @@ export async function POST(request: Request) {
           });
         if (paymentTermsError) {
             console.error("Supabase Payment Terms Insert Error:", paymentTermsError);
+            await supabase.from("projects").delete().eq("id", project.id);
             return NextResponse.json({ success: false, error: paymentTermsError.message }, { status: 500 });
         }
       }
@@ -229,17 +235,51 @@ export async function POST(request: Request) {
                 logoUrl: logoUrl,
             }));
 
-            await sendgrid.send({
-                to: customer.email,
-                from: {
-                    email: fromEmail,
-                    name: fromName
-                },
-                subject: `Project ${project.name} Initiated`,
-                html: emailHtml,
-            });
-
-            console.log("Email sent to:", customer.email);
+            try {
+              await sendgrid.send({
+                  to: customer.email,
+                  from: {
+                      email: fromEmail,
+                      name: fromName
+                  },
+                  subject: `Project ${project.name} Initiated`,
+                  html: emailHtml,
+                  customArgs: {
+                      projectId: project.id,
+                      customerId: customerId,
+                      userId: user.id,
+                      type: "project_sent",
+                  },
+              });
+  
+              console.log("Email sent to:", customer.email);
+  
+              const { error: activityError } = await supabase
+                  .from("customer_activities")
+                  .insert({
+                      customerId: customerId,
+                      referenceId: project.id,
+                      referenceType: "project",
+                      type: "project_sent",
+                      label: `Project "${project.name}" sent to ${customer.name || customer.email}.`,
+                      details: {
+                          projectId: project.id,
+                          projectName: project.name,
+                          customerName: customer.name,
+                          customerEmail: customer.email
+                      },
+                      createdBy: user.id,
+                  });
+  
+              if (activityError) {
+                  console.error("Failed to log customer activity:", activityError);
+              } else {
+                  console.log("Customer activity logged for project sent.");
+              }
+  
+            } catch (emailError: any) {
+                console.error("SendGrid Error:", emailError);
+            }
           }
         }
 

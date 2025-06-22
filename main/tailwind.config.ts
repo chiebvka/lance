@@ -32,6 +32,10 @@ const config = {
   				DEFAULT: '#9948fb',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
+  			bexonicream: {
+  				DEFAULT: '#fff8e7',
+  				foreground: 'hsl(var(--primary-foreground))'
+  			},
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
   				foreground: 'hsl(var(--secondary-foreground))'
