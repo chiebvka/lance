@@ -58,7 +58,6 @@ import {
 import ComboBox from "@/components/combobox"
 import { TipTapEditor } from "@/components/tiptap/tip-tap-editor"
 import { z } from "zod"
-import projectCreateSchema from "@/validation/projects"
 import deliverableSchema from "@/validation/deliverables"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -85,6 +84,7 @@ import { useRouter } from "next/navigation"
 import { v4 as uuidv4 } from "uuid"
 import { projectCustomerFetch } from "@/actions/customer/fetch"
 import CustomerForm from "../../customers/_components/customer-form"
+import { projectCreateSchema } from "@/validation/projects"
 
 type ProjectFormValues = z.infer<typeof projectCreateSchema>
 type DeliverableFormValues = z.infer<typeof deliverableSchema>
@@ -564,7 +564,8 @@ export default function ProjectForm() {
 
       if (response.data.success) {
         toast.success(emailToCustomer ? "Project published and sent to customer!" : "Project published successfully!")
-        router.push(`/protected/projects`)
+        const projectId = response.data.data.id;
+        router.push(`/protected/projects/${projectId}`);
       } else {
         toast.error("Failed to publish project.", {
           description: response.data.error || "An unknown error occurred.",

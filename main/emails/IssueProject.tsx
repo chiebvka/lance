@@ -6,7 +6,6 @@ import {
     Head,
     Heading,
     Html,
-    Img,
     Preview,
     Row,
     Section,
@@ -32,8 +31,24 @@ import {
 
     logoUrl = "https://www.bexoni.com/favicon.ico",
   }: IssueProjectEmailProps) {
-    const previewText = `Project ${projectName} has been initiated.`
-    const paymentLink = `${baseUrl}/payments/invoices/${projectId}`;
+    const previewText = ` ${projectName} has been initiated.`
+    const projectLink = `${baseUrl}/protected/projects/${projectId}`;
+  
+    const logoStyle = {
+      width: "48px",
+      height: "48px",
+      border: "2px solid #faf8f5",
+      backgroundColor: "#faf8f5",
+      backgroundImage: `url(${logoUrl})`,
+      backgroundPosition: "center ",
+      backgroundSize: "contain", // Changed to 'cover' to fill the circle
+      backgroundRepeat: "no-repeat",
+      overflow: "hidden",
+
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center", 
+    }
   
     return (
       <Html>
@@ -45,7 +60,7 @@ import {
             <Section style={headerStyle}>
               <Row>
                 <Column>
-                  <Img src={logoUrl} alt="logo" width="48" height="48" />
+                  <Section style={logoStyle} />
                 </Column>
                 <Column style={{ paddingLeft: "20px" }}>
                   <Heading as="h1" style={headerTitleStyle}>
@@ -71,8 +86,8 @@ import {
                 </Text>
               </Section>
   
-              <Button href={paymentLink} style={buttonStyle}>
-                VIEW PROJECT
+              <Button href={projectLink} style={buttonStyle}>
+                View Project
               </Button>
   
               <Text style={signatureStyle}>
@@ -97,6 +112,7 @@ import {
   const main = {
     backgroundColor: "#faf8f5",
     fontFamily: "'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
+    lineHeight: "1.5",
   }
   
   const container = {
@@ -107,7 +123,6 @@ import {
     overflow: "hidden",
     boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
     color: "#44413f",
-    lineHeight: "1.5",
   }
   
   const headerStyle = {
@@ -176,7 +191,7 @@ import {
     fontSize: "12px",
     marginBottom: "15px",
     paddingBottom: "8px",
-    borderBottom: "1px solid #e8e3db",
+    borderBottom: "1px solid #9948fb",
   }
   
   const codeLineStyle = {

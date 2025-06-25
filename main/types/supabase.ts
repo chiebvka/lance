@@ -111,13 +111,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "customer_activities_createdby_fkey"
+            foreignKeyName: "customer_activities_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "customer_activities_customerid_fkey"
+            foreignKeyName: "customer_activities_customerId_fkey"
             columns: ["customerId"]
             referencedRelation: "customers"
             referencedColumns: ["id"]
@@ -196,13 +196,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "customers_createdby_fkey"
+            foreignKeyName: "customers_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "customers_organizationid_fkey"
+            foreignKeyName: "customers_organizationId_fkey"
             columns: ["organizationId"]
             referencedRelation: "organization"
             referencedColumns: ["id"]
@@ -254,13 +254,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "deliverables_createdby_fkey"
+            foreignKeyName: "deliverables_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "deliverables_projectid_fkey"
+            foreignKeyName: "deliverables_projectId_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -342,13 +342,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "invoices_createdby_fkey"
+            foreignKeyName: "invoices_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "invoices_customerid_fkey"
+            foreignKeyName: "invoices_customerId_fkey"
             columns: ["customerId"]
             referencedRelation: "customers"
             referencedColumns: ["id"]
@@ -397,7 +397,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "organization_createdby_fkey"
+            foreignKeyName: "organization_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
@@ -455,19 +455,19 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "paymentterms_createdby_fkey"
+            foreignKeyName: "paymentTerms_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "paymentterms_deliverableid_fkey"
+            foreignKeyName: "paymentTerms_deliverableId_fkey"
             columns: ["deliverableId"]
             referencedRelation: "deliverables"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "paymentterms_projectid_fkey"
+            foreignKeyName: "paymentTerms_projectId_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -603,13 +603,13 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "projects_createdby_fkey"
+            foreignKeyName: "projects_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "projects_customerid_fkey"
+            foreignKeyName: "projects_customerId_fkey"
             columns: ["customerId"]
             referencedRelation: "customers"
             referencedColumns: ["id"]
@@ -700,25 +700,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "receipts_createdby_fkey"
+            foreignKeyName: "receipts_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
           },
           {
-            foreignKeyName: "receipts_customerid_fkey"
+            foreignKeyName: "receipts_customerId_fkey"
             columns: ["customerId"]
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "receipts_invoiceid_fkey"
+            foreignKeyName: "receipts_invoiceId_fkey"
             columns: ["invoiceId"]
             referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "receipts_projectid_fkey"
+            foreignKeyName: "receipts_projectId_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]

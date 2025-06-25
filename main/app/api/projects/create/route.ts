@@ -1,9 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
-import projectCreateSchema from "@/validation/projects";
+
 import { NextResponse } from "next/server";
 import { render } from "@react-email/components";
 import sendgrid from "@sendgrid/mail";
 import IssueProject from '../../../../emails/IssueProject';
+import { projectCreateSchema } from "@/validation/projects";
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
@@ -216,11 +217,11 @@ export async function POST(request: Request) {
                 .eq('createdBy', user.id)
                 .maybeSingle();
 
-            const fromEmail = organization?.email || profile?.email || 'noreply@projects.bexfortes.com';
+            const fromEmail =  'no_reply@projects.bexforte.com';
             
             let fromName = 'Bexforte Projects';
             if (organization?.name) {
-                fromName = organization.name;
+                fromName = organization?.name;
             } else if (profile?.email) {
                 fromName = profile.email.split('@')[0];
             }
@@ -234,6 +235,8 @@ export async function POST(request: Request) {
                 senderName: fromName,
                 logoUrl: logoUrl,
             }));
+
+            console.log(`Attempting to send project email from: ${fromEmail} to: ${customer.email}`);
 
             try {
               await sendgrid.send({
@@ -253,29 +256,6 @@ export async function POST(request: Request) {
               });
   
               console.log("Email sent to:", customer.email);
-  
-              const { error: activityError } = await supabase
-                  .from("customer_activities")
-                  .insert({
-                      customerId: customerId,
-                      referenceId: project.id,
-                      referenceType: "project",
-                      type: "project_sent",
-                      label: `Project "${project.name}" sent to ${customer.name || customer.email}.`,
-                      details: {
-                          projectId: project.id,
-                          projectName: project.name,
-                          customerName: customer.name,
-                          customerEmail: customer.email
-                      },
-                      createdBy: user.id,
-                  });
-  
-              if (activityError) {
-                  console.error("Failed to log customer activity:", activityError);
-              } else {
-                  console.log("Customer activity logged for project sent.");
-              }
   
             } catch (emailError: any) {
                 console.error("SendGrid Error:", emailError);
