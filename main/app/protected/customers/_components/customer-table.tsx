@@ -5,10 +5,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Clock, Filter, Search, Star } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
-
-
+import { Sheet, SheetContent, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ChevronLeft, ChevronRight, Clock, Filter, Search, Star, Bubbles, InfoIcon } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import EditCustomer from './edit-customer';
+import { cn } from '@/lib/utils';
+import CustomerRatingMeter from '@/components/customer-rating-meter';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Customer {
   id: string
@@ -20,404 +24,23 @@ interface Customer {
   address?: string
   addressLine2?: string
   invoiceCount: number
-  openProjects: number
-  pendingContracts: number
+  projectCount: number
+  receiptCount: number
+  feedbackCount: number
   rating: number
-  dateCreated: string
-  status: "active" | "inactive" | "pending"
+  created_at: string
   lastActivity: string
-  completedRevenue: number
   avatar?: string
-  performanceScore?: number
 }
 
 
-const mockCustomers: Customer[] = [
-  {
-    id: "1",
-    name: "Acme Inc",
-    email: "contact@acme.com",
-    phone: "+1 (555) 123-4567",
-    website: "acme.com",
-    contactPerson: "John Doe",
-    address: "123 Main Street",
-    addressLine2: "Suite 100",
-    invoiceCount: 12,
-    openProjects: 3,
-    pendingContracts: 2,
-    rating: 4.8,
-    status: "active",
-    lastActivity: "2 hours ago",
-    dateCreated: "2024-01-15",
-    completedRevenue: 45000,
-    avatar: "/placeholder.svg?height=40&width=40&text=AI",
-    performanceScore: 88,
-  },
-  {
-    id: "2",
-    name: "TechCorp Solutions",
-    email: "hello@techcorp.com",
-    phone: "+1 (555) 987-6543",
-    website: "techcorp.com",
-    contactPerson: "Jane Smith",
-    address: "456 Tech Avenue",
-    addressLine2: "Floor 5",
-    invoiceCount: 8,
-    openProjects: 1,
-    pendingContracts: 1,
-    rating: 4.2,
-    status: "active",
-    lastActivity: "1 day ago",
-    dateCreated: "2024-02-20",
-    completedRevenue: 28000,
-    avatar: "/placeholder.svg?height=40&width=40&text=TC",
-    performanceScore: 76,
-  },
-  {
-    id: "3",
-    name: "Digital Dynamics",
-    email: "info@digitaldynamics.com",
-    phone: "+1 (555) 456-7890",
-    website: "digitaldynamics.com",
-    contactPerson: "Mike Johnson",
-    address: "789 Innovation Drive",
-    addressLine2: "Floor 5",
-    invoiceCount: 15,
-    openProjects: 5,
-    pendingContracts: 3,
-    rating: 4.9,
-    status: "active",
-    lastActivity: "3 hours ago",
-    dateCreated: "2023-11-10",
-    completedRevenue: 67000,
-    avatar: "/placeholder.svg?height=40&width=40&text=DD",
-    performanceScore: 92,
-  },
-  {
-    id: "4",
-    name: "StartupXYZ",
-    email: "team@startupxyz.com",
-    phone: "+1 (555) 321-0987",
-    website: "startupxyz.com",
-    contactPerson: "Sarah Wilson",
-    address: "321 Startup Lane",
-    invoiceCount: 4,
-    openProjects: 2,
-    pendingContracts: 0,
-    rating: 3.8,
-    status: "pending",
-    lastActivity: "1 week ago",
-    dateCreated: "2024-03-05",
-    completedRevenue: 12000,
-    avatar: "/placeholder.svg?height=40&width=40&text=SX",
-    performanceScore: 65,
-  },
-  {
-    id: "5",
-    name: "Enterprise Corp",
-    email: "contact@enterprise.com",
-    phone: "+1 (555) 654-3210",
-    website: "enterprise.com",
-    contactPerson: "Robert Brown",
-    address: "654 Corporate Blvd",
-    invoiceCount: 25,
-    openProjects: 8,
-    pendingContracts: 5,
-    rating: 4.6,
-    status: "active",
-    lastActivity: "5 minutes ago",
-    dateCreated: "2023-08-12",
-    completedRevenue: 125000,
-    avatar: "/placeholder.svg?height=40&width=40&text=EC",
-    performanceScore: 90,
-  },
-  {
-    id: "6",
-    name: "Global Systems",
-    email: "info@globalsystems.com",
-    phone: "+1 (555) 789-0123",
-    website: "globalsystems.com",
-    contactPerson: "Lisa Chen",
-    address: "987 Global Plaza",
-    invoiceCount: 18,
-    openProjects: 4,
-    pendingContracts: 2,
-    rating: 4.4,
-    status: "active",
-    lastActivity: "30 minutes ago",
-    dateCreated: "2023-12-01",
-    completedRevenue: 89000,
-    avatar: "/placeholder.svg?height=40&width=40&text=GS",
-    performanceScore: 80,
-  },
-  {
-    id: "7",
-    name: "InnovateLab",
-    email: "hello@innovatelab.com",
-    phone: "+1 (555) 234-5678",
-    website: "innovatelab.com",
-    contactPerson: "David Kim",
-    address: "111 Innovation Way",
-    invoiceCount: 7,
-    openProjects: 3,
-    pendingContracts: 1,
-    rating: 4.1,
-    status: "active",
-    lastActivity: "2 days ago",
-    dateCreated: "2024-01-28",
-    completedRevenue: 34000,
-    avatar: "/placeholder.svg?height=40&width=40&text=IL",
-    performanceScore: 70,
-  },
-  {
-    id: "8",
-    name: "CloudFirst Technologies",
-    email: "support@cloudfirst.com",
-    phone: "+1 (555) 345-6789",
-    website: "cloudfirst.com",
-    contactPerson: "Emily Rodriguez",
-    address: "222 Cloud Street",
-    invoiceCount: 22,
-    openProjects: 6,
-    pendingContracts: 4,
-    rating: 4.7,
-    status: "active",
-    lastActivity: "1 hour ago",
-    dateCreated: "2023-09-15",
-    completedRevenue: 98000,
-    avatar: "/placeholder.svg?height=40&width=40&text=CF",
-    performanceScore: 85,
-  },
-  {
-    id: "9",
-    name: "NextGen Solutions",
-    email: "contact@nextgen.com",
-    phone: "+1 (555) 456-7891",
-    website: "nextgen.com",
-    contactPerson: "Alex Thompson",
-    address: "333 Future Blvd",
-    invoiceCount: 11,
-    openProjects: 2,
-    pendingContracts: 1,
-    rating: 4.3,
-    status: "inactive",
-    lastActivity: "2 weeks ago",
-    dateCreated: "2023-10-22",
-    completedRevenue: 56000,
-    avatar: "/placeholder.svg?height=40&width=40&text=NG",
-    performanceScore: 75,
-  },
-  {
-    id: "10",
-    name: "DataFlow Inc",
-    email: "info@dataflow.com",
-    phone: "+1 (555) 567-8912",
-    website: "dataflow.com",
-    contactPerson: "Maria Garcia",
-    address: "444 Data Drive",
-    invoiceCount: 16,
-    openProjects: 7,
-    pendingContracts: 3,
-    rating: 4.5,
-    status: "active",
-    lastActivity: "4 hours ago",
-    dateCreated: "2023-07-08",
-    completedRevenue: 78000,
-    avatar: "/placeholder.svg?height=40&width=40&text=DF",
-    performanceScore: 82,
-  },
-  {
-    id: "11",
-    name: "SecureNet Systems",
-    email: "admin@securenet.com",
-    phone: "+1 (555) 678-9123",
-    website: "securenet.com",
-    contactPerson: "James Wilson",
-    address: "555 Security Lane",
-    invoiceCount: 9,
-    openProjects: 1,
-    pendingContracts: 0,
-    rating: 4.0,
-    status: "pending",
-    lastActivity: "3 days ago",
-    dateCreated: "2024-02-14",
-    completedRevenue: 42000,
-    avatar: "/placeholder.svg?height=40&width=40&text=SN",
-    performanceScore: 60,
-  },
-  {
-    id: "12",
-    name: "WebCraft Studios",
-    email: "hello@webcraft.com",
-    phone: "+1 (555) 789-1234",
-    website: "webcraft.com",
-    contactPerson: "Sophie Anderson",
-    address: "666 Design District",
-    invoiceCount: 13,
-    openProjects: 4,
-    pendingContracts: 2,
-    rating: 4.6,
-    status: "active",
-    lastActivity: "6 hours ago",
-    dateCreated: "2023-06-30",
-    completedRevenue: 61000,
-    avatar: "/placeholder.svg?height=40&width=40&text=WC",
-    performanceScore: 88,
-  },
-  {
-    id: "13",
-    name: "AI Ventures",
-    email: "contact@aiventures.com",
-    phone: "+1 (555) 891-2345",
-    website: "aiventures.com",
-    contactPerson: "Dr. Ryan Lee",
-    address: "777 AI Boulevard",
-    invoiceCount: 20,
-    openProjects: 9,
-    pendingContracts: 6,
-    rating: 4.8,
-    status: "active",
-    lastActivity: "15 minutes ago",
-    dateCreated: "2023-05-18",
-    completedRevenue: 156000,
-    avatar: "/placeholder.svg?height=40&width=40&text=AV",
-    performanceScore: 95,
-  },
-  {
-    id: "14",
-    name: "MobileFirst Apps",
-    email: "team@mobilefirst.com",
-    phone: "+1 (555) 912-3456",
-    website: "mobilefirst.com",
-    contactPerson: "Taylor Swift",
-    address: "888 Mobile Plaza",
-    invoiceCount: 6,
-    openProjects: 2,
-    pendingContracts: 1,
-    rating: 3.9,
-    status: "active",
-    lastActivity: "1 day ago",
-    dateCreated: "2024-04-02",
-    completedRevenue: 29000,
-    avatar: "/placeholder.svg?height=40&width=40&text=MF",
-    performanceScore: 78,
-  },
-  {
-    id: "15",
-    name: "BlockChain Dynamics",
-    email: "info@blockchain.com",
-    phone: "+1 (555) 123-4567",
-    website: "blockchain.com",
-    contactPerson: "Chris Johnson",
-    address: "999 Crypto Street",
-    invoiceCount: 14,
-    openProjects: 5,
-    pendingContracts: 3,
-    rating: 4.2,
-    status: "active",
-    lastActivity: "8 hours ago",
-    dateCreated: "2023-04-25",
-    completedRevenue: 87000,
-    avatar: "/placeholder.svg?height=40&width=40&text=BD",
-    performanceScore: 84,
-  },
-  {
-    id: "16",
-    name: "GreenTech Solutions",
-    email: "contact@greentech.com",
-    phone: "+1 (555) 234-5678",
-    website: "greentech.com",
-    contactPerson: "Emma Davis",
-    address: "101 Eco Avenue",
-    invoiceCount: 10,
-    openProjects: 3,
-    pendingContracts: 2,
-    rating: 4.4,
-    status: "inactive",
-    lastActivity: "1 month ago",
-    dateCreated: "2023-03-12",
-    completedRevenue: 52000,
-    avatar: "/placeholder.svg?height=40&width=40&text=GT",
-    performanceScore: 72,
-  },
-  {
-    id: "17",
-    name: "FinTech Innovations",
-    email: "hello@fintech.com",
-    phone: "+1 (555) 345-6789",
-    website: "fintech.com",
-    contactPerson: "Michael Brown",
-    address: "202 Finance Row",
-    invoiceCount: 19,
-    openProjects: 6,
-    pendingContracts: 4,
-    rating: 4.7,
-    status: "active",
-    lastActivity: "2 hours ago",
-    dateCreated: "2023-01-20",
-    completedRevenue: 134000,
-    avatar: "/placeholder.svg?height=40&width=40&text=FI",
-    performanceScore: 91,
-  },
-  {
-    id: "18",
-    name: "HealthTech Corp",
-    email: "support@healthtech.com",
-    phone: "+1 (555) 456-7890",
-    website: "healthtech.com",
-    contactPerson: "Dr. Lisa Wang",
-    address: "303 Medical Center",
-    invoiceCount: 17,
-    openProjects: 8,
-    pendingContracts: 5,
-    rating: 4.9,
-    status: "active",
-    lastActivity: "45 minutes ago",
-    dateCreated: "2022-12-05",
-    completedRevenue: 112000,
-    avatar: "/placeholder.svg?height=40&width=40&text=HT",
-    performanceScore: 94,
-  },
-  {
-    id: "19",
-    name: "EduTech Platform",
-    email: "info@edutech.com",
-    phone: "+1 (555) 567-8901",
-    website: "edutech.com",
-    contactPerson: "Professor John Smith",
-    address: "404 Learning Lane",
-    invoiceCount: 12,
-    openProjects: 4,
-    pendingContracts: 2,
-    rating: 4.1,
-    status: "pending",
-    lastActivity: "5 days ago",
-    dateCreated: "2024-05-10",
-    completedRevenue: 68000,
-    avatar: "/placeholder.svg?height=40&width=40&text=ET",
-    performanceScore: 79,
-  },
-  {
-    id: "20",
-    name: "SportsTech Analytics",
-    email: "team@sportstech.com",
-    phone: "+1 (555) 678-9012",
-    website: "sportstech.com",
-    contactPerson: "Coach Mike Wilson",
-    address: "505 Stadium Drive",
-    invoiceCount: 8,
-    openProjects: 2,
-    pendingContracts: 1,
-    rating: 4.0,
-    status: "active",
-    lastActivity: "12 hours ago",
-    dateCreated: "2024-06-01",
-    completedRevenue: 38000,
-    avatar: "/placeholder.svg?height=40&width=40&text=ST",
-    performanceScore: 68,
-  },
-]
-
+// Define the color scheme from the activity component
+const tagColors = {
+  invoice: "#22c55e", // Green
+  project: "#8b5cf6", // Purple
+  receipt: "#f59e0b", // Amber
+  feedback: "#3b82f6", // Blue
+}
 
 type Props = {
   customer: Customer[] | null
@@ -425,23 +48,62 @@ type Props = {
 
 export default function CustomerTable({ customer }: Props) {
   const [isClient, setIsClient] = useState(false)
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const closeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     setIsClient(true)
+    fetchCustomers()
   }, [])
 
-  const [sortBy, setSortBy] = useState<"lastActivity" | "dateCreated" | "rating">("lastActivity")
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/customers')
+      const data = await response.json()
+      
+      if (data.success) {
+        setCustomers(data.customers)
+      } else {
+        console.error('Failed to fetch customers:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCustomerClick = (customer: Customer) => {
+    setSelectedCustomer(customer)
+    setIsEditSheetOpen(true)
+  }
+
+  const handleEditSuccess = () => {
+    closeRef.current?.click()
+    setIsEditSheetOpen(false)
+    fetchCustomers() // Refresh the customer list
+  }
+
+  const [sortBy, setSortBy] = useState<"lastActivity" | "created_at" | "rating">("lastActivity")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [searchTerm, setSearchTerm] = useState("")
   const [filterBy, setFilterBy] = useState<"all" | "high" | "medium" | "low">("all")
 
-
   if (!isClient) {
     return null;
   }
 
-  if (!customer) return null
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading customers...</div>
+  }
+
+  const customersToDisplay = customer || customers
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -457,11 +119,11 @@ export default function CustomerTable({ customer }: Props) {
   }
 
     // Sort and filter customers based on selected criteria
-    const sortedCustomers = (customer || [])
+    const sortedCustomers = customersToDisplay
     .filter(
       (customer) =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.email.toLowerCase().includes(searchTerm.toLowerCase()),
+        customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.email?.toLowerCase().includes(searchTerm.toLowerCase()),
     )
     .filter((customer) => {
       if (filterBy === "all") return true
@@ -486,8 +148,8 @@ export default function CustomerTable({ customer }: Props) {
           const aIndex = activityOrder.findIndex((term) => a.lastActivity.includes(term))
           const bIndex = activityOrder.findIndex((term) => b.lastActivity.includes(term))
           return aIndex - bIndex
-        case "dateCreated":
-          return new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
+        case "created_at":
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         case "rating":
           return b.rating - a.rating
         default:
@@ -507,52 +169,47 @@ export default function CustomerTable({ customer }: Props) {
     return "bg-gray-500"
   }
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`h-3 w-3 ${i < Math.floor(rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
-      />
-    ))
-  }
+
 
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 lg:p-6 space-y-6">
 
-    <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/50 rounded-lg">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-4 p-4 bg-muted/50 rounded-lg">
       <div className="flex items-center gap-2">
         <Filter className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium">Filters:</span>
       </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Sort by:</span>
-        <Select value={sortBy} onValueChange={(value: "lastActivity" | "dateCreated" | "rating") => setSortBy(value)}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="lastActivity">Last Activity</SelectItem>
-            <SelectItem value="dateCreated">Date Created</SelectItem>
-            <SelectItem value="rating">Rating Score</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Sort by:</span>
+          <Select value={sortBy} onValueChange={(value: "lastActivity" | "created_at" | "rating") => setSortBy(value)}>
+            <SelectTrigger className="w-full sm:w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="lastActivity">Last Activity</SelectItem>
+              <SelectItem value="created_at">Date Created</SelectItem>
+              <SelectItem value="rating">Rating Score</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Priority:</span>
-        <Select value={filterBy} onValueChange={(value: "all" | "high" | "medium" | "low") => setFilterBy(value)}>
-          <SelectTrigger className="w-[120px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Customers</SelectItem>
-            <SelectItem value="high">High Priority (4.5+)</SelectItem>
-            <SelectItem value="medium">Medium Priority (4.0-4.4)</SelectItem>
-            <SelectItem value="low">Low Priority (&lt;4.0)</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Priority:</span>
+          <Select value={filterBy} onValueChange={(value: "all" | "high" | "medium" | "low") => setFilterBy(value)}>
+            <SelectTrigger className="w-full sm:w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Customers</SelectItem>
+              <SelectItem value="high">High Priority (4.5+)</SelectItem>
+              <SelectItem value="medium">Medium Priority (4.0-4.4)</SelectItem>
+              <SelectItem value="low">Low Priority (&lt;4.0)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -568,12 +225,12 @@ export default function CustomerTable({ customer }: Props) {
 
             {/* Customer card */}
             <div
-              className="flex-1 cursor-pointer hover:shadow-md border-bexoni transition-shadow border  p-4"
-           
+              className="flex-1 cursor-pointer hover:shadow-md border-bexoni transition-shadow border p-4"
+              onClick={() => handleCustomerClick(customer)}
             >
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div className="flex items-start gap-4 flex-1">
-                  <Avatar className="h-12 w-12">
+                  <Avatar className="h-12 w-12 flex-shrink-0">
                     <AvatarImage src={customer.avatar || "/placeholder.svg"} />
                     <AvatarFallback>
                       {customer.name
@@ -584,36 +241,75 @@ export default function CustomerTable({ customer }: Props) {
                   </Avatar>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-base text-muted-foreground mb-3 font-medium">{customer.email}</p>
-
-                    <div className="flex items-center gap-4 text-sm mb-2">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span>Last activity: {customer.lastActivity}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 mb-3">
+                      <p className="text-base text-primary font-medium truncate">{customer.name}</p> 
+                      <div className="hidden sm:block w-[3px] h-4 bg-bexoni flex-shrink-0" />
+                      <div className="flex items-center gap-4 flex-1">
+                        <p className="text-sm text-muted-foreground font-medium truncate">{customer.email}</p>
+                        <div className="flex items-center gap-2 ml-auto">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1 cursor-help">
+                                  <span className="text-xs text-primary font-medium underline decoration-primary">
+                                    Customer Rating
+                                  </span>
+                                  <InfoIcon className="h-3 w-3 text-primary" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <div className="space-y-2">
+                                  <p className="font-semibold">Customer Reliability Score</p>
+                                  <p className="text-xs">This rating is calculated based on:</p>
+                                  <ul className="text-xs space-y-1">
+                                    <li>• Invoice payment completion rate </li>
+                                    <li>• On-time payment history </li>
+                                    <li>• Customer project volume history </li>
+                                    <li>• Customer interaction rate </li>
+                                    <li>• Penalties for overdue invoices</li>
+                                    {/* <li>• On-time payment history (30%)</li> */}
+                                    {/* <li>• Invoice payment completion rate (70%)</li> */}
+                                  </ul>
+                                  <p className="text-xs text-muted-foreground pt-1">
+                                    Higher scores indicate more reliable payment behavior.
+                                  </p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <CustomerRatingMeter 
+                            rating={customer.rating} 
+                            size="sm" 
+                            showLabel={false}
+                          />
+                        </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1">
-                      {renderStars(customer.rating)}
-                      <span className="ml-1 text-sm">{customer.rating}</span>
+                    <div className="flex items-center gap-4 text-sm mb-2">
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate">Last activity: {customer.lastActivity}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-6 text-center">
+                <div className="grid grid-cols-4 lg:flex lg:gap-6 gap-3 text-center">
                   <div>
-                    <div className="text-xl font-bold text-orange-600">{customer.pendingContracts}</div>
-                    <div className="text-xs text-muted-foreground">Pending</div>
+                    <div className="text-lg lg:text-xl font-bold" style={{ color: tagColors.invoice }}>{customer.invoiceCount}</div>
+                    <div className="text-xs text-muted-foreground">Invoices</div>
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-purple-600">{customer.openProjects}</div>
+                    <div className="text-lg lg:text-xl font-bold" style={{ color: tagColors.project }}>{customer.projectCount}</div>
                     <div className="text-xs text-muted-foreground">Projects</div>
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-green-600">
-                      ${(customer.completedRevenue / 1000).toFixed(0)}k
-                    </div>
-                    <div className="text-xs text-muted-foreground">Completed</div>
+                    <div className="text-lg lg:text-xl font-bold" style={{ color: tagColors.receipt }}>{customer.receiptCount}</div>
+                    <div className="text-xs text-muted-foreground">Receipts</div>
+                  </div>
+                  <div>
+                    <div className="text-lg lg:text-xl font-bold" style={{ color: tagColors.feedback }}>{customer.feedbackCount}</div>
+                    <div className="text-xs text-muted-foreground">Feedback</div>
                   </div>
                 </div>
               </div>
@@ -630,39 +326,43 @@ export default function CustomerTable({ customer }: Props) {
       totalItems={sortedCustomers.length}
       onPageChange={setCurrentPage}
       onPageSizeChange={setItemsPerPage}
+      itemName="customers"
     />
 
-    {/* <div className="flex items-center justify-between">
-      <p className="text-sm text-muted-foreground">
-        Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, sortedCustomers.length)} of{" "}
-        {sortedCustomers.length} customers
-      </p>
-      <div className="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Previous
-        </Button>
-        <span className="text-sm text-muted-foreground">
-          Page {currentPage} of {totalPages}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
-        >
-          Next
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </div> */}
 
-    {/* <CustomerDetailSheet customer={selectedCustomer} open={sheetOpen} onOpenChange={setSheetOpen} /> */}
+
+    {/* Edit Customer Sheet */}
+    {selectedCustomer && (
+      <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
+        <SheetContent side="right" bounce="right" withGap={true} className={cn("flex flex-col", "w-full sm:w-3/4 md:w-1/2 lg:w-[40%]")}>
+          <SheetTitle className='sr-only'>
+            Edit Customer
+          </SheetTitle>
+          <ScrollArea className="flex-1 pr-4">
+            <EditCustomer 
+              customer={selectedCustomer} 
+              onSuccess={handleEditSuccess} 
+              onLoadingChange={setIsSubmitting} 
+            />
+          </ScrollArea>
+          <SheetFooter className='pt-4'>
+            <SheetClose asChild>
+              <Button variant="ghost" ref={closeRef}>Cancel</Button>
+            </SheetClose>
+            <Button type="submit" form="edit-customer-form" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.8s]" />
+                  Updating customer...
+                </>
+              ) : (
+                'Update Customer'
+              )}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    )}
   </div>
   )
 }

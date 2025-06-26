@@ -11,9 +11,10 @@ interface PaginationProps {
     totalItems: number
     onPageChange: (page: number) => void
     onPageSizeChange: (size: number) => void
+    itemName?: string // Add optional prop for item name
 }
 
-export default function Pagination({ currentPage, totalPages, pageSize, onPageChange, onPageSizeChange, totalItems }: PaginationProps) {
+export default function Pagination({ currentPage, totalPages, pageSize, onPageChange, onPageSizeChange, totalItems, itemName = "items" }: PaginationProps) {
 
     const getPageNumbers = (): (string | number)[] => {
         if (totalPages <= 5) {
@@ -28,9 +29,13 @@ export default function Pagination({ currentPage, totalPages, pageSize, onPageCh
         return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
     };
 
+    // Calculate the start and end item numbers for current page
+    const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, totalItems);
+    
     return (
         <div className="flex items-center justify-between flex-wrap gap-4 py-4">
-                    {/* Challenge progress component from neon numbers */}
+                    {/* Progress component */}
           <div className="text-center mt-6">
             <div className="inline-flex items-center space-x-4 bg-bexoni/10  px-6 py-3 border border-bexoni">
               <div className="flex items-center space-x-2">
@@ -42,8 +47,7 @@ export default function Pagination({ currentPage, totalPages, pageSize, onPageCh
               </div>
               <div className="w-px h-4 bg-bexoni" />
               <span className="text-xs text-bexoni/80">
-                {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalItems)} of{" "}
-                {totalItems} challenges
+                {totalItems === 0 ? "No" : `${startItem}-${endItem} of ${totalItems}`} {itemName}
               </span>
             </div>
           </div>
@@ -165,3 +169,4 @@ export default function Pagination({ currentPage, totalPages, pageSize, onPageCh
         </div>
     )
 }
+

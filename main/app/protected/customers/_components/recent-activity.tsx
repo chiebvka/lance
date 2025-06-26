@@ -1,215 +1,71 @@
 "use client"
 
 import { useState } from "react"
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { CustomerActivityWithDetails, formatTimeAgo, generateActivityDisplayText } from "@/utils/activity-helpers"
 
-export default function RecentActivity() {
+
+interface RecentActivityProps {
+  activities: CustomerActivityWithDetails[]
+}
+
+export default function RecentActivity({ activities = [] }: RecentActivityProps) {
   // Add state for the active filter
   const [activeFilter, setActiveFilter] = useState("all")
 
   // Define specific colors for each tag type
   const tagColors = {
     invoice: "#22c55e", // Green
-    customer: "#8b5cf6", // Purple
-    reminder: "#f59e0b", // Amber
-    meeting: "#3b82f6", // Blue
-    contract: "#06b6d4", // Cyan
-    support: "#ef4444", // Red
-    payment: "#10b981", // Emerald
-    document: "#6366f1", // Indigo
+    project: "#8b5cf6", // Purple
+    receipt: "#f59e0b", // Amber
+    feedback: "#3b82f6", // Blue
+    service_agreement: "#06b6d4", // Cyan
+    other: "#6b7280", // Gray
   }
 
-  const timelineActivities = [
-    {
-      id: 1,
-      type: "invoice_paid",
-      tag: "invoice",
-      customer: {
-        name: "TechCorp Solutions",
-        avatar: "TC",
-      },
-      title: "Invoice #INV-2025-042 Paid",
-      time: "Today, 10:23 AM",
-      description: "Payment received via bank transfer",
-      status: "success",
-    },
-    {
-      id: 2,
-      type: "invoice_sent",
-      tag: "invoice",
-      customer: {
-        name: "Digital Dynamics",
-        avatar: "DD",
-      },
-      title: "Invoice #INV-2025-043 Sent",
-      time: "Today, 9:15 AM",
-      description: "Invoice sent via email to mike@digitaldynamics.com",
-      status: "info",
-    },
-    {
-      id: 3,
-      type: "invoice_overdue",
-      tag: "invoice",
-      customer: {
-        name: "StartupXYZ",
-        avatar: "SX",
-      },
-      title: "Invoice #INV-2025-038 Overdue",
-      time: "Yesterday, 4:30 PM",
-      description: "Payment is 15 days overdue",
-      status: "warning",
-    },
-    {
-      id: 4,
-      type: "customer_added",
-      tag: "customer",
-      customer: {
-        name: "Future Tech",
-        avatar: "FT",
-      },
-      title: "New Customer Added",
-      time: "Yesterday, 2:45 PM",
-      description: "Alex Johnson (alex@futuretech.com) added as a new customer",
-      status: "info",
-    },
-    {
-      id: 5,
-      type: "reminder_sent",
-      tag: "reminder",
-      customer: {
-        name: "Local Business Co",
-        avatar: "LB",
-      },
-      title: "Payment Reminder Sent",
-      time: "Jun 7, 11:20 AM",
-      description: "Second reminder sent for Invoice #INV-2025-036",
-      status: "info",
-    },
-    {
-      id: 6,
-      type: "invoice_paid",
-      tag: "invoice",
-      customer: {
-        name: "Innovation Labs",
-        avatar: "IL",
-      },
-      title: "Invoice #INV-2025-041 Paid",
-      time: "Jun 7, 9:05 AM",
-      description: "Payment received via credit card",
-      status: "success",
-    },
-    {
-      id: 7,
-      type: "meeting_scheduled",
-      tag: "meeting",
-      customer: {
-        name: "TechCorp Solutions",
-        avatar: "TC",
-      },
-      title: "Meeting Scheduled",
-      time: "Jun 6, 3:15 PM",
-      description: "Quarterly review meeting scheduled with Sarah Johnson",
-      status: "info",
-    },
-    {
-      id: 8,
-      type: "contract_renewed",
-      tag: "contract",
-      customer: {
-        name: "Digital Dynamics",
-        avatar: "DD",
-      },
-      title: "Service Contract Renewed",
-      time: "Jun 5, 10:30 AM",
-      description: "Annual service contract renewed for 12 months",
-      status: "success",
-    },
-    {
-      id: 9,
-      type: "support_ticket",
-      tag: "support",
-      customer: {
-        name: "StartupXYZ",
-        avatar: "SX",
-      },
-      title: "Support Ticket Opened",
-      time: "Jun 4, 2:20 PM",
-      description: "Issue reported with invoice generation system",
-      status: "warning",
-    },
-    {
-      id: 10,
-      type: "payment_received",
-      tag: "payment",
-      customer: {
-        name: "Growth Co",
-        avatar: "GC",
-      },
-      title: "Payment Received",
-      time: "Jun 3, 4:15 PM",
-      description: "Automatic payment processed successfully",
-      status: "success",
-    },
-    {
-      id: 11,
-      type: "invoice_sent",
-      tag: "invoice",
-      customer: {
-        name: "Acme Corp",
-        avatar: "AC",
-      },
-      title: "Invoice #INV-2025-046 Sent",
-      time: "Jun 2, 11:45 AM",
-      description: "Monthly service invoice sent to accounting department",
-      status: "info",
-    },
-    {
-      id: 12,
-      type: "customer_updated",
-      tag: "customer",
-      customer: {
-        name: "Tech Solutions Inc",
-        avatar: "TS",
-      },
-      title: "Customer Information Updated",
-      time: "Jun 1, 9:30 AM",
-      description: "Contact information and billing address updated",
-      status: "info",
-    },
+  // Define all possible activity categories
+  const allCategories = [
+    { key: "invoice", label: "Invoice Activities", color: tagColors.invoice },
+    { key: "project", label: "Project Activities", color: tagColors.project },
+    { key: "feedback", label: "Feedback Activities", color: tagColors.feedback },
+    { key: "receipt", label: "Receipt Activities", color: tagColors.receipt },
+    { key: "service_agreement", label: "Service Agreement Activities", color: tagColors.service_agreement },
   ]
+
+  // Convert activities to display format
+  const timelineActivities = activities.map((activity) => {
+    const displayInfo = generateActivityDisplayText(activity)
+    const customerInitials = activity.customer?.name
+      ? activity.customer.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+      : "?"
+    
+    return {
+      id: activity.id,
+      type: activity.type || "unknown",
+      tag: displayInfo.tag,
+      customer: {
+        name: activity.customer?.name || "Unknown Customer",
+        avatar: customerInitials,
+      },
+      title: displayInfo.title,
+      time: formatTimeAgo(activity.created_at),
+      description: displayInfo.description,
+      status: "info" as const,
+    }
+  })
 
   // Filter activities based on the active filter
   const filteredActivities =
     activeFilter === "all" ? timelineActivities : timelineActivities.filter((activity) => activity.tag === activeFilter)
 
-  const upcomingPayments = [
-    {
-      customer: "Digital Dynamics",
-      invoiceNumber: "INV-2025-043",
-      amount: "$3,800.00",
-      dueDate: "Jun 20, 2025",
-      daysLeft: 12,
-    },
-    {
-      customer: "Growth Co",
-      invoiceNumber: "INV-2025-044",
-      amount: "$2,500.00",
-      dueDate: "Jun 15, 2025",
-      daysLeft: 7,
-    },
-    {
-      customer: "Future Tech",
-      invoiceNumber: "INV-2025-045",
-      amount: "$4,200.00",
-      dueDate: "Jun 12, 2025",
-      daysLeft: 4,
-    },
-  ]
+  // Count activities by type for summary
+  const activityCounts = timelineActivities.reduce((acc, activity) => {
+    acc[activity.tag] = (acc[activity.tag] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
 
   return (
     <div className=" my-3">
@@ -228,7 +84,6 @@ export default function RecentActivity() {
         }
       `}</style>
 
-
       <div className="">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Timeline */}
@@ -246,14 +101,12 @@ export default function RecentActivity() {
                         <SelectValue placeholder="Filter by type" />
                       </SelectTrigger>
                       <SelectContent className="mx-0 pl-0">
-                        <SelectItem value="all">All Activities</SelectItem>
-                        <SelectItem value="invoice">Invoices</SelectItem>
-                        <SelectItem value="customer">Customers</SelectItem>
-                        <SelectItem value="reminder">Reminders</SelectItem>
-                        <SelectItem value="meeting">Meetings</SelectItem>
-                        <SelectItem value="contract">Contracts</SelectItem>
-                        <SelectItem value="support">Support</SelectItem>
-                        <SelectItem value="payment">Payments</SelectItem>
+                                                  <SelectItem value="all">All Activities</SelectItem>
+                          <SelectItem value="invoice">Invoices</SelectItem>
+                          <SelectItem value="project">Projects</SelectItem>
+                          <SelectItem value="receipt">Receipts</SelectItem>
+                          <SelectItem value="feedback">Feedback</SelectItem>
+                          <SelectItem value="service_agreement">Service Agreements</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -262,7 +115,11 @@ export default function RecentActivity() {
               <CardContent className="p-0">
                 {filteredActivities.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-500">No activities found for this filter.</p>
+                    <p className="text-gray-500">
+                      {activeFilter === "all" 
+                        ? "No activities found. Start sending projects or invoices to see activity here." 
+                        : `No ${activeFilter} activities found for this filter.`}
+                    </p>
                   </div>
                 ) : (
                   <ScrollArea className="h-[40vh] px-4">
@@ -297,22 +154,38 @@ export default function RecentActivity() {
                                         {/* Pulsing effect */}
                                         <span
                                           className="absolute inset-0 animate-ping "
-                                          style={{ backgroundColor: tagColors[activity.tag as keyof typeof tagColors], opacity: 0.4 }}
+                                          style={{ 
+                                            backgroundColor: tagColors[activity.tag as keyof typeof tagColors] || tagColors.other, 
+                                            opacity: 0.4 
+                                          }}
                                         />
                                         {/* Solid color square */}
                                         <span
                                           className="relative  h-3 w-3"
-                                          style={{ backgroundColor: tagColors[activity.tag as keyof typeof tagColors] }}
+                                          style={{ 
+                                            backgroundColor: tagColors[activity.tag as keyof typeof tagColors] || tagColors.other 
+                                          }}
                                         />
                                       </span>
                                       <span className="text-sm text-gray-600 capitalize">{activity.tag}</span>
                                     </div>
                                   </div>
-                                  <p className="text-sm text-gray-500">{activity.customer.name}</p>
+                                  <p className="text-sm text-primary font-medium">{activity.customer.name}</p>
                                 </div>
                               </div>
                             </div>
-                            <p className="text-sm text-gray-600 mt-2">{activity.description}</p>
+                            <p className="text-sm text-gray-600 mt-2">
+                              {activity.description.split(activity.customer.name).map((part, index, array) => (
+                                <span key={index}>
+                                  {part}
+                                  {index < array.length - 1 && (
+                                    <span className="text-primary font-medium" style={{ fontWeight: '125%' }}>
+                                      {activity.customer.name}
+                                    </span>
+                                  )}
+                                </span>
+                              ))}
+                            </p>
                             <div className="flex items-center justify-between mt-3">
                               <span className="text-xs text-gray-500">{activity.time}</span>
                             </div>
@@ -339,31 +212,32 @@ export default function RecentActivity() {
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-[40vh] px-4">
-                  {Object.entries(tagColors).map(([tag, color]) => {
-                    const count = timelineActivities.filter((a) => a.tag === tag).length
-                    if (count === 0) return null
-                    return (
-                      <div key={tag} className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          {/* Pulsing colored square */}
-                          <span className="relative flex h-3 w-3 items-center justify-center">
-                            {/* Pulsing effect */}
-                            <span
-                              className="absolute inset-0  animate-ping"
-                              style={{ backgroundColor: color, opacity: 0.4 }}
-                            />
-                            {/* Solid color square */}
-                            <span
-                              className="relative  h-3 w-3"
-                              style={{ backgroundColor: color }}
-                            />
-                          </span>
-                          <span className="text-sm capitalize">{tag} Activities</span>
+                  <div className="space-y-3 py-4">
+                    {allCategories.map((category) => {
+                      const count = activityCounts[category.key] || 0
+                      return (
+                        <div key={category.key} className="flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                            {/* Pulsing colored square */}
+                            <span className="relative flex h-3 w-3 items-center justify-center">
+                              {/* Pulsing effect */}
+                              <span
+                                className="absolute inset-0 animate-ping"
+                                style={{ backgroundColor: category.color, opacity: 0.4 }}
+                              />
+                              {/* Solid color square */}
+                              <span
+                                className="relative h-3 w-3"
+                                style={{ backgroundColor: category.color }}
+                              />
+                            </span>
+                            <span className="text-sm">{category.label}</span>
+                          </div>
+                          <span className="font-medium">{count}</span>
                         </div>
-                        <span className="font-medium">{count}</span>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </ScrollArea>
               </CardContent>
             </Card>

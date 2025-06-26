@@ -135,13 +135,18 @@ export type Database = {
           created_at: string | null
           createdBy: string | null
           email: string | null
+          feedbackCount: number | null
           fullAddress: string | null
           id: string
+          invoiceCount: number | null
+          linkCount: number | null
           name: string | null
           notes: string | null
           organizationId: string | null
           phone: string | null
           postalCode: string | null
+          projectCount: number | null
+          receiptCount: number | null
           state: string | null
           taxId: string | null
           unitNumber: string | null
@@ -158,13 +163,18 @@ export type Database = {
           created_at?: string | null
           createdBy?: string | null
           email?: string | null
+          feedbackCount?: number | null
           fullAddress?: string | null
           id?: string
+          invoiceCount?: number | null
+          linkCount?: number | null
           name?: string | null
           notes?: string | null
           organizationId?: string | null
           phone?: string | null
           postalCode?: string | null
+          projectCount?: number | null
+          receiptCount?: number | null
           state?: string | null
           taxId?: string | null
           unitNumber?: string | null
@@ -181,13 +191,18 @@ export type Database = {
           created_at?: string | null
           createdBy?: string | null
           email?: string | null
+          feedbackCount?: number | null
           fullAddress?: string | null
           id?: string
+          invoiceCount?: number | null
+          linkCount?: number | null
           name?: string | null
           notes?: string | null
           organizationId?: string | null
           phone?: string | null
           postalCode?: string | null
+          projectCount?: number | null
+          receiptCount?: number | null
           state?: string | null
           taxId?: string | null
           unitNumber?: string | null
@@ -267,6 +282,61 @@ export type Database = {
           },
         ]
       }
+      feedbacks: {
+        Row: {
+          answers: Json | null
+          created_at: string
+          createdBy: string | null
+          customerId: string | null
+          filledOn: string | null
+          id: number
+          projectId: string | null
+          questions: Json | null
+          state: string | null
+        }
+        Insert: {
+          answers?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          filledOn?: string | null
+          id?: number
+          projectId?: string | null
+          questions?: Json | null
+          state?: string | null
+        }
+        Update: {
+          answers?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          filledOn?: string | null
+          id?: number
+          projectId?: string | null
+          questions?: Json | null
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedbacks_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "feedbacks_customerId_fkey"
+            columns: ["customerId"]
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedbacks_projectId_fkey"
+            columns: ["projectId"]
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           created_at: string | null
@@ -280,10 +350,11 @@ export type Database = {
           invoiceNumber: string | null
           issueDate: string | null
           notes: string | null
+          paidOn: string | null
           paymentDetails: Json | null
           paymentLink: string | null
           paymentType: string | null
-          projectid: string | null
+          projectId: string | null
           sentViaEmail: boolean | null
           status: string | null
           subTotalAmount: number | null
@@ -304,10 +375,11 @@ export type Database = {
           invoiceNumber?: string | null
           issueDate?: string | null
           notes?: string | null
+          paidOn?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
           paymentType?: string | null
-          projectid?: string | null
+          projectId?: string | null
           sentViaEmail?: boolean | null
           status?: string | null
           subTotalAmount?: number | null
@@ -328,10 +400,11 @@ export type Database = {
           invoiceNumber?: string | null
           issueDate?: string | null
           notes?: string | null
+          paidOn?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
           paymentType?: string | null
-          projectid?: string | null
+          projectId?: string | null
           sentViaEmail?: boolean | null
           status?: string | null
           subTotalAmount?: number | null
@@ -355,7 +428,7 @@ export type Database = {
           },
           {
             foreignKeyName: "invoices_projectid_fkey"
-            columns: ["projectid"]
+            columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -719,6 +792,61 @@ export type Database = {
           },
           {
             foreignKeyName: "receipts_projectId_fkey"
+            columns: ["projectId"]
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_agreements: {
+        Row: {
+          answers: Json | null
+          created_at: string
+          createdBy: string | null
+          customerId: string | null
+          filledOn: string | null
+          id: number
+          projectId: string | null
+          questions: Json | null
+          state: string | null
+        }
+        Insert: {
+          answers?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          filledOn?: string | null
+          id?: number
+          projectId?: string | null
+          questions?: Json | null
+          state?: string | null
+        }
+        Update: {
+          answers?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          filledOn?: string | null
+          id?: number
+          projectId?: string | null
+          questions?: Json | null
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_agreement_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "service_agreement_customerId_fkey"
+            columns: ["customerId"]
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_agreement_projectId_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
