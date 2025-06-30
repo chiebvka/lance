@@ -46,7 +46,7 @@ export default function Pagination({ currentPage, totalPages, pageSize, onPageCh
                 </span>
               </div>
               <div className="w-px h-4 bg-bexoni" />
-              <span className="text-xs text-bexoni/80">
+              <span className="text-xs text-primary">
                 {totalItems === 0 ? "No" : `${startItem}-${endItem} of ${totalItems}`} {itemName}
               </span>
             </div>

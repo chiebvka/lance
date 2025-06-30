@@ -8,6 +8,7 @@
   @layer base {
     :root {
       --background: 292, 5%, 95%;
+      /* --background: 292, 5%, 95%; */
       /* --background: 42, 100%, 95%; */
       --foreground: 224 71.4% 4.1%;
       --card: 0 0% 100%;
@@ -32,7 +33,7 @@
       --destructive-foreground: 210 20% 98%;
       --border: 220 13% 91%;
       --input: 220 13% 91%;
-      --ring: 278, 29%, 45%;
+      --ring: 267, 95.2%, 63.3%;
       --radius: 0.75rem;
       --chart-1: 312.9412 100% 50%;
       --chart-2: 273.8824 100% 50%;

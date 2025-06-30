@@ -115,7 +115,7 @@ export default function RecentActivity({ activities = [] }: RecentActivityProps)
               <CardContent className="p-0">
                 {filteredActivities.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-500">
+                    <p className="dark:text-gray-300">
                       {activeFilter === "all" 
                         ? "No activities found. Start sending projects or invoices to see activity here." 
                         : `No ${activeFilter} activities found for this filter.`}
@@ -167,14 +167,14 @@ export default function RecentActivity({ activities = [] }: RecentActivityProps)
                                           }}
                                         />
                                       </span>
-                                      <span className="text-sm text-gray-600 capitalize">{activity.tag}</span>
+                                      <span className="text-sm dark:text-gray-300 capitalize">{activity.tag}</span>
                                     </div>
                                   </div>
                                   <p className="text-sm text-primary font-medium">{activity.customer.name}</p>
                                 </div>
                               </div>
                             </div>
-                            <p className="text-sm text-gray-600 mt-2">
+                            <p className="text-sm  dark:text-gray-300 mt-2">
                               {activity.description.split(activity.customer.name).map((part, index, array) => (
                                 <span key={index}>
                                   {part}
@@ -187,7 +187,7 @@ export default function RecentActivity({ activities = [] }: RecentActivityProps)
                               ))}
                             </p>
                             <div className="flex items-center justify-between mt-3">
-                              <span className="text-xs text-gray-500">{activity.time}</span>
+                              <span className="text-xs  dark:text-gray-300">{activity.time}</span>
                             </div>
                           </div>
                         </div>

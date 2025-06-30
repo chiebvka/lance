@@ -7,8 +7,10 @@
     "email": "email dev"
   },
   "dependencies": {
+    "@faker-js/faker": "^9.8.0",
     "@hookform/resolvers": "^5.1.1",
     "@radix-ui/react-accordion": "^1.2.11",
+    "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-checkbox": "^1.1.1",
     "@radix-ui/react-collapsible": "^1.1.11",
@@ -30,6 +32,7 @@
     "@sendgrid/mail": "^8.1.5",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
+    "@tanstack/react-table": "^8.21.3",
     "@tiptap/extension-blockquote": "^2.14.1",
     "@tiptap/extension-code": "^2.14.0",
     "@tiptap/extension-gapcursor": "^2.14.0",

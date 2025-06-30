@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,12 +18,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { FileUser, Warehouse, InfoIcon } from 'lucide-react';
+import { FileUser, Warehouse, InfoIcon, Trash2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import CustomerRatingMeter from '@/components/customer-rating-meter';
 import customerSchema from '@/validation/customer';
+import ConfirmModal from '@/components/modal/confirm-modal';
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
 
@@ -53,9 +54,13 @@ type Props = {
   customer: Customer;
   onSuccess: () => void;
   onLoadingChange: (isLoading: boolean) => void;
+  onDelete?: () => void;
 }
 
-export default function EditCustomer({ customer, onSuccess, onLoadingChange }: Props) {
+export default function EditCustomer({ customer, onSuccess, onLoadingChange, onDelete }: Props) {
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingCustomer, setIsDeletingCustomer] = useState(false);
+
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
@@ -92,6 +97,28 @@ export default function EditCustomer({ customer, onSuccess, onLoadingChange }: P
     }
   };
 
+  const handleDelete = async () => {
+    setIsDeletingCustomer(true);
+    onLoadingChange(true);
+    try {
+      const response = await axios.delete(`/api/customers/${customer.id}`);
+      toast.success(response.data.success || "Customer deleted successfully!");
+      setIsDeleteModalOpen(false);
+      if (onDelete) {
+        onDelete();
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        toast.error(error.response.data.error || "Failed to delete customer.");
+      } else {
+        toast.error("An unexpected error occurred.");
+      }
+    } finally {
+      setIsDeletingCustomer(false);
+      onLoadingChange(false);
+    }
+  };
+
   // Define the color scheme from the activity component
   const tagColors = {
     invoice: "#22c55e", // Green
@@ -104,7 +131,7 @@ export default function EditCustomer({ customer, onSuccess, onLoadingChange }: P
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} id="edit-customer-form" className="space-y-6">
         {/* Customer Overview Card */}
-        <Card className="border-primary/20">
+        <Card className="border-primary border ">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -179,6 +206,20 @@ export default function EditCustomer({ customer, onSuccess, onLoadingChange }: P
             </div>
           </CardContent>
         </Card>
+
+        {/* Delete Button */}
+        <div className="flex justify-end">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2 rounded-none border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setIsDeleteModalOpen(true)}
+            type="button"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete Customer
+          </Button>
+        </div>
 
         <Accordion type="multiple" defaultValue={["business", "personal"]}>
           <AccordionItem value="business" className="">
@@ -408,6 +449,24 @@ export default function EditCustomer({ customer, onSuccess, onLoadingChange }: P
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+
+        {/* Custom Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleDelete}
+          itemName={customer.name}
+          itemType="Customer"
+          isLoading={isDeletingCustomer}
+          hasConnectedItems={customer.projectCount > 0}
+          connectedItemsCount={customer.projectCount}
+          connectedItemsType="projects"
+          warningMessage={
+            customer.projectCount > 0 
+              ? `This customer has ${customer.projectCount} active project${customer.projectCount !== 1 ? 's' : ''}. You must complete or delete all projects before removing this customer.`
+              : undefined
+          }
+        />
       </form>
     </Form>
   )

@@ -57,6 +57,55 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string | null
+          changedOn: string | null
+          changeSummary: Json | null
+          created_at: string
+          createdBy: string | null
+          id: string
+          newData: Json | null
+          oldData: Json | null
+          organizationId: string | null
+          recordId: string | null
+          tableName: string | null
+        }
+        Insert: {
+          action?: string | null
+          changedOn?: string | null
+          changeSummary?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          id?: string
+          newData?: Json | null
+          oldData?: Json | null
+          organizationId?: string | null
+          recordId?: string | null
+          tableName?: string | null
+        }
+        Update: {
+          action?: string | null
+          changedOn?: string | null
+          changeSummary?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          id?: string
+          newData?: Json | null
+          oldData?: Json | null
+          organizationId?: string | null
+          recordId?: string | null
+          tableName?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_activities: {
         Row: {
           amount: number | null
@@ -224,6 +273,106 @@ export type Database = {
           },
         ]
       }
+      customers_log: {
+        Row: {
+          address: string | null
+          addressLine1: string | null
+          addressLine2: string | null
+          city: string | null
+          contactPerson: string | null
+          country: string | null
+          created_at: string | null
+          createdBy: string | null
+          email: string | null
+          feedbackCount: number | null
+          fullAddress: string | null
+          id: string
+          invoiceCount: number | null
+          linkCount: number | null
+          name: string | null
+          notes: string | null
+          organizationId: string | null
+          phone: string | null
+          postalCode: string | null
+          projectCount: number | null
+          receiptCount: number | null
+          state: string | null
+          taxId: string | null
+          unitNumber: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          addressLine1?: string | null
+          addressLine2?: string | null
+          city?: string | null
+          contactPerson?: string | null
+          country?: string | null
+          created_at?: string | null
+          createdBy?: string | null
+          email?: string | null
+          feedbackCount?: number | null
+          fullAddress?: string | null
+          id?: string
+          invoiceCount?: number | null
+          linkCount?: number | null
+          name?: string | null
+          notes?: string | null
+          organizationId?: string | null
+          phone?: string | null
+          postalCode?: string | null
+          projectCount?: number | null
+          receiptCount?: number | null
+          state?: string | null
+          taxId?: string | null
+          unitNumber?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          addressLine1?: string | null
+          addressLine2?: string | null
+          city?: string | null
+          contactPerson?: string | null
+          country?: string | null
+          created_at?: string | null
+          createdBy?: string | null
+          email?: string | null
+          feedbackCount?: number | null
+          fullAddress?: string | null
+          id?: string
+          invoiceCount?: number | null
+          linkCount?: number | null
+          name?: string | null
+          notes?: string | null
+          organizationId?: string | null
+          phone?: string | null
+          postalCode?: string | null
+          projectCount?: number | null
+          receiptCount?: number | null
+          state?: string | null
+          taxId?: string | null
+          unitNumber?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_log_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "customers_log_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deliverables: {
         Row: {
           created_at: string | null
@@ -282,6 +431,64 @@ export type Database = {
           },
         ]
       }
+      deliverables_log: {
+        Row: {
+          created_at: string | null
+          createdBy: string | null
+          description: string | null
+          dueDate: string | null
+          id: string
+          isPublished: boolean | null
+          lastSaved: string | null
+          name: string | null
+          position: number | null
+          projectId: string | null
+          status: string | null
+          updatedAt: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          createdBy?: string | null
+          description?: string | null
+          dueDate?: string | null
+          id?: string
+          isPublished?: boolean | null
+          lastSaved?: string | null
+          name?: string | null
+          position?: number | null
+          projectId?: string | null
+          status?: string | null
+          updatedAt?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          createdBy?: string | null
+          description?: string | null
+          dueDate?: string | null
+          id?: string
+          isPublished?: boolean | null
+          lastSaved?: string | null
+          name?: string | null
+          position?: number | null
+          projectId?: string | null
+          status?: string | null
+          updatedAt?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliverables_log_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "deliverables_log_projectId_fkey"
+            columns: ["projectId"]
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedbacks: {
         Row: {
           answers: Json | null
@@ -331,6 +538,61 @@ export type Database = {
           },
           {
             foreignKeyName: "feedbacks_projectId_fkey"
+            columns: ["projectId"]
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedbacks_log: {
+        Row: {
+          answers: Json | null
+          created_at: string
+          createdBy: string | null
+          customerId: string | null
+          filledOn: string | null
+          id: number
+          projectId: string | null
+          questions: Json | null
+          state: string | null
+        }
+        Insert: {
+          answers?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          filledOn?: string | null
+          id?: number
+          projectId?: string | null
+          questions?: Json | null
+          state?: string | null
+        }
+        Update: {
+          answers?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          filledOn?: string | null
+          id?: number
+          projectId?: string | null
+          questions?: Json | null
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedbacks_log_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "feedbacks_log_customerId_fkey"
+            columns: ["customerId"]
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedbacks_log_projectId_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -434,6 +696,103 @@ export type Database = {
           },
         ]
       }
+      invoices_log: {
+        Row: {
+          created_at: string | null
+          createdBy: string | null
+          currency: string | null
+          customerId: string | null
+          dueDate: string | null
+          emailSentAt: string | null
+          id: string
+          invoiceDetails: Json | null
+          invoiceNumber: string | null
+          issueDate: string | null
+          notes: string | null
+          paidOn: string | null
+          paymentDetails: Json | null
+          paymentLink: string | null
+          paymentType: string | null
+          projectId: string | null
+          sentViaEmail: boolean | null
+          status: string | null
+          subTotalAmount: number | null
+          taxRate: number | null
+          totalAmount: number | null
+          updatedAt: string | null
+          vatRate: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          createdBy?: string | null
+          currency?: string | null
+          customerId?: string | null
+          dueDate?: string | null
+          emailSentAt?: string | null
+          id?: string
+          invoiceDetails?: Json | null
+          invoiceNumber?: string | null
+          issueDate?: string | null
+          notes?: string | null
+          paidOn?: string | null
+          paymentDetails?: Json | null
+          paymentLink?: string | null
+          paymentType?: string | null
+          projectId?: string | null
+          sentViaEmail?: boolean | null
+          status?: string | null
+          subTotalAmount?: number | null
+          taxRate?: number | null
+          totalAmount?: number | null
+          updatedAt?: string | null
+          vatRate?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          createdBy?: string | null
+          currency?: string | null
+          customerId?: string | null
+          dueDate?: string | null
+          emailSentAt?: string | null
+          id?: string
+          invoiceDetails?: Json | null
+          invoiceNumber?: string | null
+          issueDate?: string | null
+          notes?: string | null
+          paidOn?: string | null
+          paymentDetails?: Json | null
+          paymentLink?: string | null
+          paymentType?: string | null
+          projectId?: string | null
+          sentViaEmail?: boolean | null
+          status?: string | null
+          subTotalAmount?: number | null
+          taxRate?: number | null
+          totalAmount?: number | null
+          updatedAt?: string | null
+          vatRate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_log_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "invoices_log_customerId_fkey"
+            columns: ["customerId"]
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_log_projectId_fkey"
+            columns: ["projectId"]
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization: {
         Row: {
           baseCurrency: string | null
@@ -471,6 +830,49 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "organization_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      organization_log: {
+        Row: {
+          baseCurrency: string | null
+          country: string | null
+          created_at: string | null
+          createdBy: string | null
+          email: string | null
+          id: string
+          logoUrl: string | null
+          name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          baseCurrency?: string | null
+          country?: string | null
+          created_at?: string | null
+          createdBy?: string | null
+          email?: string | null
+          id?: string
+          logoUrl?: string | null
+          name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          baseCurrency?: string | null
+          country?: string | null
+          created_at?: string | null
+          createdBy?: string | null
+          email?: string | null
+          id?: string
+          logoUrl?: string | null
+          name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_log_createdBy_fkey"
             columns: ["createdBy"]
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
@@ -689,6 +1091,127 @@ export type Database = {
           },
         ]
       }
+      projects_log: {
+        Row: {
+          budget: number | null
+          created_at: string | null
+          createdBy: string | null
+          currency: string | null
+          currencyEnabled: boolean | null
+          customerId: string | null
+          customFields: Json | null
+          deliverables: Json | null
+          deliverablesEnabled: boolean | null
+          description: string | null
+          documents: Json | null
+          effectiveDate: string | null
+          emailToCustomer: boolean | null
+          endDate: string | null
+          hasAgreedToTerms: boolean | null
+          hasPaymentTerms: boolean | null
+          hasServiceAgreement: boolean | null
+          id: string
+          isArchived: boolean | null
+          isPublished: boolean | null
+          name: string | null
+          notes: string | null
+          paymentMilestones: Json | null
+          paymentStructure: string | null
+          projectTypeId: string | null
+          serviceAgreement: Json | null
+          signedOn: string | null
+          signedStatus: string | null
+          startDate: string | null
+          state: string | null
+          status: string | null
+          type: string | null
+          updatedOn: string | null
+        }
+        Insert: {
+          budget?: number | null
+          created_at?: string | null
+          createdBy?: string | null
+          currency?: string | null
+          currencyEnabled?: boolean | null
+          customerId?: string | null
+          customFields?: Json | null
+          deliverables?: Json | null
+          deliverablesEnabled?: boolean | null
+          description?: string | null
+          documents?: Json | null
+          effectiveDate?: string | null
+          emailToCustomer?: boolean | null
+          endDate?: string | null
+          hasAgreedToTerms?: boolean | null
+          hasPaymentTerms?: boolean | null
+          hasServiceAgreement?: boolean | null
+          id?: string
+          isArchived?: boolean | null
+          isPublished?: boolean | null
+          name?: string | null
+          notes?: string | null
+          paymentMilestones?: Json | null
+          paymentStructure?: string | null
+          projectTypeId?: string | null
+          serviceAgreement?: Json | null
+          signedOn?: string | null
+          signedStatus?: string | null
+          startDate?: string | null
+          state?: string | null
+          status?: string | null
+          type?: string | null
+          updatedOn?: string | null
+        }
+        Update: {
+          budget?: number | null
+          created_at?: string | null
+          createdBy?: string | null
+          currency?: string | null
+          currencyEnabled?: boolean | null
+          customerId?: string | null
+          customFields?: Json | null
+          deliverables?: Json | null
+          deliverablesEnabled?: boolean | null
+          description?: string | null
+          documents?: Json | null
+          effectiveDate?: string | null
+          emailToCustomer?: boolean | null
+          endDate?: string | null
+          hasAgreedToTerms?: boolean | null
+          hasPaymentTerms?: boolean | null
+          hasServiceAgreement?: boolean | null
+          id?: string
+          isArchived?: boolean | null
+          isPublished?: boolean | null
+          name?: string | null
+          notes?: string | null
+          paymentMilestones?: Json | null
+          paymentStructure?: string | null
+          projectTypeId?: string | null
+          serviceAgreement?: Json | null
+          signedOn?: string | null
+          signedStatus?: string | null
+          startDate?: string | null
+          state?: string | null
+          status?: string | null
+          type?: string | null
+          updatedOn?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_log_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "projects_log_customerId_fkey"
+            columns: ["customerId"]
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receipts: {
         Row: {
           created_at: string | null
@@ -798,6 +1321,115 @@ export type Database = {
           },
         ]
       }
+      receipts_log: {
+        Row: {
+          created_at: string | null
+          createdBy: string | null
+          creationMethod: string | null
+          currency: string | null
+          customerId: string | null
+          dueDate: string | null
+          emailSentAt: string | null
+          id: string
+          invoiceId: string | null
+          issueDate: string | null
+          notes: string | null
+          paymentConfirmedat: string | null
+          paymentDetails: Json | null
+          paymentLink: string | null
+          paymentType: string | null
+          projectId: string | null
+          receiptDetails: Json | null
+          receiptNumber: string | null
+          sentViaEmail: boolean | null
+          status: string | null
+          subTotalAmount: number | null
+          taxAmount: number | null
+          totalamount: number | null
+          updatedAt: string | null
+          vatRate: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          createdBy?: string | null
+          creationMethod?: string | null
+          currency?: string | null
+          customerId?: string | null
+          dueDate?: string | null
+          emailSentAt?: string | null
+          id?: string
+          invoiceId?: string | null
+          issueDate?: string | null
+          notes?: string | null
+          paymentConfirmedat?: string | null
+          paymentDetails?: Json | null
+          paymentLink?: string | null
+          paymentType?: string | null
+          projectId?: string | null
+          receiptDetails?: Json | null
+          receiptNumber?: string | null
+          sentViaEmail?: boolean | null
+          status?: string | null
+          subTotalAmount?: number | null
+          taxAmount?: number | null
+          totalamount?: number | null
+          updatedAt?: string | null
+          vatRate?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          createdBy?: string | null
+          creationMethod?: string | null
+          currency?: string | null
+          customerId?: string | null
+          dueDate?: string | null
+          emailSentAt?: string | null
+          id?: string
+          invoiceId?: string | null
+          issueDate?: string | null
+          notes?: string | null
+          paymentConfirmedat?: string | null
+          paymentDetails?: Json | null
+          paymentLink?: string | null
+          paymentType?: string | null
+          projectId?: string | null
+          receiptDetails?: Json | null
+          receiptNumber?: string | null
+          sentViaEmail?: boolean | null
+          status?: string | null
+          subTotalAmount?: number | null
+          taxAmount?: number | null
+          totalamount?: number | null
+          updatedAt?: string | null
+          vatRate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_log_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "receipts_log_customerId_fkey"
+            columns: ["customerId"]
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_log_invoiceId_fkey"
+            columns: ["invoiceId"]
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_log_projectId_fkey"
+            columns: ["projectId"]
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_agreements: {
         Row: {
           answers: Json | null
@@ -847,6 +1479,61 @@ export type Database = {
           },
           {
             foreignKeyName: "service_agreement_projectId_fkey"
+            columns: ["projectId"]
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_agreements_log: {
+        Row: {
+          answers: Json | null
+          created_at: string
+          createdBy: string | null
+          customerId: string | null
+          filledOn: string | null
+          id: number
+          projectId: string | null
+          questions: Json | null
+          state: string | null
+        }
+        Insert: {
+          answers?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          filledOn?: string | null
+          id?: number
+          projectId?: string | null
+          questions?: Json | null
+          state?: string | null
+        }
+        Update: {
+          answers?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          filledOn?: string | null
+          id?: number
+          projectId?: string | null
+          questions?: Json | null
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_agreements_log_createdBy_fkey"
+            columns: ["createdBy"]
+            referencedRelation: "profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "service_agreements_log_customerId_fkey"
+            columns: ["customerId"]
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_agreements_log_projectId_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]

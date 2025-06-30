@@ -89,6 +89,12 @@ export default function CustomerTable({ customer }: Props) {
     fetchCustomers() // Refresh the customer list
   }
 
+  const handleDeleteSuccess = () => {
+    closeRef.current?.click()
+    setIsEditSheetOpen(false)
+    fetchCustomers() // Refresh the customer list
+  }
+
   const [sortBy, setSortBy] = useState<"lastActivity" | "created_at" | "rating">("lastActivity")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(5);
@@ -175,15 +181,14 @@ export default function CustomerTable({ customer }: Props) {
   return (
     <div className="p-4 lg:p-6 space-y-6">
 
-    <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-4 p-4 bg-muted/50 rounded-lg">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-4 p-4 border border-bexoni bg-bexoni/10 ">
       <div className="flex items-center gap-2">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium">Filters:</span>
+        <Filter className="h-4 w-4 text-primary" />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">Sort by:</span>
+          <span className="text-sm dark:text-gray-300 text-primary whitespace-nowrap">Sort by:</span>
           <Select value={sortBy} onValueChange={(value: "lastActivity" | "created_at" | "rating") => setSortBy(value)}>
             <SelectTrigger className="w-full sm:w-[140px]">
               <SelectValue />
@@ -197,7 +202,7 @@ export default function CustomerTable({ customer }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">Priority:</span>
+          <span className="text-sm dark:text-gray-300 text-primary whitespace-nowrap">Priority:</span>
           <Select value={filterBy} onValueChange={(value: "all" | "high" | "medium" | "low") => setFilterBy(value)}>
             <SelectTrigger className="w-full sm:w-[120px]">
               <SelectValue />
@@ -212,7 +217,7 @@ export default function CustomerTable({ customer }: Props) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 text-sm text-primary">
         <span>Showing {sortedCustomers.length} customers</span>
       </div>
     </div>
@@ -221,17 +226,17 @@ export default function CustomerTable({ customer }: Props) {
 
       <div className="space-y-6">
         {paginatedCustomers.map((customer, index) => (
-          <div key={customer.id} className="relative flex items-start gap-6">
+          <div key={customer.id} className="relative flex items-start shadow-sm bg-lightCard dark:bg-darkCard gap-6">
 
             {/* Customer card */}
             <div
-              className="flex-1 cursor-pointer hover:shadow-md border-bexoni transition-shadow border p-4"
+              className="flex-1 cursor-pointer shadow-sm hover:shadow-lg border-bexoni transition-shadow border p-2"
               onClick={() => handleCustomerClick(customer)}
             >
-              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                <div className="flex items-start gap-4 flex-1">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2">
+                <div className="flex items-start gap-2 flex-1">
                   <Avatar className="h-12 w-12 flex-shrink-0">
-                    <AvatarImage src={customer.avatar || "/placeholder.svg"} />
+                    {/* <AvatarImage src={customer.avatar || "/placeholder.svg"} /> */}
                     <AvatarFallback>
                       {customer.name
                         .split(" ")
@@ -244,8 +249,8 @@ export default function CustomerTable({ customer }: Props) {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 mb-3">
                       <p className="text-base text-primary font-medium truncate">{customer.name}</p> 
                       <div className="hidden sm:block w-[3px] h-4 bg-bexoni flex-shrink-0" />
-                      <div className="flex items-center gap-4 flex-1">
-                        <p className="text-sm text-muted-foreground font-medium truncate">{customer.email}</p>
+                      <div className="flex items-center gap-2 flex-1">
+                        <p className="text-sm dark:text-gray-300 font-medium truncate">{customer.email}</p>
                         <div className="flex items-center gap-2 ml-auto">
                           <TooltipProvider>
                             <Tooltip>
@@ -287,8 +292,8 @@ export default function CustomerTable({ customer }: Props) {
                     </div>
                     <div className="flex items-center gap-4 text-sm mb-2">
                       <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="truncate">Last activity: {customer.lastActivity}</span>
+                        <Clock className="h-4 w-4 dark:text-gray-300 flex-shrink-0" />
+                        <span className="truncate dark:text-gray-300">Last activity: {customer.lastActivity}</span>
                       </div>
                     </div>
                   </div>
@@ -297,19 +302,19 @@ export default function CustomerTable({ customer }: Props) {
                 <div className="grid grid-cols-4 lg:flex lg:gap-6 gap-3 text-center">
                   <div>
                     <div className="text-lg lg:text-xl font-bold" style={{ color: tagColors.invoice }}>{customer.invoiceCount}</div>
-                    <div className="text-xs text-muted-foreground">Invoices</div>
+                    <div className="text-xs dark:text-grey-300">Invoices</div>
                   </div>
                   <div>
                     <div className="text-lg lg:text-xl font-bold" style={{ color: tagColors.project }}>{customer.projectCount}</div>
-                    <div className="text-xs text-muted-foreground">Projects</div>
+                    <div className="text-xs dark:text-grey-300">Projects</div>
                   </div>
                   <div>
                     <div className="text-lg lg:text-xl font-bold" style={{ color: tagColors.receipt }}>{customer.receiptCount}</div>
-                    <div className="text-xs text-muted-foreground">Receipts</div>
+                    <div className="text-xs dark:text-grey-300">Receipts</div>
                   </div>
                   <div>
                     <div className="text-lg lg:text-xl font-bold" style={{ color: tagColors.feedback }}>{customer.feedbackCount}</div>
-                    <div className="text-xs text-muted-foreground">Feedback</div>
+                    <div className="text-xs dark:text-grey-300">Feedback</div>
                   </div>
                 </div>
               </div>
@@ -334,7 +339,7 @@ export default function CustomerTable({ customer }: Props) {
     {/* Edit Customer Sheet */}
     {selectedCustomer && (
       <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
-        <SheetContent side="right" bounce="right" withGap={true} className={cn("flex flex-col", "w-full sm:w-3/4 md:w-1/2 lg:w-[40%]")}>
+        <SheetContent side="right" bounce="right" withGap={true} className={cn("flex flex-col", "w-full h-full sm:w-3/4 md:w-1/2 lg:w-[40%]")}>
           <SheetTitle className='sr-only'>
             Edit Customer
           </SheetTitle>
@@ -342,7 +347,8 @@ export default function CustomerTable({ customer }: Props) {
             <EditCustomer 
               customer={selectedCustomer} 
               onSuccess={handleEditSuccess} 
-              onLoadingChange={setIsSubmitting} 
+              onLoadingChange={setIsSubmitting}
+              onDelete={handleDeleteSuccess}
             />
           </ScrollArea>
           <SheetFooter className='pt-4'>

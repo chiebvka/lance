@@ -32,6 +32,16 @@ const config = {
   				DEFAULT: '#9948fb',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
+			darkCard:{
+				DEFAULT: '#1a161e',
+				// DEFAULT: '#2d2438',
+				foreground: 'hsl(var(--primary-foreground))'
+			},
+			lightCard:{
+				DEFAULT: '#f6f7f2',
+				// DEFAULT: '#2d2438',
+				foreground: 'hsl(var(--primary-foreground))'
+			},
   			bexonicream: {
   				DEFAULT: '#fff8e7',
   				foreground: 'hsl(var(--primary-foreground))'

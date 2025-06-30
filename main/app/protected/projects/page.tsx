@@ -1,4 +1,5 @@
-'use client'
+import { promises as fs } from "fs"
+import path from "path"
 import React from 'react'
 import CreateProjectView from './_components/create-project-view'
 import PageHeader from "@/components/page-header";
@@ -6,31 +7,32 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import ProjectForm from './_components/project-form';
+import { z } from "zod"
 import { RichTextEditor } from '@/components/tiptap/rich-text-editor';
 import { TipTapEditor } from '@/components/tiptap/tip-tap-editor';
+import { taskSchema } from "./data/schema";
+import { DataTable } from "./_components/data-table";
+import { columns } from "./_components/columns";
+import ProjectsClient from "./_components/projects-client";
 
-export default function ProjectsPage() {
-  const handleSearch = (value: string) => {
-    // TODO: Implement project search logic
-    console.log('Searching for project:', value);
-  }
+
+// Simulate a database read for tasks.
+async function getTasks() {
+  const data = await fs.readFile(
+    path.join(process.cwd(), "app/protected/projects/data/tasks.json")
+  )
+
+  const tasks = JSON.parse(data.toString())
+
+  return z.array(taskSchema).parse(tasks)
+}
+
+export default async function ProjectsPage() {
+  const tasks = await getTasks()
 
   return (
     <div className='w-full py-4 px-6 border border-bexoni'>
-        <PageHeader 
-            placeholder="Search projects..." 
-            onSearch={handleSearch} 
-            action={
-                <Button asChild>
-                    <Link href="/protected/projects/create">
-                        <Plus className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Create Project</span>
-                    </Link>
-                </Button>
-            }
-        />
-
-        <TipTapEditor content="" onChange={(content) => {}} />
+      <ProjectsClient tasks={tasks} />
     </div>
   )
 }
