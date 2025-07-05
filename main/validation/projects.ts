@@ -15,6 +15,7 @@ const projectCreateSchema = z.object({
   budget: z.number().optional(),
   startDate: z.coerce.date().optional().nullable(),
   endDate: z.coerce.date().optional().nullable(),
+  effectiveDate: z.coerce.date().optional().nullable(),
   notes: z.string().optional(),
 
   // Deliverables

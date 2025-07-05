@@ -28,6 +28,7 @@ export default function Search({placeholder}: Props) {
   return (
       <Input
         type="text"
+        variant="search"
         placeholder={placeholder}
         defaultValue={searchParams.get("query")?.toString() || ""}
         onChange={(e) => handleSearch(e.target.value)}

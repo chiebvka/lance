@@ -7,25 +7,28 @@ import Search from './search';
 import { Plus } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { SearchFilter } from './filtering/search-filter';
 
 type Props = {
   placeholder : string,
-  onSearch : (value: string) => void,
   sheetTitle? : string,
   buttonText? : string,
   formComponent? : React.ReactNode,
   sheetContentClassName?: string;
   footer?: React.ReactNode;
   action?: React.ReactNode;
+  filterContent?: React.ReactNode;
 }
 
-export default function PageHeader({placeholder, onSearch, sheetTitle, buttonText, formComponent, sheetContentClassName, footer, action}: Props) {
+export default function PageHeader({placeholder, sheetTitle, buttonText, formComponent, sheetContentClassName, footer, action, filterContent}: Props) {
   const showSheet = formComponent && buttonText && sheetTitle;
   
   return (
     <header className="flex justify-between items-center  border-b">
     <div className="flex items-center space-x-4">
-    <Search placeholder={placeholder} />
+      <SearchFilter placeholder={placeholder}>
+        {filterContent}
+      </SearchFilter>
     </div>
     {action ? action : (
       showSheet && (

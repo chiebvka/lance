@@ -1,126 +1,246 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-
-
-Checkbox
-import { labels, priorities, statuses } from "../data/data"
-import { Task } from "../data/schema"
-
-
-import { Checkbox } from "@/components/ui/checkbox"
-import { DataTableColumnHeader } from "./data-table-column-header"
 import { Badge } from "@/components/ui/badge"
-import { DataTableRowActions } from "./data-table-row-actions"
+import { Button } from "@/components/ui/button"
+import { ArrowUpDown, MoreHorizontal } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { DataTableColumnHeader } from "./data-table-column-header"
 
-export const columns: ColumnDef<Task>[] = [
+
+// Define the Project type based on our API response
+export type Project = {
+  id: string
+  name: string
+  description: string
+  type: string
+  customerName: string
+  customerId: string | null
+  budget: number
+  currency: string
+  budgetFormatted: string
+  hasServiceAgreement: boolean
+  status: string
+  paymentType: string
+  startDate: string | null
+  endDate: string | null
+  startDateFormatted: string
+  endDateFormatted: string
+  created_at: string
+  createdAtFormatted: string
+  customers: { name: string } | null
+}
+
+const getStatusColor = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'active':
+    case 'in progress':
+      return 'bg-blue-100 text-blue-800'
+    case 'completed':
+    case 'done':
+      return 'bg-green-100 text-green-800'
+    case 'on hold':
+    case 'paused':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'cancelled':
+    case 'canceled':
+      return 'bg-red-100 text-red-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+const getPaymentTypeColor = (paymentType: string) => {
+  switch (paymentType?.toLowerCase()) {
+    case 'milestone':
+      return 'bg-purple-100 text-purple-800'
+    case 'hourly':
+      return 'bg-orange-100 text-orange-800'
+    case 'fixed':
+      return 'bg-indigo-100 text-indigo-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+export const columns: ColumnDef<Project>[] = [
   {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-        className="translate-y-[2px]"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-        className="translate-y-[2px]"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
+    accessorKey: "name",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-8 p-0 font-medium"
+        >
+          Project Name
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
+    cell: ({ row }) => {
+      return (
+        <div className="font-medium">
+          {row.getValue("name")}
+        </div>
+      )
+    },
   },
   {
-    accessorKey: "id",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Task" />
-    ),
-    cell: ({ row }) => <div className="w-[80px]">{row.getValue("id")}</div>,
-    enableSorting: false,
-    enableHiding: false,
+    accessorKey: "description",
+    header: "Description",
+    cell: ({ row }) => {
+      const description = row.getValue("description") as string
+      return (
+        <div className="max-w-[200px] truncate" title={description}>
+          {description}
+        </div>
+      )
+    },
   },
   {
-    accessorKey: "title",
+    accessorKey: "type",
+    header: "Type",
+    cell: ({ row }) => {
+      return (
+        <Badge variant="outline" className="capitalize">
+          {row.getValue("type")}
+        </Badge>
+      )
+    },
+  },
+  {
+    accessorKey: "customerId",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Title" />
+      <DataTableColumnHeader column={column} title="Customer" />
     ),
     cell: ({ row }) => {
-      const label = labels.find((label) => label.value === row.original.label)
+      const projectType = row.original.type;
+      const customer = row.original.customers; // Assuming 'customers' object is fetched
 
+      if (projectType === 'personal') {
+        return <span>Personal</span>;
+      }
+
+      if (customer && customer.name) {
+        return <span>{customer.name}</span>;
+      }
+
+      return <span className="text-muted-foreground">No Customer Assigned</span>;
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
+  },
+  {
+    accessorKey: "budgetFormatted",
+    header: ({ column }) => {
       return (
-        <div className="flex space-x-2">
-          {label && <Badge variant="outline">{label.label}</Badge>}
-          <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("title")}
-          </span>
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-8 p-0 font-medium"
+        >
+          Budget
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
+    },
+    cell: ({ row }) => {
+      return (
+        <div className="font-medium">
+          {row.getValue("budgetFormatted")}
         </div>
+      )
+    },
+  },
+  {
+    accessorKey: "hasServiceAgreement",
+    header: "Service Agreement",
+    cell: ({ row }) => {
+      const hasAgreement = row.getValue("hasServiceAgreement") as boolean
+      return (
+        <Badge variant={hasAgreement ? "default" : "secondary"}>
+          {hasAgreement ? "Yes" : "No"}
+        </Badge>
       )
     },
   },
   {
     accessorKey: "status",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
-    ),
+    header: "Status",
     cell: ({ row }) => {
-      const status = statuses.find(
-        (status) => status.value === row.getValue("status")
-      )
-
-      if (!status) {
-        return null
-      }
-
+      const status = row.getValue("status") as string
       return (
-        <div className="flex w-[100px] items-center">
-          {status.icon && (
-            <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-          )}
-          <span>{status.label}</span>
-        </div>
+        <Badge className={getStatusColor(status)}>
+          {status}
+        </Badge>
       )
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
     },
   },
   {
-    accessorKey: "priority",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Priority" />
-    ),
+    accessorKey: "paymentType",
+    header: "Payment Type",
     cell: ({ row }) => {
-      const priority = priorities.find(
-        (priority) => priority.value === row.getValue("priority")
-      )
-
-      if (!priority) {
-        return null
-      }
-
+      const paymentType = row.getValue("paymentType") as string
       return (
-        <div className="flex items-center">
-          {priority.icon && (
-            <priority.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-          )}
-          <span>{priority.label}</span>
-        </div>
+        <Badge className={getPaymentTypeColor(paymentType)}>
+          {paymentType}
+        </Badge>
       )
     },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
+  },
+  {
+    accessorKey: "startDateFormatted",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-8 p-0 font-medium"
+        >
+          Start Date
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
     },
   },
   {
     id: "actions",
-    cell: ({ row }) => <DataTableRowActions row={row} />,
+    cell: ({ row }) => {
+      const project = row.original
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => navigator.clipboard.writeText(project.id)}
+            >
+              Copy project ID
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>View project</DropdownMenuItem>
+            <DropdownMenuItem>Edit project</DropdownMenuItem>
+            <DropdownMenuItem className="text-red-600">
+              Delete project
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
   },
 ]

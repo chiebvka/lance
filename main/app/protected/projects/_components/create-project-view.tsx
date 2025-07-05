@@ -5,16 +5,13 @@ import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 
-type Props = {
-    onSearch: (value: string) => void;
-}
+type Props = {}
 
-export default function CreateProjectView({ onSearch }: Props) {
+export default function CreateProjectView({}: Props) {
   return (
     <div className='w-full'>
         <PageHeader 
             placeholder="Search projects..." 
-            onSearch={onSearch} 
             action={
                 <Button asChild>
                     <Link href="/protected/projects/create">

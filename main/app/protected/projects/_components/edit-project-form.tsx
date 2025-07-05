@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-
+import { Badge } from "@/components/ui/badge"
 import {
   Collapsible,
   CollapsibleContent,
@@ -58,6 +58,7 @@ import {
 import ComboBox from "@/components/combobox"
 import { TipTapEditor } from "@/components/tiptap/tip-tap-editor"
 import { z } from "zod"
+
 import deliverableSchema from "@/validation/deliverables"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -75,7 +76,7 @@ import { currencies } from "@/data/currency"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { cn } from "@/lib/utils"
+import { cn, safeParseJsonArray } from "@/lib/utils"
 import type { z as zod } from "zod"
 import type paymentTermSchema from "@/validation/payment"
 import axios from "axios"
@@ -83,21 +84,31 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { v4 as uuidv4 } from "uuid"
 import { projectCustomerFetch } from "@/actions/customer/fetch"
-import CustomerForm from "../../customers/_components/customer-form"
+
+import { Tables } from "@/types/supabase"
 import { projectCreateSchema } from "@/validation/projects"
-import { Badge } from "@/components/ui/badge"
+import CustomerForm from "../../customers/_components/customer-form"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 type ProjectFormValues = z.infer<typeof projectCreateSchema>
 type DeliverableFormValues = z.infer<typeof deliverableSchema>
 type PaymentTermFormValues = zod.infer<typeof paymentTermSchema>
 
-// Payload-specific interfaces
+type DeliverableRecord = Tables<'deliverables'>;
+type PaymentTermRecord = Tables<'paymentTerms'>;
+type ProjectWithRelations = Tables<'projects'> & { 
+  customers: Customer | null;
+  deliverables: DeliverableRecord[];
+  paymentMilestones: PaymentTermRecord[];
+};
+
+// Payload-specific interfaces - Re-adding for function signatures
 interface PayloadPaymentMilestone {
   id?: string
   name: string | null
   percentage: number | null
   amount: number | null
-  dueDate: string
+  dueDate: string | Date | null
   description?: string | null
   status?: string | null
   type?: "milestone" | "deliverable" | null
@@ -107,34 +118,10 @@ interface PayloadDeliverable {
   id: string
   name: string
   description: string
-  dueDate: string
+  dueDate: string | Date | undefined
   position: number
   isPublished: boolean
   status: "pending" | "in_progress" | "completed"
-}
-
-interface ProjectData {
-  id?: string
-  customerId?: string | null
-  currency?: string
-  currencyEnabled?: boolean
-  projectType?: "personal" | "customer"
-  budget?: number
-  projectName?: string
-  projectDescription?: string
-  startDate?: string
-  endDate?: string
-  deliverables?: PayloadDeliverable[]
-  deliverablesEnabled?: boolean
-  paymentStructure?: string
-  paymentMilestones?: PayloadPaymentMilestone[]
-  hasServiceAgreement?: boolean
-  serviceAgreement?: string
-  agreementTemplate?: string
-  hasAgreedToTerms?: boolean
-  isPublished?: boolean
-  state?: "draft" | "published"
-  emailToCustomer?: boolean
 }
 
 interface Customer {
@@ -143,19 +130,49 @@ interface Customer {
   email: string | null
 }
 
-// Add these props to your existing ProjectForm component interface
-interface ProjectFormProps {
-  onSuccess?: () => void;
-  onLoadingChange?: (loading: boolean) => void;
-  onCancel?: () => void;
-  // ... any existing props
+interface EditProjectFormProps {
+  projectId: string
+  onSuccess?: () => void
+  onLoadingChange?: (isLoading: boolean) => void
+  onCancel?: () => void
 }
 
-export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...otherProps }: ProjectFormProps) {
+export default function EditProjectForm({ projectId, onSuccess, onLoadingChange, onCancel }: EditProjectFormProps) {
   const router = useRouter()
+  const [project, setProject] = useState<ProjectWithRelations | null>(null)
+  const [isLoadingProject, setIsLoadingProject] = useState(true)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [isCreateCustomerSheetOpen, setCreateCustomerSheetOpen] = useState(false)
   const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false)
+
+  const parseDate = (date: string | null | undefined): Date | undefined => {
+    if (!date) return undefined
+    try {
+      return new Date(date)
+    } catch (error) {
+      console.warn('Failed to parse date:', date, error)
+      return undefined
+    }
+  }
+
+  useEffect(() => {
+    async function getProject() {
+      if (!projectId) return
+      setIsLoadingProject(true)
+      onLoadingChange?.(true)
+      try {
+        const response = await axios.get(`/api/projects/${projectId}`)
+        setProject(response.data.project)
+      } catch (error) {
+        toast.error("Failed to load project details.")
+        console.error(error)
+      } finally {
+        setIsLoadingProject(false)
+        onLoadingChange?.(false)
+      }
+    }
+    getProject()
+  }, [projectId, onLoadingChange])
 
   useEffect(() => {
     async function fetchCustomers() {
@@ -177,60 +194,102 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
       toast.success("Customer created and list updated!")
     }
   }
-  const agreementTemplates = {
-    standard: "<h2>Standard Service Agreement</h2><p>This document outlines the standard terms and conditions for our services, including scope, payment, and confidentiality.</p>",
-    consulting: "<h2>Consulting Agreement</h2><p>This agreement details the specifics of the consulting services to be provided, including deliverables, timelines, and fees.</p>",
-    development: "<h2>Development Agreement</h2><p>This agreement covers the terms for software development projects, including intellectual property, milestones, and acceptance criteria.</p>",
-    custom: "<h2>Custom Agreement</h2><p>Please use this space to create a custom agreement tailored to your project's unique needs.</p>",
-  };
+
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectCreateSchema),
     defaultValues: {
-      customerId: null,
-      currency: "USD",
-      currencyEnabled: false,
       type: "personal",
-      budget: 0,
       name: "",
       description: "",
-      startDate: undefined,
-      endDate: undefined,
+      budget: 0,
+      currency: "USD",
+      currencyEnabled: false,
       deliverablesEnabled: true,
-      deliverables: [
-        {
-          id: uuidv4(),
-          name: "",
-          description: "",
-          dueDate: undefined,
-          position: 1,
-          status: "pending",
-          isPublished: false,
-        },
-      ],
+      deliverables: [],
       paymentStructure: "noPayment",
-      paymentMilestones: [
-        { id: uuidv4(), name: "Initial Payment", percentage: 0, amount: 0, dueDate: null, description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
-        { id: uuidv4(), name: "Final Payment", percentage: 0, amount: 0, dueDate: null, description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
-      ],
+      paymentMilestones: [],
       hasServiceAgreement: false,
-      serviceAgreement: "<p>Standard service agreement terms...</p>",
+      serviceAgreement: "",
       agreementTemplate: "standard",
       hasAgreedToTerms: false,
       isPublished: false,
       status: "pending",
-  
-      hasPaymentTerms: true,
       signedStatus: "not_signed",
       documents: "",
       notes: "",
-      customFields: {
-        name: "",
-        value: "",
-      },
+      customFields: { name: "", value: "" },
       state: "draft",
+      emailToCustomer: false,
+      hasPaymentTerms: false,
       paymentTerms: "",
+      customerId: null,
+      startDate: undefined,
+      endDate: undefined,
     },
   })
+
+  useEffect(() => {
+    if (project) {
+      console.log("🔄 EditProjectForm: Resetting form with project data:", project)
+      form.reset({
+        customerId: project.customerId,
+        type: (project.type as "personal" | "customer") || "personal",
+        name: project.name || "",
+        description: project.description || "",
+        startDate: parseDate(project.startDate),
+        endDate: parseDate(project.endDate),
+        budget: project.budget ?? 0,
+        currency: project.currency || "USD",
+        currencyEnabled: project.currencyEnabled ?? false,
+        deliverablesEnabled: project.deliverablesEnabled ?? true,
+        deliverables: (project.deliverables || []).map((d: any) => ({
+          ...d,
+          id: d.id || uuidv4(), // Ensure each deliverable has an ID
+          dueDate: parseDate(d.dueDate),
+          name: d.name || "",
+          description: d.description || "",
+          position: d.position || 1,
+          status: d.status || "pending",
+          isPublished: d.isPublished ?? false,
+        })),
+        paymentStructure: project.paymentStructure || "noPayment",
+        paymentMilestones: (project.paymentMilestones || []).map((m: any) => ({
+          ...m,
+          id: m.id || uuidv4(), // Ensure each milestone has an ID
+          dueDate: parseDate(m.dueDate),
+          name: m.name || "",
+          description: m.description || null,
+          amount: m.amount || 0,
+          percentage: m.percentage || 0,
+          status: m.status || "pending",
+          type: m.type || "milestone",
+          hasPaymentTerms: m.hasPaymentTerms ?? false,
+          deliverableId: m.deliverableId || null,
+        })),
+        hasServiceAgreement: project.hasServiceAgreement ?? false,
+        serviceAgreement:
+          typeof project.serviceAgreement === "string" ? project.serviceAgreement : "",
+        agreementTemplate: "standard",
+        hasAgreedToTerms: project.hasAgreedToTerms ?? false,
+        isPublished: project.isPublished ?? false,
+        status: project.status || "pending",
+        signedStatus: project.signedStatus || "not_signed",
+        documents: typeof project.documents === "string" ? project.documents : "",
+        notes: project.notes || "",
+        customFields:
+          project.customFields &&
+          typeof project.customFields === "object" &&
+          !Array.isArray(project.customFields)
+            ? (project.customFields as { name: string; value: string })
+            : { name: "", value: "" },
+        state: (project.state as "draft" | "published" | undefined) || "draft",
+        emailToCustomer: project.emailToCustomer ?? false,
+        hasPaymentTerms: project.hasPaymentTerms ?? false,
+        paymentTerms: "",
+      })
+      console.log("✅ EditProjectForm: Form reset completed")
+    }
+  }, [project, form])
 
   const {
     fields: deliverableFields,
@@ -258,12 +317,10 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
   const serviceAgreementEnabled = form.watch("hasServiceAgreement")
   const hasAgreedToTerms = form.watch("hasAgreedToTerms")
   const selectedCustomerId = form.watch("customerId")
-  const selectedCustomer = customers.find(c => c.id === selectedCustomerId)
+  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId)
   const selectedCurrency = form.watch("currency")
   const deliverables = form.watch("deliverables")
-  const agreementTemplate = form.watch("agreementTemplate")
 
-  // UI State - Updated to open first 3 sections by default
   const [openSections, setOpenSections] = useState({
     customer: true,
     project: true,
@@ -275,22 +332,18 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
   const [isSaving, setIsSaving] = useState(false)
   const [isEditingAgreement, setIsEditingAgreement] = useState(false)
 
-  // Drag and drop state
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [dragOverItem, setDragOverItem] = useState<string | null>(null)
 
-  // Helper function to calculate percentage from amount
   const calculatePercentageFromAmount = (amount: number): number => {
     if (!budget) return 0
     return Math.round((amount / budget) * 100)
   }
 
-  // Helper function to calculate amount from percentage
   const calculateAmountFromPercentage = (percentage: number): number => {
     return Math.round((percentage / 100) * (budget || 0))
   }
 
-  // Helper function to get sorted deliverables by position
   const getSortedDeliverables = () => {
     const currentDeliverables = form.getValues("deliverables") || []
     if (!currentDeliverables || !Array.isArray(currentDeliverables)) {
@@ -299,7 +352,6 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
     return [...currentDeliverables].sort((a, b) => (a?.position || 0) - (b?.position || 0))
   }
 
-  // Helper function to reassign positions after reordering
   const reassignPositions = (newDeliverables: DeliverableFormValues[]) => {
     return newDeliverables.map((deliverable, index) => ({
       ...deliverable,
@@ -307,39 +359,31 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
     }))
   }
 
-  // Helper function to update payment milestones based on deliverables
   const updatePaymentMilestonesFromDeliverables = () => {
     const currentPaymentStructure = form.getValues("paymentStructure")
     const currentDeliverablesEnabled = form.getValues("deliverablesEnabled")
 
     if (currentPaymentStructure === "deliverablePayment" && currentDeliverablesEnabled) {
-      // Create a payment milestone for each deliverable (sorted by position)
       const sortedDeliverables = getSortedDeliverables()
       const newMilestones = sortedDeliverables.map((deliverable, index) => {
-        // Calculate percentages to ensure they sum to 100%
         let percentage = Math.floor(100 / sortedDeliverables.length)
-
-        // Distribute the remainder to the last few items
         if (index >= sortedDeliverables.length - (100 % sortedDeliverables.length)) {
           percentage += 1
         }
-
         const amount = calculateAmountFromPercentage(percentage)
-
         return {
           id: uuidv4(),
           name: deliverable.name || `Deliverable ${deliverable.position} Payment`,
           percentage,
           amount,
           dueDate: deliverable.dueDate,
-          description: null, 
-          status: 'pending', 
-          type: 'deliverable',
+          description: null,
+          status: "pending",
+          type: "deliverable",
           hasPaymentTerms: false,
-          deliverableId: deliverable.id
+          deliverableId: deliverable.id,
         }
       })
-
       form.setValue("paymentMilestones", newMilestones as any)
     }
   }
@@ -351,11 +395,8 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
     }))
   }
 
-  // Enhanced deliverables handlers that update payment milestones
   const setDeliverablesEnabledWithUpdates = (value: boolean) => {
     form.setValue("deliverablesEnabled", value)
-
-    // If disabling deliverables and payment structure is deliverable-based, change it
     if (!value && form.getValues("paymentStructure") === "deliverablePayment") {
       form.setValue("paymentStructure", "milestonePayment")
     }
@@ -363,7 +404,6 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
 
   const addDeliverable = () => {
     const currentDeliverables = form.getValues("deliverables") || []
-    // Get the highest position and add 1
     const maxPosition = Math.max(...currentDeliverables.map((d) => d.position || 0), 0)
     const newDeliverable: DeliverableFormValues = {
       id: uuidv4(),
@@ -374,10 +414,7 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
       status: "pending",
       isPublished: false,
     }
-
     appendDeliverable(newDeliverable)
-
-    // Update payment milestones if needed
     if (form.getValues("paymentStructure") === "deliverablePayment") {
       updatePaymentMilestonesFromDeliverables()
     }
@@ -387,23 +424,17 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
     const currentDeliverables = form.getValues("deliverables")
     if (currentDeliverables && currentDeliverables.length > 1) {
       removeDeliverableField(index)
-      // Reassign positions after removal
       const updatedDeliverables = (form.getValues("deliverables") || []).filter((_, i) => i !== index)
       const reorderedDeliverables = reassignPositions(updatedDeliverables)
       form.setValue("deliverables", reorderedDeliverables)
-
-      // Update payment milestones if needed
       if (form.getValues("paymentStructure") === "deliverablePayment") {
         updatePaymentMilestonesFromDeliverables()
       }
     }
   }
 
-  // Enhanced payment structure handlers
   const setPaymentStructureWithUpdates = (value: string) => {
     form.setValue("paymentStructure", value as any)
-
-    // If switching to deliverable-based payments, update milestones
     if (value === "deliverablePayment" && form.getValues("deliverablesEnabled")) {
       updatePaymentMilestonesFromDeliverables()
     }
@@ -425,21 +456,20 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
     appendMilestone(newMilestone)
   }
 
-  const updatePaymentMilestone = (index: number, field: keyof PayloadPaymentMilestone, value: string | number | Date | null) => {
+  const updatePaymentMilestone = (
+    index: number,
+    field: keyof PayloadPaymentMilestone,
+    value: string | number | Date | null,
+  ) => {
     const currentMilestones = form.getValues("paymentMilestones")
     if (!currentMilestones) return
     const updatedMilestone = { ...currentMilestones[index], [field]: value }
-
-    // If updating percentage, calculate amount
     if (field === "percentage") {
       updatedMilestone.amount = calculateAmountFromPercentage(value as number)
     }
-
-    // If updating amount, calculate percentage
     if (field === "amount") {
       updatedMilestone.percentage = calculatePercentageFromAmount(value as number)
     }
-
     form.setValue(`paymentMilestones.${index}`, updatedMilestone)
   }
 
@@ -458,154 +488,89 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
     return (paymentMilestones || []).reduce((sum, milestone) => sum + (milestone.amount || 0), 0)
   }
 
-  const handleSaveDraft = async () => {
-    setIsSaving(true)
-    try {
-      const values = form.getValues()
-
-      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
+  const handleUpdate = async (values: ProjectFormValues) => {
+    console.log("🔄 EditProjectForm: Starting update process")
+    console.log("📤 EditProjectForm: Project ID:", projectId)
+    
+    // Clean and prepare the data before sending
+    const cleanedValues = {
+      ...values,
+      deliverables: (values.deliverables || []).map(d => ({
         ...d,
-        id: d.id || "",
-        name: d.name,
-        description: d.description,
-        dueDate: d.dueDate, 
-        position: d.position || 0,
-        isPublished: d.isPublished || false,
-      }));
-      
-      const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones) 
-        ? values.paymentMilestones.map(m => ({
-            ...m,
-            id: m.id,
-            name: m.name,
-            percentage: m.percentage,
-            amount: m.amount,
-            dueDate: m.dueDate,
-          }))
-        : [];
-
-      const customFieldsData = (values.customFields?.name && values.customFields?.value) 
-        ? values.customFields 
-        : undefined;
-
-      const projectData = {
-        ...values,
-        startDate: values.startDate,
-        endDate: values.endDate,
-        deliverables: deliverablesData,
-        paymentMilestones: milestonesData,
-        customFields: customFieldsData,
-        isPublished: false,
-        state: "draft",
-      }
-
-      const response = await axios.post("/api/projects/create", projectData)
-
-      if (response.data.success) {
-        toast.success("Draft saved successfully!")
-        // Redirecting to the project's edit page to avoid duplicate key issues.
-        const projectId = response.data.data.id;
-        router.push(`/protected/projects/${projectId}`);
-      } else {
-        toast.error("Failed to save draft.", {
-          description: response.data.error || "An unknown error occurred.",
-        })
-      }
-    } catch (error) {
-      console.error("Error saving draft:", error)
-      const errorDescription =
-        axios.isAxiosError(error) && error.response?.data?.error
-          ? error.response.data.error
-          : "An unexpected error occurred. Please try again."
-      toast.error("Error saving draft.", {
-        description: errorDescription,
-      })
-    } finally {
-      setIsSaving(false)
+        id: d.id || uuidv4(),
+        name: d.name || "",
+        description: d.description || "",
+        status: d.status || "pending",
+        position: d.position || 1,
+        isPublished: d.isPublished ?? false,
+        dueDate: d.dueDate ? new Date(d.dueDate) : null,
+      })),
+      paymentMilestones: (values.paymentMilestones || []).map(m => ({
+        ...m,
+        id: m.id || uuidv4(),
+        name: m.name || "",
+        description: m.description || null,
+        amount: m.amount || 0,
+        percentage: m.percentage || 0,
+        status: m.status || "pending",
+        type: m.type || "milestone",
+        hasPaymentTerms: m.hasPaymentTerms ?? false,
+        deliverableId: m.deliverableId || null,
+        dueDate: m.dueDate ? new Date(m.dueDate) : null,
+      })),
     }
-  }
-
-  const handlePublishProject = async (emailToCustomer = false) => {
+    
+    console.log("📤 EditProjectForm: Cleaned form values being sent:", JSON.stringify(cleanedValues, null, 2))
+    
     setIsSaving(true)
+    onLoadingChange?.(true)
 
     try {
-      const values = form.getValues()
-
-      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
-        ...d,
-        id: d.id || "",
-        name: d.name,
-        description: d.description,
-        dueDate: d.dueDate,
-        position: d.position || 0,
-        isPublished: d.isPublished || false,
-      }));
-
-      const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones)
-        ? values.paymentMilestones.map(m => ({
-          ...m,
-          id: m.id,
-          name: m.name,
-          percentage: m.percentage,
-          amount: m.amount,
-          dueDate: m.dueDate,
-        }))
-        : [];
-
-      const customFieldsData = (values.customFields?.name && values.customFields?.value) 
-        ? values.customFields 
-        : undefined;
-
-      // Prepare project data with sorted deliverables
-      const projectData = {
-        ...values,
-        startDate: values.startDate,
-        endDate: values.endDate,
-        deliverables: deliverablesData,
-        paymentMilestones: milestonesData,
-        customFields: customFieldsData,
-        isPublished: true,
-        state: "published",
-        emailToCustomer,
-      }
-
-      const response = await axios.post("/api/projects/create", projectData)
-
-      if (response.data.success) {
-        toast.success(emailToCustomer ? "Project published and sent to customer!" : "Project published successfully!")
-        const projectId = response.data.data.id;
-        router.push(`/protected/projects/${projectId}`);
-      } else {
-        toast.error("Failed to publish project.", {
-          description: response.data.error || "An unknown error occurred.",
-        })
-      }
+      console.log("🌐 EditProjectForm: Making PUT request to:", `/api/projects/${projectId}`)
+      const response = await axios.put(`/api/projects/${projectId}`, cleanedValues)
+      console.log("✅ EditProjectForm: Request successful")
+      console.log("📥 EditProjectForm: Response data:", response.data)
+      console.log("📥 EditProjectForm: Response status:", response.status)
+      
+      toast.success("Project updated successfully!")
+      onSuccess?.()
     } catch (error) {
-      console.error("Error publishing project:", error)
-      const errorDescription =
-        axios.isAxiosError(error) && error.response?.data?.error
-          ? error.response.data.error
-          : "An unexpected error occurred. Please try again."
-      toast.error("Error publishing project.", {
-        description: errorDescription,
-      })
+      console.error("❌ EditProjectForm: Request failed")
+      console.error("📥 EditProjectForm: Error object:", error)
+      
+      if (axios.isAxiosError(error)) {
+        console.error("📥 EditProjectForm: Axios error details:")
+        console.error("  - Status:", error.response?.status)
+        console.error("  - Status text:", error.response?.statusText)
+        console.error("  - Response data:", error.response?.data)
+        console.error("  - Request URL:", error.config?.url)
+        console.error("  - Request method:", error.config?.method)
+        console.error("  - Request headers:", error.config?.headers)
+        
+        // Show more specific error message
+        const errorMessage = error.response?.data?.error || "Failed to update project."
+        const errorDetails = error.response?.data?.details
+        
+        if (errorDetails) {
+          console.error("📥 EditProjectForm: Validation error details:", errorDetails)
+          toast.error(`${errorMessage} Check console for validation details.`)
+        } else {
+          toast.error(errorMessage)
+        }
+      } else {
+        console.error("📥 EditProjectForm: Non-axios error:", error)
+        toast.error("An unexpected error occurred.")
+      }
     } finally {
+      console.log("🏁 EditProjectForm: Update process finished")
       setIsSaving(false)
+      onLoadingChange?.(false)
     }
   }
 
   const isFormValid = () => {
-    const hasBasicInfo = projectName && projectDescription
-    const hasValidBudget = projectType === "personal" || (budget || 0) > 0
-    const hasValidDeliverables = !deliverablesEnabled || (deliverables || []).every((d) => d.name)
-    const hasValidPayment =
-      paymentStructure === "noPayment" ||
-      ((paymentStructure === "milestonePayment" || paymentStructure === "deliverablePayment") && getTotalPercentage() === 100) ||
-      paymentStructure === "fullDownPayment" ||
-      paymentStructure === "paymentOnCompletion"
-    const hasAgreement = !serviceAgreementEnabled || hasAgreedToTerms
-
-    return hasBasicInfo && hasValidBudget && hasValidDeliverables && hasValidPayment && hasAgreement
+    // Use the form's built-in validation instead of custom logic
+    return form.formState.isValid && !form.formState.isValidating
   }
 
   const getSectionIcon = (section: string) => {
@@ -627,7 +592,6 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
     }
   }
 
-  // Updated getSectionStatus function to make start/end dates optional and deliverables optional
   const getSectionStatus = (section: string) => {
     switch (section) {
       case "customer":
@@ -637,10 +601,20 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
       case "budget":
         return projectType === "personal" || (budget || 0) > 0 ? "complete" : "incomplete"
       case "deliverables":
-        return !deliverablesEnabled || (deliverables || []).every((d) => d.name) ? "complete" : "incomplete"
+        const deliverablesValid = !deliverablesEnabled || ((deliverables || []).length > 0 && (deliverables || []).every((d) => {
+          const hasName = !!d.name && d.name.trim().length > 0
+          const hasDueDate = !!d.dueDate
+          console.log(`📊 Deliverable validation: Name="${d.name}" (${hasName}), DueDate="${d.dueDate}" (${hasDueDate})`)
+          console.log(`📊 Deliverable full object:`, d)
+          return hasName && hasDueDate
+        }))
+        console.log(`📊 Deliverables section status: ${deliverablesValid ? "complete" : "incomplete"}`)
+        console.log(`📊 Deliverables enabled: ${deliverablesEnabled}, Deliverables count: ${(deliverables || []).length}`)
+        return deliverablesValid ? "complete" : "incomplete"
       case "payment":
         return paymentStructure === "noPayment" ||
-          ((paymentStructure === "milestonePayment" || paymentStructure === "deliverablePayment") && getTotalPercentage() === 100) ||
+          ((paymentStructure === "milestonePayment" || paymentStructure === "deliverablePayment") &&
+            getTotalPercentage() === 100) ||
           paymentStructure === "fullDownPayment" ||
           paymentStructure === "paymentOnCompletion"
           ? "complete"
@@ -652,7 +626,6 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
     }
   }
 
-  // Drag and drop handlers - Updated to handle positions
   const handleDragStart = (e: React.DragEvent, deliverableId: string) => {
     setDraggedItem(deliverableId)
     e.dataTransfer.effectAllowed = "move"
@@ -671,27 +644,19 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
 
   const handleDrop = (e: React.DragEvent, targetId: string) => {
     e.preventDefault()
-
     if (!draggedItem || draggedItem === targetId || !targetId) {
       setDraggedItem(null)
       setDragOverItem(null)
       return
     }
-
     try {
       const draggedIndex = deliverableFields.findIndex((d) => d.id === draggedItem)
       const targetIndex = deliverableFields.findIndex((d) => d.id === targetId)
-
       if (draggedIndex === -1 || targetIndex === -1) return
-
       moveDeliverable(draggedIndex, targetIndex)
-
-      // Reassign positions based on  order
       const newDeliverablesOrder = form.getValues("deliverables") || []
       const reorderedDeliverables = reassignPositions(newDeliverablesOrder)
       form.setValue("deliverables", reorderedDeliverables, { shouldDirty: true })
-
-      // Update payment milestones if needed
       if (form.getValues("paymentStructure") === "deliverablePayment") {
         updatePaymentMilestonesFromDeliverables()
       }
@@ -708,185 +673,129 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
     setDragOverItem(null)
   }
 
-  // Call onLoadingChange when form submission starts/ends
-  const handleSubmit = async (data: any) => {
-    try {
-      onLoadingChange?.(true);
-      const values = form.getValues()
-
-      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
-        ...d,
-        id: d.id || "",
-        name: d.name,
-        description: d.description,
-        dueDate: d.dueDate, 
-        position: d.position || 0,
-        isPublished: d.isPublished || false,
-      }));
-      
-      const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones) 
-        ? values.paymentMilestones.map(m => ({
-            ...m,
-            id: m.id,
-            name: m.name,
-            percentage: m.percentage,
-            amount: m.amount,
-            dueDate: m.dueDate,
-          }))
-        : [];
-
-      const customFieldsData = (values.customFields?.name && values.customFields?.value) 
-        ? values.customFields 
-        : undefined;
-
-      const projectData = {
-        ...values,
-        startDate: values.startDate,
-        endDate: values.endDate,
-        deliverables: deliverablesData,
-        paymentMilestones: milestonesData,
-        customFields: customFieldsData,
-        isPublished: false,
-        state: "draft",
-      }
-
-      const response = await axios.post("/api/projects/create", projectData)
-
-      if (response.data.success) {
-        toast.success("Draft saved successfully!")
-        // Redirecting to the project's edit page to avoid duplicate key issues.
-        const projectId = response.data.data.id;
-        router.push(`/protected/projects/${projectId}`);
-      } else {
-        toast.error("Failed to save draft.", {
-          description: response.data.error || "An unknown error occurred.",
-        })
-      }
-      onSuccess?.(); // Call this on successful submission
-    } catch (error) {
-      console.error("Error saving draft:", error)
-      const errorDescription =
-        axios.isAxiosError(error) && error.response?.data?.error
-          ? error.response.data.error
-          : "An unexpected error occurred. Please try again."
-      toast.error("Error saving draft.", {
-        description: errorDescription,
-      })
-    } finally {
-      onLoadingChange?.(false);
-    }
-  };
+  const STEPS = [
+    { id: 'customer', name: 'Customer', icon: User, status: getSectionStatus('customer') },
+    { id: 'project', name: 'Project', icon: FileText, status: getSectionStatus('project') },
+    { id: 'deliverables', name: 'Deliverables', icon: Package, status: getSectionStatus('deliverables') },
+    { id: 'payment', name: 'Payment', icon: CreditCard, status: getSectionStatus('payment') },
+    { id: 'agreement', name: 'Agreement', icon: Handshake, status: getSectionStatus('agreement') },
+  ];
 
   return (
     <div className="min-h-screen">
-      <div className=" mx-auto">
-
-        {/* Progress Summary - Moved to top */}
+      {/* Fixed Header */}
+     {/* Progress Summary - Moved to top */}
         <Card className="mb-4">
-          <CardHeader>
-            <CardTitle className="text-lg">Project Creation Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {(() => {
-              const sections = [
-                { key: "customer", label: "Customer" },
-                { key: "project", label: "Project" },
-                ...(projectType === "customer" ? [{ key: "budget", label: "Budget" }] : []),
-                { key: "deliverables", label: "Deliverables" },
-                { key: "payment", label: "Payment" },
-                { key: "agreement", label: "Agreement" },
-              ]
-              
-              const completedSections = sections.filter(({ key }) => getSectionStatus(key) === "complete").length
-              const totalSections = sections.length
-              const progressPercentage = Math.round((completedSections / totalSections) * 100)
+            <CardHeader>
+              <CardTitle className="text-lg">Project Creation Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const sections = [
+                  { key: "customer", label: "Customer" },
+                  { key: "project", label: "Project" },
+                  ...(projectType === "customer" ? [{ key: "budget", label: "Budget" }] : []),
+                  { key: "deliverables", label: "Deliverables" },
+                  { key: "payment", label: "Payment" },
+                  { key: "agreement", label: "Agreement" },
+                ]
+                
+                const completedSections = sections.filter(({ key }) => getSectionStatus(key) === "complete").length
+                const totalSections = sections.length
+                const progressPercentage = Math.round((completedSections / totalSections) * 100)
 
-              return (
-                <div className="">
-                  {/* Desktop Layout */}
-                  <div className="hidden md:flex md:justify-center">
-                    <div className="flex items-center justify-center gap-8 max-w-4xl">
-                      {sections.map(({ key, label }) => (
-                        <div key={key} className="text-center">
-                          <div
-                            className={`w-10 h-10 rounded-full mx-auto mb-3 flex items-center justify-center transition-all duration-300 ${
-                              getSectionStatus(key) === "complete" 
-                                ? "bg-green-500  shadow-lg scale-110" 
-                                : "bg-gray-200"
-                            }`}
-                          >
-                            {getSectionStatus(key) === "complete" ? (
-                              <CheckCircle className="h-5 w-5 text-white" />
-                            ) : (
-                              getSectionIcon(key)
-                            )}
+                return (
+                  <div className="">
+                    {/* Desktop Layout */}
+                    <div className="hidden md:flex md:justify-center">
+                      <div className="flex items-center justify-center gap-8 max-w-4xl">
+                        {sections.map(({ key, label }) => (
+                          <div key={key} className="text-center">
+                            <div
+                              className={`w-10 h-10 rounded-full mx-auto mb-3 flex items-center justify-center transition-all duration-300 ${
+                                getSectionStatus(key) === "complete" 
+                                  ? "bg-green-500  shadow-lg scale-110" 
+                                  : "bg-gray-200"
+                              }`}
+                            >
+                              {getSectionStatus(key) === "complete" ? (
+                                <CheckCircle className="h-5 w-5 text-white" />
+                              ) : (
+                                getSectionIcon(key)
+                              )}
+                            </div>
+                            <span className={`text-sm font-medium ${
+                              getSectionStatus(key) === "complete" ? "text-green-600" : ""
+                            }`}>
+                              {label}
+                            </span>
                           </div>
-                          <span className={`text-sm font-medium ${
-                            getSectionStatus(key) === "complete" ? "text-green-600" : ""
-                          }`}>
-                            {label}
-                          </span>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Mobile Layout - Horizontal */}
-                  <div className="md:hidden">
-                    <div className="flex justify-between items-center mb-4">
-                      {sections.map(({ key, label }) => (
-                        <div key={key} className="text-center flex-1">
-                          <div
-                            className={`w-4 h-4 rounded-full mx-auto flex items-center justify-center transition-all duration-300 ${
-                              getSectionStatus(key) === "complete" 
-                                ? "bg-green-500 text-white shadow-md" 
-                                : "bg-gray-200 text-gray-600"
-                            }`}
-                          >
-                            {getSectionStatus(key) === "complete" ? (
-                              <CheckCircle className="h-4 w-4" />
-                            ) : (
-                              <div className="h-4 w-4 flex items-center justify-center">
-                                {getSectionIcon(key)}
-                              </div>
-                            )}
+                    {/* Mobile Layout - Horizontal */}
+                    <div className="md:hidden">
+                      <div className="flex justify-between items-center mb-4">
+                        {sections.map(({ key, label }) => (
+                          <div key={key} className="text-center flex-1">
+                            <div
+                              className={`w-4 h-4 rounded-full mx-auto flex items-center justify-center transition-all duration-300 ${
+                                getSectionStatus(key) === "complete" 
+                                  ? "bg-green-500 text-white shadow-md" 
+                                  : "bg-gray-200 text-gray-600"
+                              }`}
+                            >
+                              {getSectionStatus(key) === "complete" ? (
+                                <CheckCircle className="h-4 w-4" />
+                              ) : (
+                                <div className="h-4 w-4 flex items-center justify-center">
+                                  {getSectionIcon(key)}
+                                </div>
+                              )}
+                            </div>
+                            <span className={`text-[9px] font-light ${
+                              getSectionStatus(key) === "complete" ? "text-green-600" : "text-gray-600"
+                            }`}>
+                              {label}
+                            </span>
                           </div>
-                          <span className={`text-[9px] font-light ${
-                            getSectionStatus(key) === "complete" ? "text-green-600" : "text-gray-600"
-                          }`}>
-                            {label}
-                          </span>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Progress Bar and Stats */}
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-medium ">Progress</span>
-                      <span className="text-[9px] font-medium ">
-                        {completedSections} of {totalSections} complete
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-500 h-2 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${progressPercentage}%` }}
-                      ></div>
+                    {/* Progress Bar and Stats */}
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-medium ">Progress</span>
+                        <span className="text-[9px] font-medium ">
+                          {completedSections} of {totalSections} complete
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-500 h-2 rounded-full transition-all duration-500 ease-out"
+                          style={{ width: `${progressPercentage}%` }}
+                        ></div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })()}
-          </CardContent>
+                )
+              })()}
+            </CardContent>
         </Card>
+      
+      {/* Scrollable Form Content */}
 
 
-          <Form {...form}>
-            <form >
-              {/* Accordion Sections */}
-              <div className="space-y-4">
+          {isLoadingProject ? (
+            <div>Loading...</div>
+          ) : !project ? (
+            <div>Project could not be loaded.</div>
+          ) : (
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleUpdate)} id="edit-project-form" className="space-y-4">
+                {/* Accordion Sections go here... */}
                 {/* Customer Selection */}
                 <Card>
                   <Collapsible open={openSections.customer} onOpenChange={() => toggleSection("customer")}>
@@ -978,8 +887,8 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                     <CollapsibleContent>
                       <CardContent className="pt-0">
                         <div className="space-y-4">
-                          <FormField
-                            control={form.control}
+        <FormField
+          control={form.control}
                             name="type"
                             render={({ field }) => (
                               <FormItem className="flex items-center space-x-4 mb-4">
@@ -1021,10 +930,10 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                             <FormField
                               control={form.control}
                               name="customerId"
-                              render={({ field }) => (
-                                <FormItem>
+          render={({ field }) => (
+            <FormItem>
                                   <FormLabel>Select Customer</FormLabel>
-                                  <FormControl>
+              <FormControl>
                                     <Sheet
                                       open={isCreateCustomerSheetOpen}
                                       onOpenChange={setCreateCustomerSheetOpen}
@@ -1107,16 +1016,16 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                         </SheetFooter>
                                       </SheetContent>
                                     </Sheet>
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
                           )}
 
                           <div className="space-y-2">
-                            <FormField
-                              control={form.control}
+        <FormField
+          control={form.control}
                               name="currencyEnabled"
                               render={({ field }) => (
                                 <FormItem className="flex items-center space-x-3">
@@ -1146,10 +1055,10 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                               <FormField
                                 control={form.control}
                                 name="currency"
-                                render={({ field }) => (
-                                  <FormItem>
+          render={({ field }) => (
+            <FormItem>
                                     <FormLabel>Currency</FormLabel>
-                                    <FormControl>
+              <FormControl>
                                       <ComboBox
                                         items={currencies.map((c) => ({
                                           ...c,
@@ -1162,12 +1071,12 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                         placeholder="Select currency..."
                                         searchPlaceholder="Search by code or name..."
                                         emptyMessage="No currency found."
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
                             )}
                           </div>
                         </div>
@@ -1246,38 +1155,38 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                       <CardContent className="pt-0">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
-                            <FormField
-                              control={form.control}
+        <FormField
+          control={form.control}
                               name="name"
-                              render={({ field }) => (
-                                <FormItem>
+          render={({ field }) => (
+            <FormItem>
                                   <FormLabel>Project Name *</FormLabel>
-                                  <FormControl>
+                <FormControl>
                                     <Input {...field} placeholder="Enter project name" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
                           </div>
                           <div className="md:col-span-2">
-                            <FormField
-                              control={form.control}
+        <FormField
+          control={form.control}
                               name="description"
-                              render={({ field }) => (
-                                <FormItem>
+          render={({ field }) => (
+            <FormItem>
                                   <FormLabel>Project Description *</FormLabel>
-                                  <FormControl>
+                <FormControl>
                                     <Textarea
                                       {...field}
                                       placeholder="Describe the project scope and objectives"
                                       rows={3}
                                     />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
                           </div>
                           <FormField
                             control={form.control}
@@ -1427,19 +1336,19 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                       <CollapsibleContent>
                         <CardContent className="pt-0">
                           <div className="space-y-4">
-                            <FormField
-                              control={form.control}
-                              name="budget"
-                              render={({ field }) => (
-                                <FormItem>
+          <FormField
+            control={form.control}
+            name="budget"
+            render={({ field }) => (
+              <FormItem>
                                   <FormLabel>Total Project Budget *</FormLabel>
-                                  <FormControl>
+                <FormControl>
                                     <div className="relative">
-                                      <Input
-                                        type="number"
+                  <Input 
+                    type="number" 
                                         min="0"
                                         step="0.01"
-                                        {...field}
+                    {...field} 
                                         value={field.value || ""}
                                         onChange={(e) => {
                                           const value = e.target.value === "" ? 0 : Number.parseFloat(e.target.value) || 0
@@ -1459,14 +1368,14 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                         {currencyEnabled ? selectedCurrency : "$"}
                                       </span>
                                     </div>
-                                  </FormControl>
+                </FormControl>
                                   <p className="text-sm  mt-1">
                                     This budget will be used to calculate payment amounts automatically based on percentages.
                                   </p>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
                           </div>
                         </CardContent>
                       </CollapsibleContent>
@@ -1559,12 +1468,12 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                     <CollapsibleContent>
                       <CardContent className="pt-0">
                         <div className="space-y-4">
-                          <FormField
-                            control={form.control}
+          <FormField
+            control={form.control}
                             name="deliverablesEnabled"
-                            render={({ field }) => (
+            render={({ field }) => (
                               <FormItem className="flex items-center space-x-3">
-                                <FormControl>
+                  <FormControl>
                                   <Switch
                                     id="deliverablesEnabled"
                                     checked={field.value}
@@ -1573,7 +1482,7 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                       setDeliverablesEnabledWithUpdates(value)
                                     }}
                                   />
-                                </FormControl>
+                  </FormControl>
                                 <FormLabel
                                   htmlFor="deliverablesEnabled"
                                   className={`cursor-pointer transition-all duration-300 ease-in-out ${
@@ -1584,9 +1493,9 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                 >
                                   Enable Deliverables
                                 </FormLabel>
-                              </FormItem>
-                            )}
-                          />
+              </FormItem>
+            )}
+          />
 
                           {deliverablesEnabled && (
                             <>
@@ -1595,7 +1504,7 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                   💡 <strong>Tip:</strong> Drag and drop deliverables using the grip handle to reorder them.
                                   Positions are automatically saved.
                                 </p>
-                              </div>
+        </div>
                               {deliverableFields
                                 .filter(Boolean)
                                 .map((deliverable, index) => {
@@ -1648,15 +1557,15 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                       </div>
                                       <div className="space-y-3">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-                                          <FormField
-                                            control={form.control}
+        <FormField
+          control={form.control}
                                             name={`deliverables.${index}.name`}
-                                            render={({ field }) => (
-                                              <FormItem>
+          render={({ field }) => (
+            <FormItem>
                                                 <FormLabel>Name</FormLabel>
-                                                <FormControl>
+                <FormControl>
                                                   <Input {...field} placeholder="Deliverable name" />
-                                                </FormControl>
+                </FormControl>
                                               </FormItem>
                                             )}
                                           />
@@ -1692,19 +1601,27 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                                     />
                                                   </PopoverContent>
                                                 </Popover>
-                                                <FormMessage />
-                                              </FormItem>
-                                            )}
-                                          />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
                                         </div>
                                         <FormField
                                           control={form.control}
                                           name={`deliverables.${index}.description`}
-                                          render={({ field }) => (
+                                          render={({ field: { value, onChange, onBlur, name, ref } }) => (
                                             <FormItem>
                                               <FormLabel>Description</FormLabel>
                                               <FormControl>
-                                                <Textarea {...field} placeholder="Brief description" rows={2} value={field.value || ''} />
+                                                <Textarea 
+                                                  value={value || ""} 
+                                                  onChange={onChange}
+                                                  onBlur={onBlur}
+                                                  name={name}
+                                                  ref={ref}
+                                                  placeholder="Brief description" 
+                                                  rows={2} 
+                                                />
                                               </FormControl>
                                             </FormItem>
                                           )}
@@ -1757,7 +1674,7 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                 className={getSectionStatus("payment") === "complete" 
                                   ? "bg-purple-600 text-white" 
                                   : "bg-yellow-100 text-yellow-800"
-                                }
+                              }
                               >
                                 {paymentStructure === "noPayment" ? "No Payment" : `${getTotalPercentage()}%`}
                               </Badge>
@@ -1813,11 +1730,11 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                       <CardContent className="pt-0">
                         <div className="space-y-4">
                           <div>
-                            <FormField
-                              control={form.control}
-                              name="paymentStructure"
-                              render={({ field }) => (
-                                <FormItem>
+        <FormField
+          control={form.control}
+          name="paymentStructure"
+          render={({ field }) => (
+            <FormItem>
                                   <FormLabel>Payment Type</FormLabel>
                                   <FormControl>
                                     <Select
@@ -1828,12 +1745,12 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                       defaultValue={field.value}
                                       disabled={projectType === "personal"}
                                     >
-                                      <FormControl>
-                                        <SelectTrigger>
+                <FormControl>
+                  <SelectTrigger>
                                           <SelectValue />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
                                         <SelectItem value="noPayment">No payment required</SelectItem>
                                         <SelectItem value="milestonePayment">Milestone-based payments</SelectItem>
                                         {deliverablesEnabled && (
@@ -1841,12 +1758,12 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                         )}
                                         <SelectItem value="fullDownPayment">Full payment upfront</SelectItem>
                                         <SelectItem value="paymentOnCompletion">Payment on completion</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                </SelectContent>
+              </Select>
                                   </FormControl>
-                                </FormItem>
-                              )}
-                            />
+            </FormItem>
+          )}
+        />
                           </div>
 
                           {paymentStructure === "milestonePayment" && (
@@ -1885,25 +1802,25 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                       projectType === "customer" && (budget || 0) > 0 ? "md:grid-cols-4" : "md:grid-cols-3"
                                     } gap-3 items-end`}
                                   >
-                                    <FormField
-                                      control={form.control}
+          <FormField
+            control={form.control}
                                       name={`paymentMilestones.${index}.name`}
-                                      render={({ field }) => (
-                                        <FormItem>
+            render={({ field }) => (
+              <FormItem>
                                           <FormLabel>Name</FormLabel>
-                                          <FormControl>
+                <FormControl>
                                             <Input {...field} value={field.value || ""} placeholder="Milestone name" />
-                                          </FormControl>
-                                        </FormItem>
-                                      )}
-                                    />
-                                    <FormField
-                                      control={form.control}
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
                                       name={`paymentMilestones.${index}.percentage`}
-                                      render={({ field }) => (
-                                        <FormItem>
+            render={({ field }) => (
+              <FormItem>
                                           <FormLabel>Percentage</FormLabel>
-                                          <FormControl>
+                <FormControl>
                                             <Input
                                               type="number"
                                               min="0"
@@ -1916,7 +1833,7 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                               }}
                                               placeholder="Enter percentage"
                                             />
-                                          </FormControl>
+                </FormControl>
                                         </FormItem>
                                       )}
                                     />
@@ -1984,11 +1901,11 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                               />
                                             </PopoverContent>
                                           </Popover>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-                                  </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
                                 </div>
                               ))}
                               <Button type="button"  onClick={addPaymentMilestone} className="w-full">
@@ -1999,7 +1916,7 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                           )}
 
                           {paymentStructure === "deliverablePayment" && deliverablesEnabled && (
-                            <div className="space-y-4">
+        <div className="space-y-4">
                               <div className="flex items-center justify-between">
                                 <span className="font-medium">Deliverable-Based Payments</span>
                                 <div className="flex items-center gap-2">
@@ -2067,13 +1984,13 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                         projectType === "customer" && (budget || 0) > 0 ? "md:grid-cols-3" : "md:grid-cols-2"
                                       } gap-3 items-end`}
                                     >
-                                      <FormField
-                                        control={form.control}
+          <FormField
+            control={form.control}
                                         name={`paymentMilestones.${index}.percentage`}
-                                        render={({ field }) => (
+            render={({ field }) => (
                                           <FormItem>
                                             <FormLabel>Percentage</FormLabel>
-                                            <FormControl>
+                <FormControl>
                                               <Input
                                                 type="number"
                                                 min="0"
@@ -2086,8 +2003,8 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                                 }}
                                                 className={getTotalPercentage() !== 100 ? "border-red-300" : ""}
                                                 placeholder="Enter percentage"
-                                              />
-                                            </FormControl>
+                  />
+                </FormControl>
                                           </FormItem>
                                         )}
                                       />
@@ -2117,11 +2034,11 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                                   <span className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
                                                     {currencyEnabled ? selectedCurrency : "$"}
                                                   </span>
-                                                </div>
+                </div>
                                               </FormControl>
-                                            </FormItem>
-                                          )}
-                                        />
+              </FormItem>
+            )}
+          />
                                       )}
                                       <FormField
                                         control={form.control}
@@ -2242,19 +2159,19 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                     <CollapsibleContent>
                       <CardContent className="pt-0">
                         <div className="space-y-4">
-                          <FormField
-                            control={form.control}
+          <FormField
+            control={form.control}
                             name="hasServiceAgreement"
-                            render={({ field }) => (
+            render={({ field }) => (
                               <FormItem className="flex items-center space-x-3">
-                                <FormControl>
+                <FormControl>
                                   <Switch
                                     id="serviceAgreement"
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
                                     disabled={projectType === "personal"}
-                                  />
-                                </FormControl>
+                  />
+                </FormControl>
                                 <FormLabel
                                   htmlFor="serviceAgreement"
                                   className={`cursor-pointer transition-all duration-300 ease-in-out ${
@@ -2265,17 +2182,17 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                 >
                                   Enable Service Agreement
                                 </FormLabel>
-                              </FormItem>
-                            )}
-                          />
+              </FormItem>
+            )}
+          />
 
                           {serviceAgreementEnabled && projectType === "customer" && (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
-                                <FormField
-                                  control={form.control}
+          <FormField
+            control={form.control}
                                   name="agreementTemplate"
-                                  render={({ field }) => (
+            render={({ field }) => (
                                     <FormItem>
                                       <FormLabel>Agreement Template</FormLabel>
                                       <Select
@@ -2400,11 +2317,11 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                         }}
                                         defaultValue={field.value}
                                       >
-                                        <FormControl>
+                <FormControl>
                                           <SelectTrigger className="w-48">
                                             <SelectValue placeholder="Select a template" />
                                           </SelectTrigger>
-                                        </FormControl>
+                </FormControl>
                                         <SelectContent>
                                           <SelectItem value="standard">Standard Agreement</SelectItem>
                                           <SelectItem value="consulting">Consulting Agreement</SelectItem>
@@ -2412,22 +2329,22 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                           <SelectItem value="custom">Custom Agreement</SelectItem>
                                         </SelectContent>
                                       </Select>
-                                    </FormItem>
-                                  )}
-                                />
+              </FormItem>
+            )}
+          />
                                 <Button type="button" variant="outlinebrimary" onClick={() => setIsEditingAgreement(!isEditingAgreement)}>
                                   {isEditingAgreement ? "Preview" : "Edit Agreement"}
                                 </Button>
-                              </div>
+        </div>
 
                               {isEditingAgreement ? (
-                                <FormField
-                                  control={form.control}
+        <FormField
+          control={form.control}
                                   name="serviceAgreement"
-                                  render={({ field }) => (
-                                    <FormItem>
+          render={({ field }) => (
+            <FormItem>
                                       <FormLabel>Agreement Content</FormLabel>
-                                      <FormControl>
+              <FormControl>
                                         <TipTapEditor content={field.value || ""} onChange={field.onChange} />
                                       </FormControl>
                                       <FormMessage />
@@ -2457,16 +2374,16 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                                           checked={field.value}
                                           onCheckedChange={field.onChange}
                                           variant="agreement"
-                                        />
-                                      </FormControl>
+                />
+              </FormControl>
                                       <Label htmlFor="agreeTerms" className="text-sm text-primary">
                                         I agree to the service agreement terms and conditions
                                       </Label>
                                     </div>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
                             </div>
                           )}
                         </div>
@@ -2474,32 +2391,77 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                     </CollapsibleContent>
                   </Collapsible>
                 </Card>
-              </div>
-            </form>
-          </Form>
+         
+              </form>
+            </Form>
+          )}
 
-        {/* Action Buttons */}
-        <div className="mt-8 flex justify-center gap-2 sm:gap-4">
-           <Button variant="ghost" onClick={onCancel}>
-             Cancel
-           </Button>
-          <Button variant="outlinebrimary" onClick={handleSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
-            <Save className="h-4 w-4 mr-2" />
-            {isSaving ? "Saving..." : "Save Draft"}
+
+      {/* Fixed Footer */}
+      {!isLoadingProject && project && (
+        <div className="flex-shrink-0 p-4 border-t bg-background z-10 flex justify-end gap-2 sm:gap-4">
+          <Button variant="ghost" onClick={onCancel} disabled={isSaving}>
+            Cancel
           </Button>
+
+          {project?.state === "published" ? (
+            <Button
+              variant="outlinebrimary"
+              onClick={() => {
+                console.log("🔄 EditProjectForm: Unpublish button clicked")
+                const values = form.getValues()
+                console.log("📊 EditProjectForm: Form values from getValues:", JSON.stringify(values, null, 2))
+                handleUpdate({ ...values, state: "draft", isPublished: false })
+              }}
+              disabled={isSaving}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isSaving ? "Saving..." : "Unpublish"}
+            </Button>
+          ) : (
+            <Button
+              variant="outlinebrimary"
+              onClick={() => {
+                console.log("🔄 EditProjectForm: Save Draft button clicked")
+                const values = form.getValues()
+                console.log("📊 EditProjectForm: Form values from getValues:", JSON.stringify(values, null, 2))
+                handleUpdate({ ...values, state: "draft", isPublished: false })
+              }}
+              disabled={isSaving}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isSaving ? "Saving..." : "Save Draft"}
+            </Button>
+          )}
 
           <div className="inline-flex rounded-md shadow-sm">
             <Button
-              onClick={() => handlePublishProject(false)}
-              disabled={!isFormValid() || isSaving}
+              onClick={() => {
+                console.log("🔄 EditProjectForm: Publish/Update button clicked")
+                form.trigger().then((isValid) => {
+                  console.log("📊 EditProjectForm: Form validation result:", isValid)
+                  console.log("📊 EditProjectForm: Form state:", form.formState)
+                  console.log("📊 EditProjectForm: Form errors:", form.formState.errors)
+                  if (isValid) {
+                    const values = form.getValues()
+                    console.log("📊 EditProjectForm: Form values for publish:", JSON.stringify(values, null, 2))
+                    handleUpdate({ ...values, state: "published", isPublished: true })
+                  } else {
+                    console.error("❌ EditProjectForm: Form validation failed")
+                    console.error("📊 EditProjectForm: Validation errors:", form.formState.errors)
+                    toast.error("Please complete all required sections.")
+                  }
+                })
+              }}
+              disabled={isSaving}
               className="rounded-r-none px-3 sm:px-4"
             >
-              {isSaving ? "Publishing..." : "Publish Project"}
+              {isSaving ? "Updating..." : project?.state === 'published' ? 'Update Project' : 'Publish Project'}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  disabled={!isFormValid() || isSaving}
+                  disabled={isSaving}
                   className="rounded-l-none border-l border-purple-700 px-3"
                 >
                   <span className="sr-only">Open options</span>
@@ -2507,18 +2469,51 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handlePublishProject(false)}>Publish Project</DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => handlePublishProject(true)}
-                  disabled={projectType !== "customer" || !selectedCustomer}
+                  onClick={() => {
+                    console.log("🔄 EditProjectForm: Dropdown - Update Project clicked")
+                    form.trigger().then((isValid) => {
+                      console.log("📊 EditProjectForm: Form validation result:", isValid)
+                      if (isValid) {
+                        const values = form.getValues()
+                        console.log("📊 EditProjectForm: Form values for update:", JSON.stringify(values, null, 2))
+                        handleUpdate({ ...values, state: "published", isPublished: true, emailToCustomer: false })
+                      } else {
+                        console.error("❌ EditProjectForm: Form validation failed")
+                        console.error("📊 EditProjectForm: Validation errors:", form.formState.errors)
+                        toast.error("Please complete all required sections.")
+                      }
+                    })
+                  }}
+                  disabled={isSaving}
                 >
-                  Publish & Email to Customer
+                  {project?.state === 'published' ? 'Update Project' : 'Publish Project'}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    console.log("🔄 EditProjectForm: Dropdown - Update & Resend clicked")
+                    form.trigger().then((isValid) => {
+                      console.log("📊 EditProjectForm: Form validation result:", isValid)
+                      if (isValid) {
+                        const values = form.getValues()
+                        console.log("📊 EditProjectForm: Form values for update & resend:", JSON.stringify(values, null, 2))
+                        handleUpdate({ ...values, state: "published", isPublished: true, emailToCustomer: true })
+                      } else {
+                        console.error("❌ EditProjectForm: Form validation failed")
+                        console.error("📊 EditProjectForm: Validation errors:", form.formState.errors)
+                        toast.error("Please complete all required sections.")
+                      }
+                    })
+                  }}
+                  disabled={projectType !== "customer" || !selectedCustomer || isSaving}
+                >
+                  {project?.state === 'published' ? 'Update & Resend' : 'Publish & Send to Customer'}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
-}
+} 

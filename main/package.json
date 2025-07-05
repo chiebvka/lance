@@ -32,6 +32,7 @@
     "@sendgrid/mail": "^8.1.5",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
+    "@tanstack/react-query": "^5.81.5",
     "@tanstack/react-table": "^8.21.3",
     "@tiptap/extension-blockquote": "^2.14.1",
     "@tiptap/extension-code": "^2.14.0",

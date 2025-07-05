@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { z } from "zod";
 
-import PageHeaderWrapper from '@/components/page-header-wrapper';
+import CreateSearchFilter from '@/components/general/create-search-filter';
 import CustomerForm from './customer-form';
 import customerSchema from '@/validation/customer';
 import { Button } from '@/components/ui/button';
@@ -44,12 +44,12 @@ export default function CreateCustomerView({ onSearch }: Props) {
 
   return (
     <div className='w-full'>
-      <PageHeaderWrapper 
+      <CreateSearchFilter 
         placeholder='Search Customers...'
-        buttonText='New Customer'
-        sheetTitle='New Customer'
         onSearch={onSearch}
-        formComponent={<CustomerForm onSuccess={handleSuccess} onLoadingChange={setIsSubmitting} />}
+        sheetTriggerText='New Customer'
+        sheetTitle='New Customer'
+        sheetContent={<CustomerForm onSuccess={handleSuccess} onLoadingChange={setIsSubmitting} />}
         sheetContentClassName='w-full sm:w-3/4 md:w-1/2 lg:w-[40%]'
         footer={footer}
       />
