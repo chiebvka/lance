@@ -1,6 +1,7 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
+import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowUpDown, MoreHorizontal } from "lucide-react"
@@ -13,29 +14,32 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { DataTableColumnHeader } from "./data-table-column-header"
+import { Checkbox } from "@/components/ui/checkbox"
+import { DataTableRowActions } from "./data-table-row-actions"
 
+import { labels, priorities, statuses } from "../data/data"
 
-// Define the Project type based on our API response
-export type Project = {
+const paymentTypeOptions = [
+  { value: 'milestonePayment', label: 'Milestone' },
+  { value: 'deliverablePayment', label: 'Deliverable' },
+  { value: 'fullDownPayment', label: 'Full Payment Upfront' },
+  { value: 'paymentOnCompletion', label: 'Payment on Completion' },
+  { value: 'noPaymentRequired', label: 'No Payment' }
+];
+
+export interface Project {
   id: string
-  name: string
-  description: string
-  type: string
-  customerName: string
-  customerId: string | null
-  budget: number
-  currency: string
-  budgetFormatted: string
-  hasServiceAgreement: boolean
-  status: string
-  paymentType: string
-  startDate: string | null
+  name: string | null
+  description: string | null
+  type: "personal" | "customer" | null
+  customerName?: string | null
+  budget: number | null
+  currency: string | null
+  hasServiceAgreement: boolean | null
+  paymentType: string | null
   endDate: string | null
-  startDateFormatted: string
-  endDateFormatted: string
-  created_at: string
-  createdAtFormatted: string
-  customers: { name: string } | null
+  state: "draft" | "published" | null
+  created_at: string | null
 }
 
 const getStatusColor = (status: string) => {
@@ -72,175 +76,196 @@ const getPaymentTypeColor = (paymentType: string) => {
 
 export const columns: ColumnDef<Project>[] = [
   {
+    id: "select",
+    header: ({ table }) => (
+      <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="translate-y-[2px]"
+        />
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className="translate-y-[2px]"
+        />
+      </div>
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
     accessorKey: "name",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 p-0 font-medium"
-        >
-          Project Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
-    },
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Project Name" />
+    ),
     cell: ({ row }) => {
       return (
-        <div className="font-medium">
-          {row.getValue("name")}
+        <div className="flex space-x-2">
+          <span className="max-w-[500px] truncate font-medium">
+            {row.getValue("name")}
+          </span>
         </div>
       )
     },
   },
   {
     accessorKey: "description",
-    header: "Description",
-    cell: ({ row }) => {
-      const description = row.getValue("description") as string
-      return (
-        <div className="max-w-[200px] truncate" title={description}>
-          {description}
-        </div>
-      )
-    },
-  },
-  {
-    accessorKey: "type",
-    header: "Type",
-    cell: ({ row }) => {
-      return (
-        <Badge variant="outline" className="capitalize">
-          {row.getValue("type")}
-        </Badge>
-      )
-    },
-  },
-  {
-    accessorKey: "customerId",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Customer" />
+      <DataTableColumnHeader column={column} title="Description" />
     ),
     cell: ({ row }) => {
-      const projectType = row.original.type;
-      const customer = row.original.customers; // Assuming 'customers' object is fetched
-
-      if (projectType === 'personal') {
-        return <span>Personal</span>;
-      }
-
-      if (customer && customer.name) {
-        return <span>{customer.name}</span>;
-      }
-
-      return <span className="text-muted-foreground">No Customer Assigned</span>;
+      return (
+        <div className="flex w-[100px] items-center">
+          <span>{row.getValue("description")}</span>
+        </div>
+      )
     },
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id))
     },
   },
   {
-    accessorKey: "budgetFormatted",
-    header: ({ column }) => {
+    accessorKey: "type",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Type" />
+    ),
+    cell: ({ row }) => {
+      const type = row.original.type
+      if (!type) return null
+
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 p-0 font-medium"
-        >
-          Budget
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <Badge variant="outline" className="capitalize">
+          {type}
+        </Badge>
       )
     },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
+  },
+  {
+    accessorKey: "customerName",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Customer" />
+    ),
     cell: ({ row }) => {
-      return (
-        <div className="font-medium">
-          {row.getValue("budgetFormatted")}
-        </div>
-      )
+      const type = row.original.type
+      const customerName = row.original.customerName
+
+      if (type === "personal") {
+        return <div className="font-medium">Personal</div>
+      }
+
+      if (customerName) {
+        return <div className="font-medium">{customerName}</div>
+      }
+      
+      return <div className="text-muted-foreground">No Customer Assigned</div>
+    },
+  },
+  {
+    accessorKey: "budget",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Budget" />
+    ),
+    cell: ({ row }) => {
+      const budget = row.original.budget;
+      const currency = row.original.currency;
+
+      if (budget === null || budget === undefined) {
+        return <div>Not set</div>;
+      }
+      
+      const formattedBudget = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || 'USD',
+      }).format(budget);
+
+      return <div className="font-medium">{formattedBudget}</div>;
     },
   },
   {
     accessorKey: "hasServiceAgreement",
-    header: "Service Agreement",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Service Agreement" />
+    ),
     cell: ({ row }) => {
-      const hasAgreement = row.getValue("hasServiceAgreement") as boolean
+      const hasAgreement = row.original.hasServiceAgreement
+      const variant = hasAgreement ? "default" : "secondary"
+      const text = hasAgreement ? "Yes" : "No"
+
       return (
-        <Badge variant={hasAgreement ? "default" : "secondary"}>
-          {hasAgreement ? "Yes" : "No"}
+        <Badge variant={variant} className={hasAgreement ? "bg-purple-600 text-white" : ""}>
+          {text}
         </Badge>
       )
     },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
   },
   {
-    accessorKey: "status",
-    header: "Status",
+    accessorKey: "state",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="State" />
+    ),
     cell: ({ row }) => {
-      const status = row.getValue("status") as string
+      const state = row.original.state
+      if (!state) return null
+
       return (
-        <Badge className={getStatusColor(status)}>
-          {status}
+        <Badge variant={state === 'published' ? 'default' : 'secondary'} className="capitalize">
+          {state}
         </Badge>
       )
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
     },
   },
   {
     accessorKey: "paymentType",
-    header: "Payment Type",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Payment Type" />
+    ),
     cell: ({ row }) => {
-      const paymentType = row.getValue("paymentType") as string
-      return (
-        <Badge className={getPaymentTypeColor(paymentType)}>
-          {paymentType}
-        </Badge>
-      )
+      const paymentType = row.original.paymentType
+      if (!paymentType) return null
+
+      const option = paymentTypeOptions.find(p => p.value === paymentType)
+
+      return <div className="font-medium">{option ? option.label : paymentType}</div>
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
     },
   },
   {
-    accessorKey: "startDateFormatted",
-    header: ({ column }) => {
+    accessorKey: "endDate",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="End Date" />
+    ),
+    cell: ({ row }) => {
+      const endDate = row.original.endDate
+      if (!endDate) return <div>Not set</div>
+
       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 p-0 font-medium"
-        >
-          Start Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <div className="font-medium">{format(new Date(endDate), "P")}</div>
       )
     },
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const project = row.original
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(project.id)}
-            >
-              Copy project ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View project</DropdownMenuItem>
-            <DropdownMenuItem>Edit project</DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
-              Delete project
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
-    },
+    cell: ({ row }) => <DataTableRowActions row={row} />,
   },
 ]

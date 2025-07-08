@@ -9,6 +9,7 @@ import { ThemeProvider } from "next-themes";
 import Link from "next/link";
 import "./globals.css";
 import Header from "@/components/header";
+import QueryProvider from "./_components/QueryProvider";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -39,28 +40,30 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <main className="min-h-screen flex flex-col items-center">
-            <div className="flex-1 w-full flex flex-col gap-20 items-center">
+          <QueryProvider>
+            <main className="min-h-screen flex flex-col items-center">
+              <div className="flex-1 w-full flex flex-col gap-20 items-center">
 
-                {children}
-    
+                  {children}
+      
 
-              <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
-                <p>
-                  Powered by{" "}
-                  <a
-                    href="https://www.bexoni.com/"
-                    target="_blank"
-                    className="font-bold text-bexoni hover:underline"
-                    rel="noreferrer"
-                  >
-                    Bexoni Labs
-                  </a>
-                </p>
-                <ThemeSwitcher />
-              </footer>
-            </div>
-          </main>
+                <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
+                  <p>
+                    Powered by{" "}
+                    <a
+                      href="https://www.bexoni.com/"
+                      target="_blank"
+                      className="font-bold text-bexoni hover:underline"
+                      rel="noreferrer"
+                    >
+                      Bexoni Labs
+                    </a>
+                  </p>
+                  <ThemeSwitcher />
+                </footer>
+              </div>
+            </main>
+          </QueryProvider>
           <Toaster richColors />
         </ThemeProvider>
       </body>

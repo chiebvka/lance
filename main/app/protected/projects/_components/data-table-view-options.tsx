@@ -1,20 +1,33 @@
 "use client"
 
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu"
+import { SlidersHorizontal } from "lucide-react"
 import { Table } from "@tanstack/react-table"
-import { Settings2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface DataTableViewOptionsProps<TData> {
   table: Table<TData>
+}
+
+const columnLabels: Record<string, string> = {
+  name: "Project Name",
+  description: "Description",
+  type: "Type",
+  customerName: "Customer",
+  budget: "Budget",
+  hasServiceAgreement: "Service Agreement",
+  state: "State",
+  paymentType: "Payment Type",
+  endDate: "End Date",
 }
 
 export function DataTableViewOptions<TData>({
@@ -26,13 +39,13 @@ export function DataTableViewOptions<TData>({
         <Button
           variant="outline"
           size="sm"
-          className="ml-auto hidden h-8 lg:flex"
+          className="ml-auto flex h-8"
         >
-          <Settings2 />
+          <SlidersHorizontal className="mr-2 h-4 w-4" />
           View
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[150px]">
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
@@ -43,14 +56,21 @@ export function DataTableViewOptions<TData>({
           )
           .map((column) => {
             return (
-              <DropdownMenuCheckboxItem
+              <DropdownMenuItem
                 key={column.id}
                 className="capitalize"
-                checked={column.getIsVisible()}
-                onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                onSelect={(e) => {
+                  e.preventDefault()
+                  column.toggleVisibility(!column.getIsVisible())
+                }}
               >
-                {column.id}
-              </DropdownMenuCheckboxItem>
+                <Checkbox
+                  className="mr-2"
+                  checked={column.getIsVisible()}
+                  aria-label="Toggle column visibility"
+                />
+                {columnLabels[column.id] ?? column.id}
+              </DropdownMenuItem>
             )
           })}
       </DropdownMenuContent>

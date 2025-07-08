@@ -1,8 +1,22 @@
 'use client'
 
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useMemo, useRef, useState, useEffect } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import axios from 'axios'
+import { format, parseISO, isWithinInterval, isSameDay } from "date-fns"
+import { type DateRange } from "react-day-picker"
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  type ColumnFiltersState,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table"
 import CreateSearchFilter from "@/components/general/create-search-filter"
 import { Button } from "@/components/ui/button"
 import { SheetClose, SheetHeader } from '@/components/ui/sheet'
@@ -22,38 +36,64 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu"
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { DataTableViewOptions } from './data-table-view-options'
+import { DataTablePagination } from './data-table-pagination'
+import { Calendar } from '@/components/ui/calendar'
+
+const fetchProjects = async (): Promise<Project[]> => {
+  const response = await axios.get('/api/projects');
+  if (response.data.success) {
+    return response.data.projects;
+  }
+  throw new Error(response.data.message || 'Error fetching projects');
+};
+
+const paymentTypeOptions = [
+  { value: 'milestonePayment', label: 'Milestone' },
+  { value: 'deliverablePayment', label: 'Deliverable' },
+  { value: 'fullDownPayment', label: 'Full Payment Upfront' },
+  { value: 'paymentOnCompletion', label: 'Payment on Completion' },
+  { value: 'noPaymentRequired', label: 'No Payment' }
+];
 
 export default function ProjectsClient() {
+  const queryClient = useQueryClient();
   const closeRef = useRef<HTMLButtonElement>(null);
   const editCloseRef = useRef<HTMLButtonElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filterTags, setFilterTags] = useState<FilterTag[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   
   const [activeFilters, setActiveFilters] = useState<{
-    status: string[];
+    state: string[];
     paymentType: string[];
     hasServiceAgreement: string[];
+    type: string[];
+    date?: DateRange;
   }>({
-    status: [],
+    state: [],
     paymentType: [],
-    hasServiceAgreement: []
+    hasServiceAgreement: [],
+    type: [],
+    date: undefined,
   });
 
-  // Fetch projects on component mount
-  useEffect(() => {
-    fetchProjects();
-  }, []);
+  const { 
+    data: projects = [], 
+    isLoading, 
+    isError, 
+    error 
+  } = useQuery<Project[]>({
+    queryKey: ['projects'],
+    queryFn: fetchProjects
+  });
 
   // Initialize from URL params
   useEffect(() => {
@@ -61,22 +101,49 @@ export default function ProjectsClient() {
     setSearchQuery(query);
     
     // Initialize filters from URL
-    const statusParams = searchParams.getAll('status');
+    const stateParams = searchParams.getAll('state');
     const paymentTypeParams = searchParams.getAll('paymentType');
     const hasServiceAgreementParams = searchParams.getAll('hasServiceAgreement');
+    const typeParams = searchParams.getAll('type');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
+    
+    let dateRange: DateRange | undefined = undefined;
+    if (dateFrom) {
+      dateRange = { from: parseISO(dateFrom) };
+      if (dateTo) {
+        dateRange.to = parseISO(dateTo);
+      }
+    }
     
     setActiveFilters({
-      status: statusParams,
+      state: stateParams,
       paymentType: paymentTypeParams,
-      hasServiceAgreement: hasServiceAgreementParams
+      hasServiceAgreement: hasServiceAgreementParams,
+      type: typeParams,
+      date: dateRange,
     });
 
     // Update filter tags based on URL params
     const tags: FilterTag[] = [];
-    statusParams.forEach(value => {
+    if (dateRange?.from) {
+      let dateLabel = format(dateRange.from, "PPP");
+      if (dateRange.to) {
+        dateLabel = `${format(dateRange.from, "PPP")} - ${format(dateRange.to, "PPP")}`;
+      }
+      tags.push({ key: 'date-range', label: 'Date', value: dateLabel });
+    }
+    stateParams.forEach(value => {
       tags.push({
-        key: `status-${value}`,
-        label: 'Status',
+        key: `state-${value}`,
+        label: 'State',
+        value: value.charAt(0).toUpperCase() + value.slice(1)
+      });
+    });
+    typeParams.forEach(value => {
+      tags.push({
+        key: `type-${value}`,
+        label: 'Type',
         value: value.charAt(0).toUpperCase() + value.slice(1)
       });
     });
@@ -84,7 +151,7 @@ export default function ProjectsClient() {
       tags.push({
         key: `paymentType-${value}`,
         label: 'Payment Type',
-        value: value.charAt(0).toUpperCase() + value.slice(1)
+        value: paymentTypeOptions.find(p => p.value === value)?.label || value
       });
     });
     hasServiceAgreementParams.forEach(value => {
@@ -108,27 +175,7 @@ export default function ProjectsClient() {
     }
   }, [searchParams]);
 
-  // Apply filters whenever activeFilters, projects, or searchQuery change
-  useEffect(() => {
-    applyFilters();
-  }, [activeFilters, projects, searchQuery]);
-
-  const fetchProjects = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/projects');
-      if (response.data.success) {
-        setProjects(response.data.projects);
-        setFilteredProjects(response.data.projects);
-      }
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
+  const filteredProjects = useMemo(() => {
     let filtered = [...projects];
 
     // Apply search query - search in name, description, customer name, and type
@@ -141,17 +188,40 @@ export default function ProjectsClient() {
       );
     }
 
-    // Apply status filter
-    if (activeFilters.status.length > 0) {
+    // Apply date filter
+    if (activeFilters.date?.from) {
+      filtered = filtered.filter(project => {
+        if (!project.created_at || !activeFilters.date?.from) return false;
+        const projectDate = new Date(project.created_at);
+        if (isNaN(projectDate.getTime())) return false; // Invalid date
+
+        if (activeFilters.date.to) {
+          // Range selected
+          return isWithinInterval(projectDate, { start: activeFilters.date.from, end: activeFilters.date.to });
+        }
+        // Single date selected
+        return isSameDay(projectDate, activeFilters.date.from);
+      });
+    }
+
+    // Apply state filter
+    if (activeFilters.state.length > 0) {
       filtered = filtered.filter(project => 
-        activeFilters.status.includes(project.status?.toLowerCase() || '')
+        activeFilters.state.includes(project.state?.trim().toLowerCase() || '')
+      );
+    }
+
+    // Apply type filter
+    if (activeFilters.type.length > 0) {
+      filtered = filtered.filter(project =>
+        activeFilters.type.includes(project.type?.toLowerCase() || '')
       );
     }
 
     // Apply payment type filter
     if (activeFilters.paymentType.length > 0) {
       filtered = filtered.filter(project => 
-        activeFilters.paymentType.includes(project.paymentType?.toLowerCase() || '')
+        activeFilters.paymentType.includes(project.paymentType || '')
       );
     }
 
@@ -163,8 +233,41 @@ export default function ProjectsClient() {
       });
     }
 
-    setFilteredProjects(filtered);
-  };
+    return filtered;
+  }, [projects, searchQuery, activeFilters]);
+
+  // --- Table State ---
+  const [rowSelection, setRowSelection] = useState({})
+  const [columnVisibility, setColumnVisibility] =
+    useState<VisibilityState>({
+      description: false,
+      customerName: false,
+      endDate: false,
+    })
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [sorting, setSorting] = useState<SortingState>([])
+
+  const table = useReactTable({
+    data: filteredProjects,
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+      rowSelection,
+      columnFilters,
+    },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
+  })
 
   const updateURL = (newFilters: typeof activeFilters, search?: string) => {
     const params = new URLSearchParams(searchParams);
@@ -179,12 +282,22 @@ export default function ProjectsClient() {
     }
 
     // Clear existing filter params
-    params.delete('status');
+    params.delete('state');
+    params.delete('type');
     params.delete('paymentType');
     params.delete('hasServiceAgreement');
+    params.delete('dateFrom');
+    params.delete('dateTo');
 
     // Add new filter params
-    newFilters.status.forEach(value => params.append('status', value));
+    if (newFilters.date?.from) {
+      params.append('dateFrom', newFilters.date.from.toISOString());
+      if (newFilters.date.to) {
+        params.append('dateTo', newFilters.date.to.toISOString());
+      }
+    }
+    newFilters.state.forEach(value => params.append('state', value));
+    newFilters.type.forEach(value => params.append('type', value));
     newFilters.paymentType.forEach(value => params.append('paymentType', value));
     newFilters.hasServiceAgreement.forEach(value => params.append('hasServiceAgreement', value));
 
@@ -196,7 +309,14 @@ export default function ProjectsClient() {
     updateURL(activeFilters, value);
   };
 
-  const handleFilterChange = (filterType: 'status' | 'paymentType' | 'hasServiceAgreement', value: string, checked: boolean) => {
+  const handleDateChange = (date: DateRange | undefined) => {
+    const newFilters = { ...activeFilters, date };
+    setActiveFilters(newFilters);
+    updateURL(newFilters);
+    updateFilterTags('date', date, !!date);
+  }
+
+  const handleFilterChange = (filterType: 'state' | 'paymentType' | 'hasServiceAgreement' | 'type', value: string, checked: boolean) => {
     const newFilters = { ...activeFilters };
     if (checked) {
       newFilters[filterType] = [...newFilters[filterType], value];
@@ -209,17 +329,42 @@ export default function ProjectsClient() {
     updateFilterTags(filterType, value, checked);
   };
 
-  const updateFilterTags = (filterType: 'status' | 'paymentType' | 'hasServiceAgreement', value: string, checked: boolean) => {
+  const updateFilterTags = (filterType: 'state' | 'paymentType' | 'hasServiceAgreement' | 'type' | 'date', value: string | DateRange | undefined, checked: boolean) => {
     setFilterTags(prev => {
+      if (filterType === 'date') {
+        const existingTagIndex = prev.findIndex(tag => tag.key === 'date-range');
+        if (checked && value && typeof value !== 'string') {
+          const date = value as DateRange;
+          let dateLabel = format(date.from!, "PPP");
+          if (date.to) {
+            dateLabel = `${format(date.from!, "PPP")} - ${format(date.to, "PPP")}`;
+          }
+          const newTag = { key: 'date-range', label: 'Date', value: dateLabel, className: 'w-auto' };
+          if (existingTagIndex > -1) {
+            const newTags = [...prev];
+            newTags[existingTagIndex] = newTag;
+            return newTags;
+          }
+          return [...prev, newTag];
+        }
+        return prev.filter(tag => tag.key !== 'date-range');
+      }
+      
       const key = `${filterType}-${value}`;
-      if (checked) {
-        let label = filterType.charAt(0).toUpperCase() + filterType.slice(1);
+      if (checked && typeof value === 'string') {
+        let label = '';
+        if (filterType === 'state') label = 'State';
+        if (filterType === 'type') label = 'Type';
         if (filterType === 'paymentType') label = 'Payment Type';
         if (filterType === 'hasServiceAgreement') label = 'Service Agreement';
         
-        let displayValue = value.charAt(0).toUpperCase() + value.slice(1);
-        if (filterType === 'hasServiceAgreement') {
+        let displayValue = '';
+        if (filterType === 'paymentType') {
+          displayValue = paymentTypeOptions.find(p => p.value === value)?.label || value as string;
+        } else if (filterType === 'hasServiceAgreement') {
           displayValue = value === 'true' ? 'Yes' : 'No';
+        } else {
+          displayValue = value.charAt(0).toUpperCase() + value.slice(1);
         }
         
         return [...prev, { key, label, value: displayValue }];
@@ -230,14 +375,18 @@ export default function ProjectsClient() {
   };
 
   const handleRemoveFilter = (key: string) => {
-    const [filterType, value] = key.split('-') as ['status' | 'paymentType' | 'hasServiceAgreement', string];
+    if (key === 'date-range') {
+      handleDateChange(undefined);
+      return;
+    }
+    const [filterType, value] = key.split('-') as ['state' | 'paymentType' | 'hasServiceAgreement' | 'type', string];
     handleFilterChange(filterType, value, false);
   };
 
   const handleClearAllFilters = () => {
-    setActiveFilters({ status: [], paymentType: [], hasServiceAgreement: [] });
+    setActiveFilters({ state: [], paymentType: [], hasServiceAgreement: [], type: [], date: undefined });
     setFilterTags([]);
-    updateURL({ status: [], paymentType: [], hasServiceAgreement: [] });
+    updateURL({ state: [], paymentType: [], hasServiceAgreement: [], type: [], date: undefined });
   };
 
   const handleProjectSelect = (projectId: string) => {
@@ -252,7 +401,7 @@ export default function ProjectsClient() {
     const params = new URLSearchParams(searchParams);
     params.delete('createProject');
     router.replace(`${pathname}?${params.toString()}`);
-    fetchProjects(); // Refresh projects list
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
   };
 
   const handleEditSuccess = () => {
@@ -262,7 +411,7 @@ export default function ProjectsClient() {
     const params = new URLSearchParams(searchParams);
     params.delete('projectId');
     router.replace(`${pathname}?${params.toString()}`);
-    fetchProjects(); // Refresh projects list
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
   };
 
   const handleCloseSheet = () => {
@@ -282,33 +431,61 @@ export default function ProjectsClient() {
       <DropdownMenuLabel>Filter projects</DropdownMenuLabel>
       <DropdownMenuSeparator />
       
-      {/* Status Filter */}
       <DropdownMenuSub>
-        <DropdownMenuSubTrigger>Status</DropdownMenuSubTrigger>
+        <DropdownMenuSubTrigger>Date</DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="p-0">
+          <Calendar
+            initialFocus
+            mode="range"
+            captionLayout="dropdown"
+            defaultMonth={activeFilters.date?.from}
+            selected={activeFilters.date}
+            onSelect={handleDateChange}
+            numberOfMonths={1}
+            fromYear={2015}
+            toYear={2045}
+          />
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+
+      <DropdownMenuSeparator />
+      
+      {/* State Filter */}
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>State</DropdownMenuSubTrigger>
         <DropdownMenuSubContent>
           <DropdownMenuCheckboxItem
-            checked={activeFilters.status.includes('active')}
-            onCheckedChange={(checked) => handleFilterChange('status', 'active', checked)}
+            checked={activeFilters.state.includes('draft')}
+            onCheckedChange={(checked) => handleFilterChange('state', 'draft', checked)}
           >
-            Active
+            Draft
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
-            checked={activeFilters.status.includes('completed')}
-            onCheckedChange={(checked) => handleFilterChange('status', 'completed', checked)}
+            checked={activeFilters.state.includes('published')}
+            onCheckedChange={(checked) => handleFilterChange('state', 'published', checked)}
           >
-            Completed
+            Published
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+
+      <DropdownMenuSeparator />
+
+      {/* Type Filter */}
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>Type</DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
+          <DropdownMenuCheckboxItem
+            checked={activeFilters.type.includes('personal')}
+            onCheckedChange={(checked) => handleFilterChange('type', 'personal', checked)}
+          >
+            Personal
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
-            checked={activeFilters.status.includes('on hold')}
-            onCheckedChange={(checked) => handleFilterChange('status', 'on hold', checked)}
+            checked={activeFilters.type.includes('customer')}
+            onCheckedChange={(checked) => handleFilterChange('type', 'customer', checked)}
           >
-            On Hold
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem
-            checked={activeFilters.status.includes('cancelled')}
-            onCheckedChange={(checked) => handleFilterChange('status', 'cancelled', checked)}
-          >
-            Cancelled
+            Customer
           </DropdownMenuCheckboxItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
@@ -319,24 +496,15 @@ export default function ProjectsClient() {
       <DropdownMenuSub>
         <DropdownMenuSubTrigger>Payment Type</DropdownMenuSubTrigger>
         <DropdownMenuSubContent>
-          <DropdownMenuCheckboxItem
-            checked={activeFilters.paymentType.includes('milestone')}
-            onCheckedChange={(checked) => handleFilterChange('paymentType', 'milestone', checked)}
-          >
-            Milestone
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem
-            checked={activeFilters.paymentType.includes('hourly')}
-            onCheckedChange={(checked) => handleFilterChange('paymentType', 'hourly', checked)}
-          >
-            Hourly
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem
-            checked={activeFilters.paymentType.includes('fixed')}
-            onCheckedChange={(checked) => handleFilterChange('paymentType', 'fixed', checked)}
-          >
-            Fixed
-          </DropdownMenuCheckboxItem>
+          {paymentTypeOptions.map(option => (
+            <DropdownMenuCheckboxItem
+              key={option.value}
+              checked={activeFilters.paymentType.includes(option.value)}
+              onCheckedChange={(checked) => handleFilterChange('paymentType', option.value, checked)}
+            >
+              {option.label}
+            </DropdownMenuCheckboxItem>
+          ))}
         </DropdownMenuSubContent>
       </DropdownMenuSub>
 
@@ -363,8 +531,12 @@ export default function ProjectsClient() {
     </div>
   );
 
-  if (loading) {
+  if (isLoading) {
     return <div className="p-8">Loading projects...</div>;
+  }
+
+  if (isError) {
+    return <div className="p-8">Error fetching projects: {(error as Error).message}</div>;
   }
 
   return (
@@ -402,32 +574,19 @@ export default function ProjectsClient() {
         </SheetContent>
       </Sheet>
 
-      <div className="mt-6">
-        <ProjectTableHeader filteredProjects={filteredProjects} onProjectSelect={handleProjectSelect} />
+      <div className="mt-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Welcome back!</h2>
+            <p className="text-muted-foreground">
+              Here&apos;s a list of your projects!
+            </p>
+          </div>
+          <DataTableViewOptions table={table} />
+        </div>
+        <DataTable table={table} onProjectSelect={handleProjectSelect} />
+        <DataTablePagination table={table} />
       </div>
     </>
-  )
-}
-
-// Component for the table header with column visibility
-function ProjectTableHeader({ filteredProjects, onProjectSelect }: { filteredProjects: Project[], onProjectSelect: (id: string) => void }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Welcome back!</h2>
-          <p className="text-muted-foreground">
-            Here&apos;s a list of your projects!
-          </p>
-        </div>
-        <div id="column-visibility-placeholder"></div>
-      </div>
-      <DataTable 
-        data={filteredProjects} 
-        columns={columns} 
-        showToolbar={false}
-        onProjectSelect={onProjectSelect}
-      />
-    </div>
   )
 } 

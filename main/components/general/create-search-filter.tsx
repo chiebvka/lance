@@ -104,7 +104,7 @@ export default function CreateSearchFilter({
               onRemoveFilter={onRemoveFilter}
               onClearAllFilters={onClearAllFilters}
               onSearch={onSearch}
-              className="w-full"
+              className="w-x"
             >
               {filterContent}
             </SearchFilter>

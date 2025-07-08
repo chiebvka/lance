@@ -1,8 +1,6 @@
 "use client"
 
-import React from "react"
-
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -54,6 +52,7 @@ import {
   Handshake,
   CalendarIcon,
   Bubbles,
+  Loader2,
 } from "lucide-react"
 import ComboBox from "@/components/combobox"
 import { TipTapEditor } from "@/components/tiptap/tip-tap-editor"
@@ -76,19 +75,18 @@ import { currencies } from "@/data/currency"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { cn, safeParseJsonArray } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import type { z as zod } from "zod"
 import type paymentTermSchema from "@/validation/payment"
 import axios from "axios"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation"
 import { v4 as uuidv4 } from "uuid"
 import { projectCustomerFetch } from "@/actions/customer/fetch"
 
 import { Tables } from "@/types/supabase"
 import { projectCreateSchema } from "@/validation/projects"
 import CustomerForm from "../../customers/_components/customer-form"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 type ProjectFormValues = z.infer<typeof projectCreateSchema>
 type DeliverableFormValues = z.infer<typeof deliverableSchema>
@@ -96,13 +94,13 @@ type PaymentTermFormValues = zod.infer<typeof paymentTermSchema>
 
 type DeliverableRecord = Tables<'deliverables'>;
 type PaymentTermRecord = Tables<'paymentTerms'>;
-type ProjectWithRelations = Tables<'projects'> & { 
+
+type ProjectWithRelations = Tables<'projects'> & {
   customers: Customer | null;
   deliverables: DeliverableRecord[];
   paymentMilestones: PaymentTermRecord[];
 };
 
-// Payload-specific interfaces - Re-adding for function signatures
 interface PayloadPaymentMilestone {
   id?: string
   name: string | null
@@ -137,100 +135,102 @@ interface EditProjectFormProps {
   onCancel?: () => void
 }
 
+const fetchProject = async (projectId: string): Promise<ProjectWithRelations> => {
+  const { data } = await axios.get(`/api/projects/${projectId}`);
+  if (data.success) {
+    return data.project;
+  }
+  throw new Error("Failed to fetch project");
+};
+
+const fetchCustomers = async (): Promise<Customer[]> => {
+  const result = await projectCustomerFetch();
+  if (result.customers) {
+    return result.customers as Customer[];
+  }
+  if (result.error) {
+    toast.error("Failed to load customers", { description: result.error });
+  }
+  return [];
+};
+
+const parseDate = (date: string | null | undefined): Date | undefined => {
+  if (!date) return undefined;
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? undefined : d;
+};
+
 export default function EditProjectForm({ projectId, onSuccess, onLoadingChange, onCancel }: EditProjectFormProps) {
-  const router = useRouter()
-  const [project, setProject] = useState<ProjectWithRelations | null>(null)
-  const [isLoadingProject, setIsLoadingProject] = useState(true)
-  const [customers, setCustomers] = useState<Customer[]>([])
+  const queryClient = useQueryClient();
   const [isCreateCustomerSheetOpen, setCreateCustomerSheetOpen] = useState(false)
   const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false)
 
-  const parseDate = (date: string | null | undefined): Date | undefined => {
-    if (!date) return undefined
-    try {
-      return new Date(date)
-    } catch (error) {
-      console.warn('Failed to parse date:', date, error)
-      return undefined
-    }
-  }
+  const { data: project, isLoading: isLoadingProject, isError } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => fetchProject(projectId),
+    enabled: !!projectId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    // Optionally, you can use initialData or select to preprocess
+  });
 
-  useEffect(() => {
-    async function getProject() {
-      if (!projectId) return
-      setIsLoadingProject(true)
-      onLoadingChange?.(true)
-      try {
-        const response = await axios.get(`/api/projects/${projectId}`)
-        setProject(response.data.project)
-      } catch (error) {
-        toast.error("Failed to load project details.")
-        console.error(error)
-      } finally {
-        setIsLoadingProject(false)
-        onLoadingChange?.(false)
-      }
-    }
-    getProject()
-  }, [projectId, onLoadingChange])
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: fetchCustomers,
+    staleTime: 1000 * 60 * 5,
+  });
 
-  useEffect(() => {
-    async function fetchCustomers() {
-      const result = await projectCustomerFetch()
-      if (result.customers) {
-        setCustomers(result.customers as Customer[])
-      } else if (result.error) {
-        toast.error("Failed to load customers", { description: result.error })
+  const updateProjectMutation = useMutation({
+    mutationFn: (values: ProjectFormValues) => axios.put(`/api/projects/${projectId}`, values),
+    onSuccess: () => {
+      toast.success("Project updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      onSuccess?.();
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.error || "Failed to update project.";
+      const errorDetails = error.response?.data?.details;
+      if (errorDetails) {
+        toast.error(`${errorMessage} Check console for validation details.`);
+        console.error("Validation errors:", errorDetails);
+      } else {
+        toast.error(errorMessage);
       }
+    },
+    onSettled: () => {
+      onLoadingChange?.(false);
     }
-    fetchCustomers()
-  }, [])
+  });
 
   const handleCustomerCreated = async () => {
-    setCreateCustomerSheetOpen(false)
-    const result = await projectCustomerFetch()
-    if (result.customers) {
-      setCustomers(result.customers as Customer[])
-      toast.success("Customer created and list updated!")
-    }
-  }
+    setCreateCustomerSheetOpen(false);
+    await queryClient.invalidateQueries({ queryKey: ['customers'] });
+    toast.success("Customer created and list updated!");
+  };
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectCreateSchema),
-    defaultValues: {
-      type: "personal",
-      name: "",
-      description: "",
-      budget: 0,
-      currency: "USD",
-      currencyEnabled: false,
-      deliverablesEnabled: true,
-      deliverables: [],
-      paymentStructure: "noPayment",
-      paymentMilestones: [],
-      hasServiceAgreement: false,
-      serviceAgreement: "",
-      agreementTemplate: "standard",
-      hasAgreedToTerms: false,
-      isPublished: false,
-      status: "pending",
-      signedStatus: "not_signed",
-      documents: "",
-      notes: "",
-      customFields: { name: "", value: "" },
-      state: "draft",
-      emailToCustomer: false,
-      hasPaymentTerms: false,
-      paymentTerms: "",
-      customerId: null,
-      startDate: undefined,
-      endDate: undefined,
-    },
-  })
+    defaultValues: project
+      ? {
+          ...project,
+          deliverables: (project.deliverables || []).map((d: any) => ({
+            ...d,
+            id: d.id || uuidv4(),
+            dueDate: parseDate(d.dueDate),
+          })),
+          paymentMilestones: (project.paymentMilestones || []).map((m: any) => ({
+            ...m,
+            id: m.id || uuidv4(),
+            dueDate: parseDate(m.dueDate),
+          })),
+        }
+      : undefined,
+    // This will be set on first render, and will not update after.
+    // If you want to update when project changes, you can use form.reset in a useEffect as fallback.
+  });
 
   useEffect(() => {
     if (project) {
-      console.log("🔄 EditProjectForm: Resetting form with project data:", project)
       form.reset({
         customerId: project.customerId,
         type: (project.type as "personal" | "customer") || "personal",
@@ -244,32 +244,19 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
         deliverablesEnabled: project.deliverablesEnabled ?? true,
         deliverables: (project.deliverables || []).map((d: any) => ({
           ...d,
-          id: d.id || uuidv4(), // Ensure each deliverable has an ID
+          id: d.id || uuidv4(),
           dueDate: parseDate(d.dueDate),
-          name: d.name || "",
-          description: d.description || "",
-          position: d.position || 1,
-          status: d.status || "pending",
-          isPublished: d.isPublished ?? false,
         })),
         paymentStructure: project.paymentStructure || "noPayment",
         paymentMilestones: (project.paymentMilestones || []).map((m: any) => ({
           ...m,
-          id: m.id || uuidv4(), // Ensure each milestone has an ID
+          id: m.id || uuidv4(),
           dueDate: parseDate(m.dueDate),
-          name: m.name || "",
-          description: m.description || null,
-          amount: m.amount || 0,
-          percentage: m.percentage || 0,
-          status: m.status || "pending",
-          type: m.type || "milestone",
-          hasPaymentTerms: m.hasPaymentTerms ?? false,
-          deliverableId: m.deliverableId || null,
         })),
         hasServiceAgreement: project.hasServiceAgreement ?? false,
         serviceAgreement:
-          typeof project.serviceAgreement === "string" ? project.serviceAgreement : "",
-        agreementTemplate: "standard",
+          typeof project.serviceAgreement === "string" ? project.serviceAgreement : JSON.stringify(project.serviceAgreement) || "",
+        agreementTemplate: "standard", // This can be improved if template type is stored
         hasAgreedToTerms: project.hasAgreedToTerms ?? false,
         isPublished: project.isPublished ?? false,
         status: project.status || "pending",
@@ -287,7 +274,6 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
         hasPaymentTerms: project.hasPaymentTerms ?? false,
         paymentTerms: "",
       })
-      console.log("✅ EditProjectForm: Form reset completed")
     }
   }, [project, form])
 
@@ -329,7 +315,6 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
     payment: false,
     agreement: false,
   })
-  const [isSaving, setIsSaving] = useState(false)
   const [isEditingAgreement, setIsEditingAgreement] = useState(false)
 
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
@@ -489,83 +474,23 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
   }
 
   const handleUpdate = async (values: ProjectFormValues) => {
-    console.log("🔄 EditProjectForm: Starting update process")
-    console.log("📤 EditProjectForm: Project ID:", projectId)
+    onLoadingChange?.(true);
     
-    // Clean and prepare the data before sending
     const cleanedValues = {
       ...values,
       deliverables: (values.deliverables || []).map(d => ({
         ...d,
         id: d.id || uuidv4(),
-        name: d.name || "",
-        description: d.description || "",
-        status: d.status || "pending",
-        position: d.position || 1,
-        isPublished: d.isPublished ?? false,
         dueDate: d.dueDate ? new Date(d.dueDate) : null,
       })),
       paymentMilestones: (values.paymentMilestones || []).map(m => ({
         ...m,
         id: m.id || uuidv4(),
-        name: m.name || "",
-        description: m.description || null,
-        amount: m.amount || 0,
-        percentage: m.percentage || 0,
-        status: m.status || "pending",
-        type: m.type || "milestone",
-        hasPaymentTerms: m.hasPaymentTerms ?? false,
-        deliverableId: m.deliverableId || null,
         dueDate: m.dueDate ? new Date(m.dueDate) : null,
       })),
-    }
-    
-    console.log("📤 EditProjectForm: Cleaned form values being sent:", JSON.stringify(cleanedValues, null, 2))
-    
-    setIsSaving(true)
-    onLoadingChange?.(true)
+    };
 
-    try {
-      console.log("🌐 EditProjectForm: Making PUT request to:", `/api/projects/${projectId}`)
-      const response = await axios.put(`/api/projects/${projectId}`, cleanedValues)
-      console.log("✅ EditProjectForm: Request successful")
-      console.log("📥 EditProjectForm: Response data:", response.data)
-      console.log("📥 EditProjectForm: Response status:", response.status)
-      
-      toast.success("Project updated successfully!")
-      onSuccess?.()
-    } catch (error) {
-      console.error("❌ EditProjectForm: Request failed")
-      console.error("📥 EditProjectForm: Error object:", error)
-      
-      if (axios.isAxiosError(error)) {
-        console.error("📥 EditProjectForm: Axios error details:")
-        console.error("  - Status:", error.response?.status)
-        console.error("  - Status text:", error.response?.statusText)
-        console.error("  - Response data:", error.response?.data)
-        console.error("  - Request URL:", error.config?.url)
-        console.error("  - Request method:", error.config?.method)
-        console.error("  - Request headers:", error.config?.headers)
-        
-        // Show more specific error message
-        const errorMessage = error.response?.data?.error || "Failed to update project."
-        const errorDetails = error.response?.data?.details
-        
-        if (errorDetails) {
-          console.error("📥 EditProjectForm: Validation error details:", errorDetails)
-          toast.error(`${errorMessage} Check console for validation details.`)
-        } else {
-          toast.error(errorMessage)
-        }
-      } else {
-        console.error("📥 EditProjectForm: Non-axios error:", error)
-        toast.error("An unexpected error occurred.")
-      }
-    } finally {
-      console.log("🏁 EditProjectForm: Update process finished")
-      setIsSaving(false)
-      onLoadingChange?.(false)
-    }
+    updateProjectMutation.mutate(cleanedValues);
   }
 
   const isFormValid = () => {
@@ -681,6 +606,22 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
     { id: 'agreement', name: 'Agreement', icon: Handshake, status: getSectionStatus('agreement') },
   ];
 
+  if (isLoadingProject) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="text-red-500 p-4 border border-red-500/20 bg-red-500/10 rounded-md">
+        Error: Project could not be loaded. Please try again.
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       {/* Fixed Header */}
@@ -788,12 +729,7 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
       {/* Scrollable Form Content */}
 
 
-          {isLoadingProject ? (
-            <div>Loading...</div>
-          ) : !project ? (
-            <div>Project could not be loaded.</div>
-          ) : (
-            <Form {...form}>
+          <Form {...form}>
               <form onSubmit={form.handleSubmit(handleUpdate)} id="edit-project-form" className="space-y-4">
                 {/* Accordion Sections go here... */}
                 {/* Customer Selection */}
@@ -2394,13 +2330,11 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
          
               </form>
             </Form>
-          )}
 
 
       {/* Fixed Footer */}
-      {!isLoadingProject && project && (
-        <div className="flex-shrink-0 p-4 border-t bg-background z-10 flex justify-end gap-2 sm:gap-4">
-          <Button variant="ghost" onClick={onCancel} disabled={isSaving}>
+      <div className="flex-shrink-0 p-4 border-t bg-background z-10 flex justify-end gap-2 sm:gap-4">
+          <Button variant="ghost" onClick={onCancel} disabled={updateProjectMutation.isPending}>
             Cancel
           </Button>
 
@@ -2408,60 +2342,49 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
             <Button
               variant="outlinebrimary"
               onClick={() => {
-                console.log("🔄 EditProjectForm: Unpublish button clicked")
                 const values = form.getValues()
-                console.log("📊 EditProjectForm: Form values from getValues:", JSON.stringify(values, null, 2))
                 handleUpdate({ ...values, state: "draft", isPublished: false })
               }}
-              disabled={isSaving}
+              disabled={updateProjectMutation.isPending}
             >
               <Save className="h-4 w-4 mr-2" />
-              {isSaving ? "Saving..." : "Unpublish"}
+              {updateProjectMutation.isPending ? "Saving..." : "Unpublish"}
             </Button>
           ) : (
             <Button
               variant="outlinebrimary"
               onClick={() => {
-                console.log("🔄 EditProjectForm: Save Draft button clicked")
                 const values = form.getValues()
-                console.log("📊 EditProjectForm: Form values from getValues:", JSON.stringify(values, null, 2))
                 handleUpdate({ ...values, state: "draft", isPublished: false })
               }}
-              disabled={isSaving}
+              disabled={updateProjectMutation.isPending}
             >
               <Save className="h-4 w-4 mr-2" />
-              {isSaving ? "Saving..." : "Save Draft"}
+              {updateProjectMutation.isPending ? "Saving..." : "Save Draft"}
             </Button>
           )}
 
           <div className="inline-flex rounded-md shadow-sm">
             <Button
               onClick={() => {
-                console.log("🔄 EditProjectForm: Publish/Update button clicked")
                 form.trigger().then((isValid) => {
-                  console.log("📊 EditProjectForm: Form validation result:", isValid)
-                  console.log("📊 EditProjectForm: Form state:", form.formState)
-                  console.log("📊 EditProjectForm: Form errors:", form.formState.errors)
                   if (isValid) {
                     const values = form.getValues()
-                    console.log("📊 EditProjectForm: Form values for publish:", JSON.stringify(values, null, 2))
-                    handleUpdate({ ...values, state: "published", isPublished: true })
+                    handleUpdate({ ...values, state: "published", isPublished: true, emailToCustomer: false })
                   } else {
-                    console.error("❌ EditProjectForm: Form validation failed")
-                    console.error("📊 EditProjectForm: Validation errors:", form.formState.errors)
                     toast.error("Please complete all required sections.")
                   }
                 })
               }}
-              disabled={isSaving}
+              disabled={updateProjectMutation.isPending}
               className="rounded-r-none px-3 sm:px-4"
             >
-              {isSaving ? "Updating..." : project?.state === 'published' ? 'Update Project' : 'Publish Project'}
+              {updateProjectMutation.isPending ? "Updating..." : project?.state === 'published' ? 'Update Project' : 'Publish Project'}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  disabled={isSaving}
+                  disabled={updateProjectMutation.isPending}
                   className="rounded-l-none border-l border-purple-700 px-3"
                 >
                   <span className="sr-only">Open options</span>
@@ -2471,41 +2394,31 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() => {
-                    console.log("🔄 EditProjectForm: Dropdown - Update Project clicked")
                     form.trigger().then((isValid) => {
-                      console.log("📊 EditProjectForm: Form validation result:", isValid)
                       if (isValid) {
                         const values = form.getValues()
-                        console.log("📊 EditProjectForm: Form values for update:", JSON.stringify(values, null, 2))
                         handleUpdate({ ...values, state: "published", isPublished: true, emailToCustomer: false })
                       } else {
-                        console.error("❌ EditProjectForm: Form validation failed")
-                        console.error("📊 EditProjectForm: Validation errors:", form.formState.errors)
                         toast.error("Please complete all required sections.")
                       }
                     })
                   }}
-                  disabled={isSaving}
+                  disabled={updateProjectMutation.isPending}
                 >
                   {project?.state === 'published' ? 'Update Project' : 'Publish Project'}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
-                    console.log("🔄 EditProjectForm: Dropdown - Update & Resend clicked")
                     form.trigger().then((isValid) => {
-                      console.log("📊 EditProjectForm: Form validation result:", isValid)
                       if (isValid) {
                         const values = form.getValues()
-                        console.log("📊 EditProjectForm: Form values for update & resend:", JSON.stringify(values, null, 2))
                         handleUpdate({ ...values, state: "published", isPublished: true, emailToCustomer: true })
                       } else {
-                        console.error("❌ EditProjectForm: Form validation failed")
-                        console.error("📊 EditProjectForm: Validation errors:", form.formState.errors)
                         toast.error("Please complete all required sections.")
                       }
                     })
                   }}
-                  disabled={projectType !== "customer" || !selectedCustomer || isSaving}
+                  disabled={projectType !== "customer" || !selectedCustomer || updateProjectMutation.isPending}
                 >
                   {project?.state === 'published' ? 'Update & Resend' : 'Publish & Send to Customer'}
                 </DropdownMenuItem>
@@ -2513,7 +2426,6 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
             </DropdownMenu>
           </div>
         </div>
-      )}
     </div>
   )
 } 

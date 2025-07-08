@@ -93,9 +93,9 @@ export function SearchFilter({
             {filterTags.map((tag) => (
               <div
                 key={tag.key}
-                className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-md"
+                className="inline-flex items-center border border-dashed border-bexoni gap-1 px-2 py-1 bg-primary/10 text-primary text-xs "
               >
-                <span className="truncate max-w-[150px]">{tag.label}: {tag.value}</span>
+                <span className=" max-w-auto">{tag.label}: {tag.value}</span>
                 <button
                   onClick={() => onRemoveFilter?.(tag.key)}
                   className="hover:bg-primary/20 rounded-sm p-0.5 flex-shrink-0"
@@ -106,10 +106,10 @@ export function SearchFilter({
             ))}
           </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={onClearAllFilters}
-            className="text-xs h-7 px-2 w-fit"
+            className="text-xs h-7 px-2 w-fit rounded-none border-bexoni"
           >
             Reset
           </Button>
