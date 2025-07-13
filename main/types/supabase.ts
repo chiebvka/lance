@@ -972,6 +972,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          agreementTemplate: string | null
           budget: number | null
           created_at: string | null
           createdBy: string | null
@@ -1007,6 +1008,7 @@ export type Database = {
           updatedOn: string | null
         }
         Insert: {
+          agreementTemplate?: string | null
           budget?: number | null
           created_at?: string | null
           createdBy?: string | null
@@ -1042,6 +1044,7 @@ export type Database = {
           updatedOn?: string | null
         }
         Update: {
+          agreementTemplate?: string | null
           budget?: number | null
           created_at?: string | null
           createdBy?: string | null

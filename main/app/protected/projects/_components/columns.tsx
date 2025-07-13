@@ -86,7 +86,7 @@ export const columns: ColumnDef<Project>[] = [
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label="Select all"
-          className="translate-y-[2px]"
+          className="translate-y-[2px] rounded-none"
         />
       </div>
     ),
@@ -96,7 +96,7 @@ export const columns: ColumnDef<Project>[] = [
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
           aria-label="Select row"
-          className="translate-y-[2px]"
+          className="translate-y-[2px] rounded-none"
         />
       </div>
     ),

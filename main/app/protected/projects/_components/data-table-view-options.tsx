@@ -39,13 +39,13 @@ export function DataTableViewOptions<TData>({
         <Button
           variant="outline"
           size="sm"
-          className="ml-auto flex h-8"
+          className="ml-auto flex h-8 border border-bexoni rounded-none"
         >
           <SlidersHorizontal className="mr-2 h-4 w-4" />
           View
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56 rounded-none">
         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table
@@ -65,7 +65,7 @@ export function DataTableViewOptions<TData>({
                 }}
               >
                 <Checkbox
-                  className="mr-2"
+                  className="mr-2 rounded-none"
                   checked={column.getIsVisible()}
                   aria-label="Toggle column visibility"
                 />

@@ -1332,7 +1332,7 @@ export default function EditProjectForm({ project }: { project: Tables<"projects
                                             <FormItem>
                                               <FormLabel>Description</FormLabel>
                                               <FormControl>
-                                                <Textarea {...field} placeholder="Brief description" rows={2} />
+                                                <Textarea {...field} placeholder="Brief description" rows={2} value={field.value || ''} />
                                               </FormControl>
                                             </FormItem>
                                           )}

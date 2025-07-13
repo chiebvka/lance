@@ -40,6 +40,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTableViewOptions } from './data-table-view-options'
 import { DataTablePagination } from './data-table-pagination'
 import { Calendar } from '@/components/ui/calendar'
+import Pagination from '../../../../components/pagination';
 
 const fetchProjects = async (): Promise<Project[]> => {
   const response = await axios.get('/api/projects');
@@ -576,15 +577,11 @@ export default function ProjectsClient() {
 
       <div className="mt-6 space-y-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Welcome back!</h2>
-            <p className="text-muted-foreground">
-              Here&apos;s a list of your projects!
-            </p>
-          </div>
+   
           <DataTableViewOptions table={table} />
         </div>
         <DataTable table={table} onProjectSelect={handleProjectSelect} />
+        {/* <Pagination currentPage={1} totalPages={1} pageSize={10} totalItems={100} onPageChange={() => {}} /> */}
         <DataTablePagination table={table} />
       </div>
     </>

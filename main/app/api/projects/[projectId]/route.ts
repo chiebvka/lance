@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createClient } from "@/utils/supabase/server"
-import { projectCreateSchema } from "@/validation/projects"
+import { projectEditSchema } from "@/validation/projects"
 import { z } from "zod"
 import { render } from "@react-email/components";
 import sendgrid from "@sendgrid/mail";
@@ -10,7 +10,7 @@ sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
 export async function GET(
   request: NextRequest,
-  context: { params: { projectId: string } }
+  context: any
 ) {
   const supabase = await createClient()
   const {
@@ -21,7 +21,8 @@ export async function GET(
     return NextResponse.json({ error: "Not authorized" }, { status: 401 })
   }
 
-  const { projectId } = context.params
+  const { params } = context;
+  const { projectId } = params
 
   try {
     // Fetch the project
@@ -86,7 +87,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { projectId: string } }
+  context: any
 ) {
   const supabase = await createClient()
   const {
@@ -97,12 +98,16 @@ export async function PUT(
     return NextResponse.json({ error: "Not authorized" }, { status: 401 })
   }
 
-  const { projectId } = context.params
+  const { params } = context;
+  const { projectId } = params
   const body = await request.json()
 
+  console.log('[API][PUT] Incoming body:', body);
+
   try {
-    const validation = projectCreateSchema.safeParse(body)
+    const validation = projectEditSchema.safeParse(body)
     if (!validation.success) {
+      console.error('[API][PUT] Validation failed:', validation.error.flatten().fieldErrors);
       return NextResponse.json(
         {
           error: "Invalid input.",
@@ -111,7 +116,7 @@ export async function PUT(
         { status: 400 }
       )
     }
-
+    console.log('[API][PUT] Validation success. Data:', validation.data);
     const {
       deliverables: deliverablesData = [],
       paymentMilestones: paymentMilestonesData = [],
@@ -143,7 +148,7 @@ export async function PUT(
     const existingDeliverableIds = (existingDeliverables || []).map(d => d.id);
 
     // 2. Upsert new/updated deliverables
-    const deliverablesToUpsert = deliverablesData.map(d => ({
+    const deliverablesToUpsert = deliverablesData.map((d: any) => ({
       ...d,
       projectId,
       createdBy: user.id,
@@ -157,7 +162,7 @@ export async function PUT(
     }
 
     // 3. Delete deliverables that are no longer present
-    const newDeliverableIds = deliverablesData.map(d => d.id);
+    const newDeliverableIds = deliverablesData.map((d: any) => d.id);
     const deliverablesToDelete = existingDeliverableIds.filter(id => !newDeliverableIds.includes(id));
     if (deliverablesToDelete.length > 0) {
       const { error: deliverablesDeleteError } = await supabase
@@ -177,8 +182,10 @@ export async function PUT(
     const existingPaymentTermIds = (existingPaymentTerms || []).map(p => p.id);
 
     // 2. Upsert new/updated payment terms
-    const paymentTermsToUpsert = paymentMilestonesData.map(p => ({
+    // Defensive cleanup: set deliverableId to null for type 'milestone'
+    const paymentTermsToUpsert = paymentMilestonesData.map((p: any) => ({
       ...p,
+      deliverableId: p.type === 'milestone' ? null : p.deliverableId,
       projectId,
       createdBy: user.id,
     }));
@@ -191,7 +198,7 @@ export async function PUT(
     }
 
     // 3. Delete payment terms that are no longer present
-    const newPaymentTermIds = paymentMilestonesData.map(p => p.id);
+    const newPaymentTermIds = paymentMilestonesData.map((p: any) => p.id);
     const paymentTermsToDelete = existingPaymentTermIds.filter(id => !newPaymentTermIds.includes(id));
     if (paymentTermsToDelete.length > 0) {
       const { error: paymentTermsDeleteError } = await supabase
@@ -266,7 +273,39 @@ export async function PUT(
     })
   } catch (e) {
     const error = e as Error
-    console.error(`Error updating project ${projectId}:`, error.message)
+    console.error(`[API][PUT] Error updating project ${projectId}:`, error.message, error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: any
+) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { params } = context;
+  const { projectId } = params
+
+  try {
+    const { error: projectDeleteError } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", projectId)
+      .eq("createdBy", user?.id)
+
+    if (projectDeleteError) throw projectDeleteError
+
+    return NextResponse.json({ success: true, message: "Project deleted successfully" })
+  } catch (e) {
+    const error = e as Error
+    console.error(`Error deleting project ${projectId}:`, error.message)
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 500 }

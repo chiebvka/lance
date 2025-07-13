@@ -25,7 +25,7 @@ const projectCreateSchema = z.object({
   // Payment
   paymentStructure: z.string().optional(),
   paymentMilestones: z.array(paymentTermSchema).optional(),
-  paymentTerms: z.string().optional(), 
+  // paymentTerms: z.string().optional(), 
   hasPaymentTerms: z.boolean().optional(),
 
 
@@ -44,18 +44,14 @@ const projectCreateSchema = z.object({
   // Other
   documents: z.string().optional(),
   customFields: z.object({
-      name: z.string().min(2, "Name must be at least 2 characters."),
-      value: z.string().min(2, "Value must be at least 2 characters."),
+      name: z.string().optional(),
+      value: z.string().optional(),
   }).optional(),
   emailToCustomer: z.boolean().optional(),
 });
 
-
-
-
-
 const projectEditSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().uuid().optional(),
   customerId: z.string().nullable(),
   currency: z.string().optional(),
   currencyEnabled: z.boolean().optional(),
@@ -67,6 +63,7 @@ const projectEditSchema = z.object({
   budget: z.number().optional(),
   startDate: z.coerce.date().optional().nullable(),
   endDate: z.coerce.date().optional().nullable(),
+  effectiveDate: z.coerce.date().optional().nullable(),
   notes: z.string().optional(),
 
   // Deliverables
@@ -76,7 +73,7 @@ const projectEditSchema = z.object({
   // Payment
   paymentStructure: z.string().optional(),
   paymentMilestones: z.array(paymentTermSchema).optional(),
-  paymentTerms: z.string().optional(), 
+  // paymentTerms: z.string().optional(), 
   hasPaymentTerms: z.boolean().optional(),
 
 
@@ -95,11 +92,10 @@ const projectEditSchema = z.object({
   // Other
   documents: z.string().optional(),
   customFields: z.object({
-      name: z.string().min(2, "Name must be at least 2 characters."),
-      value: z.string().min(2, "Value must be at least 2 characters."),
+      name: z.string().optional(),
+      value: z.string().optional(),
   }).optional(),
   emailToCustomer: z.boolean().optional(),
-
 });
 
 export { projectCreateSchema, projectEditSchema };

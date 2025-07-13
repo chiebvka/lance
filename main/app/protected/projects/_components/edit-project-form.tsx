@@ -84,11 +84,11 @@ import { v4 as uuidv4 } from "uuid"
 import { projectCustomerFetch } from "@/actions/customer/fetch"
 
 import { Tables } from "@/types/supabase"
-import { projectCreateSchema } from "@/validation/projects"
+import { projectEditSchema } from "@/validation/projects"
 import CustomerForm from "../../customers/_components/customer-form"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-type ProjectFormValues = z.infer<typeof projectCreateSchema>
+type ProjectFormValues = z.infer<typeof projectEditSchema>
 type DeliverableFormValues = z.infer<typeof deliverableSchema>
 type PaymentTermFormValues = zod.infer<typeof paymentTermSchema>
 
@@ -96,7 +96,7 @@ type DeliverableRecord = Tables<'deliverables'>;
 type PaymentTermRecord = Tables<'paymentTerms'>;
 
 type ProjectWithRelations = Tables<'projects'> & {
-  customers: Customer | null;
+  customer: Customer | null;  // Changed from 'customers' to 'customer' to match API
   deliverables: DeliverableRecord[];
   paymentMilestones: PaymentTermRecord[];
 };
@@ -136,8 +136,14 @@ interface EditProjectFormProps {
 }
 
 const fetchProject = async (projectId: string): Promise<ProjectWithRelations> => {
+  console.log('[fetchProject] Fetching project:', projectId);
   const { data } = await axios.get(`/api/projects/${projectId}`);
+  console.log('[fetchProject] API response:', data);
+  
   if (data.success) {
+    console.log('[fetchProject] Project data:', data.project);
+    console.log('[fetchProject] Deliverables count:', data.project.deliverables?.length || 0);
+    console.log('[fetchProject] Payment milestones count:', data.project.paymentMilestones?.length || 0);
     return data.project;
   }
   throw new Error("Failed to fetch project");
@@ -160,6 +166,65 @@ const parseDate = (date: string | null | undefined): Date | undefined => {
   return isNaN(d.getTime()) ? undefined : d;
 };
 
+// Helper to convert nulls to undefined or default values
+function cleanProjectForForm(project: any): ProjectFormValues {
+  console.log('[cleanProjectForForm] Input project:', project);
+  
+  return {
+    id: project.id,
+    name: project.name ?? "",
+    description: project.description ?? "",
+    customerId: project.customerId ?? null,
+    type: project.type ?? "personal",
+    budget: project.budget ?? 0,
+    currency: project.currency ?? "USD",
+    currencyEnabled: project.currencyEnabled ?? false,
+    deliverablesEnabled: project.deliverablesEnabled ?? true,
+    deliverables: (project.deliverables || []).map((d: any) => ({
+      ...d,
+      id: d.id, // Don't generate new UUID for existing records
+      name: d.name ?? "",
+      description: d.description ?? "",
+      dueDate: d.dueDate ? parseDate(d.dueDate) : undefined,
+      position: d.position ?? 1,
+      status: d.status ?? "pending",
+      isPublished: d.isPublished ?? false,
+    })),
+    paymentStructure: project.paymentStructure ?? "noPayment",
+    paymentMilestones: (project.paymentMilestones || []).map((m: any) => ({
+      ...m,
+      id: m.id, // Don't generate new UUID for existing records
+      name: m.name ?? "",
+      description: m.description ?? "",
+      amount: m.amount ?? 0,
+      percentage: m.percentage ?? 0,
+      dueDate: m.dueDate ? parseDate(m.dueDate) : undefined,
+      status: m.status ?? "pending",
+      type: m.type ?? "milestone",
+      hasPaymentTerms: m.hasPaymentTerms ?? false,
+      deliverableId: m.deliverableId ?? undefined,
+    })),
+    hasServiceAgreement: project.hasServiceAgreement ?? false,
+    serviceAgreement: project.serviceAgreement ?? "",
+    agreementTemplate: project.agreementTemplate ?? "standard",
+    hasAgreedToTerms: project.hasAgreedToTerms ?? false,
+    isPublished: project.isPublished ?? false,
+    status: project.status ?? "pending",
+    signedStatus: project.signedStatus ?? "not_signed",
+    documents: typeof project.documents === "string" ? project.documents : "",
+    notes: project.notes ?? "",
+    customFields: project.customFields && typeof project.customFields === "object" && !Array.isArray(project.customFields)
+      ? project.customFields
+      : { name: "", value: "" },
+    state: project.state ?? "draft",
+    emailToCustomer: project.emailToCustomer ?? false,
+    hasPaymentTerms: project.hasPaymentTerms ?? false,
+    startDate: project.startDate ? parseDate(project.startDate) : undefined,
+    endDate: project.endDate ? parseDate(project.endDate) : undefined,
+    effectiveDate: project.effectiveDate ? parseDate(project.effectiveDate) : undefined,
+  }
+}
+
 export default function EditProjectForm({ projectId, onSuccess, onLoadingChange, onCancel }: EditProjectFormProps) {
   const queryClient = useQueryClient();
   const [isCreateCustomerSheetOpen, setCreateCustomerSheetOpen] = useState(false)
@@ -169,8 +234,7 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
     queryKey: ['project', projectId],
     queryFn: () => fetchProject(projectId),
     enabled: !!projectId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    // Optionally, you can use initialData or select to preprocess
+    staleTime: 1000 * 60 * 5,
   });
 
   const { data: customers = [] } = useQuery({
@@ -181,18 +245,41 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
 
   const updateProjectMutation = useMutation({
     mutationFn: (values: ProjectFormValues) => axios.put(`/api/projects/${projectId}`, values),
-    onSuccess: () => {
+    onSuccess: async () => {
+      console.log('[EditProjectForm] Mutation successful, starting refetch process');
       toast.success("Project updated successfully!");
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      await queryClient.invalidateQueries({ queryKey: ['projects'] });
+      await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      // Refetch the project and reset the form with the latest data
+      try {
+        console.log('[EditProjectForm] Refetching project after update');
+        const updatedProject = await fetchProject(projectId);
+        console.log('[EditProjectForm] Got updated project, resetting form');
+        const cleanedData = cleanProjectForForm(updatedProject);
+        console.log('[EditProjectForm] Cleaned data for form reset:', cleanedData);
+        form.reset(cleanedData);
+        deliverableReplace(cleanedData.deliverables || []);
+        milestoneReplace(cleanedData.paymentMilestones || []);
+        console.log('[EditProjectForm] Form reset complete');
+        setTimeout(() => {
+          const formValues = form.getValues();
+          console.log('[EditProjectForm] Form values after mutation reset:', formValues);
+          console.log('[EditProjectForm] Deliverables after mutation:', formValues.deliverables);
+          console.log('[EditProjectForm] Payment milestones after mutation:', formValues.paymentMilestones);
+        }, 100);
+      } catch (err) {
+        console.error('[EditProjectForm] Error refetching project after update:', err);
+        toast.error('Error refetching project after update.');
+      }
       onSuccess?.();
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.error || "Failed to update project.";
       const errorDetails = error.response?.data?.details;
+      console.error('[EditProjectForm] API error:', error);
       if (errorDetails) {
         toast.error(`${errorMessage} Check console for validation details.`);
-        console.error("Validation errors:", errorDetails);
+        console.error("Validation errors (details):", errorDetails);
       } else {
         toast.error(errorMessage);
       }
@@ -209,88 +296,84 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
   };
 
   const form = useForm<ProjectFormValues>({
-    resolver: zodResolver(projectCreateSchema),
-    defaultValues: project
-      ? {
-          ...project,
-          deliverables: (project.deliverables || []).map((d: any) => ({
-            ...d,
-            id: d.id || uuidv4(),
-            dueDate: parseDate(d.dueDate),
-          })),
-          paymentMilestones: (project.paymentMilestones || []).map((m: any) => ({
-            ...m,
-            id: m.id || uuidv4(),
-            dueDate: parseDate(m.dueDate),
-          })),
-        }
-      : undefined,
-    // This will be set on first render, and will not update after.
-    // If you want to update when project changes, you can use form.reset in a useEffect as fallback.
+    resolver: zodResolver(projectEditSchema),
+    defaultValues: {
+      id: projectId,
+      name: "",
+      description: "",
+      customerId: null,
+      type: "personal",
+      budget: 0,
+      currency: "USD",
+      currencyEnabled: false,
+      deliverablesEnabled: true,
+      deliverables: [],
+      paymentStructure: "noPayment",
+      paymentMilestones: [],
+      hasServiceAgreement: false,
+      serviceAgreement: "",
+      agreementTemplate: "standard",
+      hasAgreedToTerms: false,
+      isPublished: false,
+      status: "pending",
+      signedStatus: "not_signed",
+      documents: "",
+      notes: "",
+      customFields: { name: "", value: "" },
+      state: "draft",
+      emailToCustomer: false,
+      hasPaymentTerms: false,
+      // paymentTerms: "",
+    },
   });
-
-  useEffect(() => {
-    if (project) {
-      form.reset({
-        customerId: project.customerId,
-        type: (project.type as "personal" | "customer") || "personal",
-        name: project.name || "",
-        description: project.description || "",
-        startDate: parseDate(project.startDate),
-        endDate: parseDate(project.endDate),
-        budget: project.budget ?? 0,
-        currency: project.currency || "USD",
-        currencyEnabled: project.currencyEnabled ?? false,
-        deliverablesEnabled: project.deliverablesEnabled ?? true,
-        deliverables: (project.deliverables || []).map((d: any) => ({
-          ...d,
-          id: d.id || uuidv4(),
-          dueDate: parseDate(d.dueDate),
-        })),
-        paymentStructure: project.paymentStructure || "noPayment",
-        paymentMilestones: (project.paymentMilestones || []).map((m: any) => ({
-          ...m,
-          id: m.id || uuidv4(),
-          dueDate: parseDate(m.dueDate),
-        })),
-        hasServiceAgreement: project.hasServiceAgreement ?? false,
-        serviceAgreement:
-          typeof project.serviceAgreement === "string" ? project.serviceAgreement : JSON.stringify(project.serviceAgreement) || "",
-        agreementTemplate: "standard", // This can be improved if template type is stored
-        hasAgreedToTerms: project.hasAgreedToTerms ?? false,
-        isPublished: project.isPublished ?? false,
-        status: project.status || "pending",
-        signedStatus: project.signedStatus || "not_signed",
-        documents: typeof project.documents === "string" ? project.documents : "",
-        notes: project.notes || "",
-        customFields:
-          project.customFields &&
-          typeof project.customFields === "object" &&
-          !Array.isArray(project.customFields)
-            ? (project.customFields as { name: string; value: string })
-            : { name: "", value: "" },
-        state: (project.state as "draft" | "published" | undefined) || "draft",
-        emailToCustomer: project.emailToCustomer ?? false,
-        hasPaymentTerms: project.hasPaymentTerms ?? false,
-        paymentTerms: "",
-      })
-    }
-  }, [project, form])
 
   const {
     fields: deliverableFields,
     append: appendDeliverable,
     remove: removeDeliverableField,
     move: moveDeliverable,
+    replace: deliverableReplace,
   } = useFieldArray({
     control: form.control,
     name: "deliverables",
-  })
-
-  const { fields: milestoneFields, append: appendMilestone, remove: removeMilestoneField } = useFieldArray({
+  });
+  const {
+    fields: milestoneFields,
+    append: appendMilestone,
+    remove: removeMilestoneField,
+    replace: milestoneReplace,
+  } = useFieldArray({
     control: form.control,
     name: "paymentMilestones",
-  })
+  });
+
+  // Now the useEffect can safely use deliverableReplace and milestoneReplace
+  useEffect(() => {
+    console.log('[EditProjectForm] useEffect triggered. Project:', project);
+    if (project) {
+      console.log('[EditProjectForm] Resetting form with project data');
+      const cleanedData = cleanProjectForForm(project);
+      console.log('[EditProjectForm] Cleaned form data:', cleanedData);
+      form.reset(cleanedData);
+      deliverableReplace(cleanedData.deliverables || []);
+      milestoneReplace(cleanedData.paymentMilestones || []);
+      setTimeout(() => {
+        const formValues = form.getValues();
+        console.log('[EditProjectForm] Form values after reset:', formValues);
+        console.log('[EditProjectForm] Deliverables in form:', formValues.deliverables);
+        console.log('[EditProjectForm] Payment milestones in form:', formValues.paymentMilestones);
+      }, 100);
+    }
+  }, [project, form, deliverableReplace, milestoneReplace]);
+
+  // Debug field arrays
+  useEffect(() => {
+    console.log('[EditProjectForm] deliverableFields updated:', deliverableFields);
+  }, [deliverableFields]);
+
+  useEffect(() => {
+    console.log('[EditProjectForm] milestoneFields updated:', milestoneFields);
+  }, [milestoneFields]);
 
   const projectType = form.watch("type")
   const currencyEnabled = form.watch("currencyEnabled")
@@ -419,11 +502,20 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
   }
 
   const setPaymentStructureWithUpdates = (value: string) => {
-    form.setValue("paymentStructure", value as any)
+    form.setValue("paymentStructure", value as any);
     if (value === "deliverablePayment" && form.getValues("deliverablesEnabled")) {
-      updatePaymentMilestonesFromDeliverables()
+      updatePaymentMilestonesFromDeliverables();
+    } else if (value === "milestonePayment") {
+      // Clean up deliverableId for all payment milestones
+      const milestones = form.getValues("paymentMilestones") || [];
+      const cleaned = milestones.map(m => ({
+        ...m,
+        deliverableId: null,
+        type: "milestone" as const,
+      }));
+      form.setValue("paymentMilestones", cleaned);
     }
-  }
+  };
 
   const addPaymentMilestone = () => {
     const newMilestone: PaymentTermFormValues = {
@@ -475,22 +567,28 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
 
   const handleUpdate = async (values: ProjectFormValues) => {
     onLoadingChange?.(true);
-    
-    const cleanedValues = {
-      ...values,
-      deliverables: (values.deliverables || []).map(d => ({
-        ...d,
-        id: d.id || uuidv4(),
-        dueDate: d.dueDate ? new Date(d.dueDate) : null,
-      })),
-      paymentMilestones: (values.paymentMilestones || []).map(m => ({
-        ...m,
-        id: m.id || uuidv4(),
-        dueDate: m.dueDate ? new Date(m.dueDate) : null,
-      })),
-    };
-
-    updateProjectMutation.mutate(cleanedValues);
+    console.log('[EditProjectForm] handleUpdate called with values:', values);
+    toast.info('Submitting project update. Check console for details.');
+    try {
+      const cleanedValues = {
+        ...values,
+        deliverables: (values.deliverables || []).map(d => ({
+          ...d,
+          id: d.id || uuidv4(),
+          dueDate: d.dueDate ? new Date(d.dueDate) : null,
+        })),
+        paymentMilestones: (values.paymentMilestones || []).map(m => ({
+          ...m,
+          id: m.id || uuidv4(),
+          dueDate: m.dueDate ? new Date(m.dueDate) : null,
+        })),
+      };
+      console.log('[EditProjectForm] cleanedValues to be sent to API:', cleanedValues);
+      updateProjectMutation.mutate(cleanedValues);
+    } catch (err) {
+      console.error('[EditProjectForm] Error in handleUpdate:', err);
+      toast.error('Error in handleUpdate. Check console for details.');
+    }
   }
 
   const isFormValid = () => {
@@ -730,7 +828,7 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
 
 
           <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleUpdate)} id="edit-project-form" className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleUpdate as any)} id="edit-project-form" className="space-y-4">
                 {/* Accordion Sections go here... */}
                 {/* Customer Selection */}
                 <Card>

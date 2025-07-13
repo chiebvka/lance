@@ -36,14 +36,14 @@ export function DataTable<TData>({
   }
 
   return (
-    <div className="rounded-md border">
-      <ShadcnTable>
-        <TableHeader>
+    <div className="rounded-none border">
+      <ShadcnTable >
+        <TableHeader className="bg-bexoni/10 hover:bg-bexoni/10">
           {table.getHeaderGroups().map(headerGroup => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map(header => {
                 return (
-                  <TableHead key={header.id} colSpan={header.colSpan}>
+                  <TableHead key={header.id} colSpan={header.colSpan} className="text-primary">
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -63,10 +63,10 @@ export function DataTable<TData>({
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
                 onClick={() => handleRowClick(row)}
-                className="cursor-pointer"
+                className="cursor-pointer "
               >
                 {row.getVisibleCells().map(cell => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className=" ">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
