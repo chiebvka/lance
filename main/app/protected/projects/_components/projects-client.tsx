@@ -26,7 +26,7 @@ import { DataTable } from "./data-table"
 import { columns, Project } from "./columns"
 import ProjectForm from './project-form'
 import EditProjectForm from './edit-project-form'
-import { Bubbles } from "lucide-react"
+import { Bubbles, Trash2 } from "lucide-react"
 import { FilterTag } from '@/components/filtering/search-filter'
 import { 
   DropdownMenuLabel, 
@@ -36,11 +36,13 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu"
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTableViewOptions } from './data-table-view-options'
-import { DataTablePagination } from './data-table-pagination'
 import { Calendar } from '@/components/ui/calendar'
 import Pagination from '../../../../components/pagination';
+import { getTableColumns, setTableColumns, getTableColumnsWithDefaults } from '@/cookie-persist/tableColumns';
+import ConfirmModal from '@/components/modal/confirm-modal'
+import { toast } from 'sonner'
 
 const fetchProjects = async (): Promise<Project[]> => {
   const response = await axios.get('/api/projects');
@@ -67,6 +69,7 @@ export default function ProjectsClient() {
   const [filterTags, setFilterTags] = useState<FilterTag[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false)
   
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -169,11 +172,9 @@ export default function ProjectsClient() {
       // Trigger sheet open
     }
     
-    // Handle project selection for editing
+    // Sync selected project with URL projectId, which controls the sheet
     const projectId = searchParams.get('projectId');
-    if (projectId) {
-      setSelectedProjectId(projectId);
-    }
+    setSelectedProjectId(projectId);
   }, [searchParams]);
 
   const filteredProjects = useMemo(() => {
@@ -237,16 +238,64 @@ export default function ProjectsClient() {
     return filtered;
   }, [projects, searchQuery, activeFilters]);
 
+  const projectBeingEdited = useMemo(() => {
+    return projects.find(p => p.id === selectedProjectId)
+  }, [projects, selectedProjectId])
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      return axios.delete(`/api/projects/${projectId}`);
+    },
+    onSuccess: () => {
+      toast.success("Project deleted successfully!");
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      
+      const currentParams = new URLSearchParams(searchParams.toString());
+      currentParams.delete('projectId');
+      const newUrl = currentParams.toString() ? `${pathname}?${currentParams.toString()}` : pathname;
+      router.replace(newUrl);
+    },
+    onError: (error: any) => {
+      console.error("Delete project error:", error.response?.data);
+      const errorMessage = error.response?.data?.error || "Failed to delete project";
+      toast.error(errorMessage);
+    },
+  });
+
   // --- Table State ---
   const [rowSelection, setRowSelection] = useState({})
-  const [columnVisibility, setColumnVisibility] =
-    useState<VisibilityState>({
-      description: false,
-      customerName: false,
-      endDate: false,
-    })
+  // Load initial column visibility from cookie with proper defaults
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    if (typeof window !== 'undefined') {
+      const visibleColumns = getTableColumnsWithDefaults('projects');
+      
+      // Create visibility state: default columns visible, others hidden
+      const state: VisibilityState = {};
+      
+      // All available columns (excluding select and actions which are always visible)
+      const allColumns = ['name', 'description', 'type', 'customerName', 'budget', 'hasServiceAgreement', 'state', 'status', 'paymentType', 'endDate'];
+      
+      // Set visibility based on saved/default columns
+      for (const col of allColumns) {
+        state[col] = visibleColumns.includes(col);
+      }
+      
+      return state;
+    }
+    // Fallback for SSR
+    return {};
+  });
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
+
+  // Persist column visibility to cookie on change
+  useEffect(() => {
+    // Only store columns that are visible
+    const visibleCols = Object.entries(columnVisibility)
+      .filter(([_, v]) => v)
+      .map(([k]) => k);
+    setTableColumns('projects', visibleCols);
+  }, [columnVisibility]);
 
   const table = useReactTable({
     data: filteredProjects,
@@ -427,6 +476,17 @@ export default function ProjectsClient() {
     router.replace(`${pathname}?${params.toString()}`);
   }
 
+  const handleDeleteFromSheet = () => {
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (selectedProjectId) {
+      deleteProjectMutation.mutate(selectedProjectId)
+    }
+    setDeleteModalOpen(false)
+  }
+
   const filterContent = (
     <div className="p-2">
       <DropdownMenuLabel>Filter projects</DropdownMenuLabel>
@@ -556,6 +616,15 @@ export default function ProjectsClient() {
         closeRef={closeRef}
       />
 
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        itemName={projectBeingEdited?.name || "this project"}
+        itemType="Project"
+        isLoading={deleteProjectMutation.isPending}
+      />
+
       {/* Edit Project Sheet */}
       <Sheet open={!!selectedProjectId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
         <SheetContent 
@@ -565,7 +634,20 @@ export default function ProjectsClient() {
           className="w-full flex flex-col p-0 sm:w-3/4 md:w-1/2 lg:w-[40%]"
         >
           <SheetHeader className="p-4 border-b">
-            <SheetTitle>Edit Sheet</SheetTitle>
+            <div className="flex justify-between items-center">
+              <SheetTitle>Edit Sheet</SheetTitle>
+              {selectedProjectId && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteFromSheet}
+                  disabled={deleteProjectMutation.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Project
+                </Button>
+              )}
+            </div>
           </SheetHeader>
           <ScrollArea className="flex-grow">
             <div className="p-4">
@@ -581,8 +663,15 @@ export default function ProjectsClient() {
           <DataTableViewOptions table={table} />
         </div>
         <DataTable table={table} onProjectSelect={handleProjectSelect} />
-        {/* <Pagination currentPage={1} totalPages={1} pageSize={10} totalItems={100} onPageChange={() => {}} /> */}
-        <DataTablePagination table={table} />
+        <Pagination
+          currentPage={table.getState().pagination.pageIndex + 1}
+          totalPages={table.getPageCount()}
+          pageSize={table.getState().pagination.pageSize}
+          totalItems={table.getFilteredRowModel().rows.length}
+          onPageChange={page => table.setPageIndex(page - 1)}
+          onPageSizeChange={size => table.setPageSize(size)}
+          itemName="projects"
+        />
       </div>
     </>
   )

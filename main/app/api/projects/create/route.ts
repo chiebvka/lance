@@ -138,7 +138,7 @@ export async function POST(request: Request) {
             }
 
             return {
-              id: m.id,
+              // DO NOT include id - let Supabase auto-generate it
               projectId: project?.id,
               deliverableId: deliverableId,
               name: m.name,

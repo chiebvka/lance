@@ -5,16 +5,24 @@ import {
   BadgeHelp,
   BookOpen,
   ChartNoAxesCombined,
+  Cog,
+  Contact,
+  FolderKanban,
   Frame,
   GalleryVerticalEnd,
   Home,
   Image,
+  LinkIcon,
   Logs,
   Map,
+  MessagesSquare,
   Newspaper,
   PieChart,
+  Receipt,
+  ReceiptText,
   Siren,
   StopCircle,
+  Vault,
 } from "lucide-react"
 
 import {
@@ -51,76 +59,47 @@ const data = {
       url: "/protected",
       icon: ChartNoAxesCombined,
       isActive: true,
-    //   items: [
-    //     {
-    //       title: "Home",
-    //       url: "/protected",
-    //     },
-    //   ],
     },
     {
       title: "Customers",
       url: "/protected/customers",
-      icon: Logs,
+      icon: Contact,
       isActive: true,
     },
     {
-      title: "Projects & News",
+      title: "Projects",
       url: "/protected/projects",
-      icon: Newspaper,
-    //   items: [
-    //     {
-    //       title: "Add Project and News",
-    //       url: "/protected/blogs/create",
-    //     },
-    //     {
-    //       title: "Project & News Posts",
-    //       url: "/protected/blogs",
-    //     },
-      
-    //   ],
+      icon: FolderKanban,
     },
     {
-      title: "Tags",
-      url: "/protected/tags",
-      icon: Newspaper,
-    //   items: [
-    //     {
-    //       title: "Blogs & Events Tags",
-    //       url: "/protected/tags",
-    //     },
-  
-    //   ],
+      title: "Invoices",
+      url: "/protected/invoices",
+      icon: Receipt,
     },
     {
-      title: "Events",
-      url: "/protected/events",
-      icon: BookOpen,
-    //   items: [
-    //     {
-    //       title: "Upcoming Events",
-    //       url: "/protected/events",
-    //     },
-    //     {
-    //       title: "Events Tags",
-    //       url: "/protected/tags",
-    //     },
-    //   ],
+      title: "Receipts",
+      url: "/protected/receipts",
+      icon: ReceiptText,
     },
     {
-      title: "Gallery",
-      url: "/protected/gallery",
-      icon: Image,
-    //   items: [
-    //     {
-    //       title: "Media Gallery",
-    //       url: "/protected/gallery",
-    //     },
-    //     {
-    //       title: "Add Gallery",
-    //       url: "/protected/gallery/add",
-    //     },
-    //   ],
+      title: "Feedbacks",
+      url: "/protected/feedback",
+      icon: MessagesSquare,
+    },
+    {
+      title: "Links",
+      url: "/protected/links",
+      icon: LinkIcon,
+    },
+    {
+      title: "Vault",
+      url: "/protected/vault",
+      icon: Vault,
+    },
+    {
+      title: "Settings",
+      url: "/protected/settings",
+      icon: Cog,
     },
   ],
   projects: [

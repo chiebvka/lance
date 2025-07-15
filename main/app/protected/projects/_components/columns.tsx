@@ -39,6 +39,7 @@ export interface Project {
   paymentType: string | null
   endDate: string | null
   state: "draft" | "published" | null
+  status: string | null
   created_at: string | null
 }
 
@@ -124,9 +125,10 @@ export const columns: ColumnDef<Project>[] = [
       <DataTableColumnHeader column={column} title="Description" />
     ),
     cell: ({ row }) => {
+      const description = row.getValue("description") as string;
       return (
-        <div className="flex w-[100px] items-center">
-          <span>{row.getValue("description")}</span>
+        <div className="max-w-[200px]">
+          <span className="truncate block">{description || "No description"}</span>
         </div>
       )
     },
@@ -153,26 +155,26 @@ export const columns: ColumnDef<Project>[] = [
       return value.includes(row.getValue(id))
     },
   },
-  {
-    accessorKey: "customerName",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Customer" />
-    ),
-    cell: ({ row }) => {
-      const type = row.original.type
-      const customerName = row.original.customerName
+  // {
+  //   accessorKey: "customerName",
+  //   header: ({ column }) => (
+  //     <DataTableColumnHeader column={column} title="Customer" />
+  //   ),
+  //   cell: ({ row }) => {
+  //     const type = row.original.type
+  //     const customerName = row.original.customerName
 
-      if (type === "personal") {
-        return <div className="font-medium">Personal</div>
-      }
+  //     if (type === "personal") {
+  //       return <div className="font-medium">Personal</div>
+  //     }
 
-      if (customerName) {
-        return <div className="font-medium">{customerName}</div>
-      }
+  //     if (customerName) {
+  //       return <div className="font-medium">{customerName}</div>
+  //     }
       
-      return <div className="text-muted-foreground">No Customer Assigned</div>
-    },
-  },
+  //     return <div className="text-muted-foreground">No Customer Assigned</div>
+  //   },
+  // },
   {
     accessorKey: "budget",
     header: ({ column }) => (
@@ -234,6 +236,25 @@ export const columns: ColumnDef<Project>[] = [
     },
   },
   {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+      const status = row.original.status
+      if (!status) return <div className="text-muted-foreground">Not set</div>
+
+      return (
+        <Badge variant="outline" className={`capitalize ${getStatusColor(status)}`}>
+          {status}
+        </Badge>
+      )
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
+  },
+  {
     accessorKey: "paymentType",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Payment Type" />
@@ -266,6 +287,9 @@ export const columns: ColumnDef<Project>[] = [
   },
   {
     id: "actions",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Actions" />
+    ),
     cell: ({ row }) => <DataTableRowActions row={row} />,
   },
 ]
