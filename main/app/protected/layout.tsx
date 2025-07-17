@@ -32,11 +32,13 @@ export default async function ProtectedLayout({
         <SidebarProvider>
             <AppSidebar user={user} />
             <SidebarInset>
-                <header className="flex h-16 shrink-0 items-center  gap-2 px-4 border-b-2 border-primary">
+                <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 px-4 border-b-2 border-primary bg-background/95 backdrop-blur-sm">
                   <SidebarTrigger className="-ml-1" />
                   <Breadcrumbs />
                 </header>
-                {children}
+                <div className="flex-1 overflow-auto">
+                  {children}
+                </div>
             </SidebarInset>
         </SidebarProvider>
     </div>

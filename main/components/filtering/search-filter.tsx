@@ -22,8 +22,8 @@ export type FilterTag = {
 
 type SearchFilterProps = {
   placeholder: string;
-  children?: React.ReactNode;
   className?: string;
+  children?: React.ReactNode;
   filterTags?: FilterTag[];
   onRemoveFilter?: (key: string) => void;
   onClearAllFilters?: () => void;
@@ -32,8 +32,8 @@ type SearchFilterProps = {
 
 export function SearchFilter({
   placeholder,
-  children,
   className,
+  children,
   filterTags = [],
   onRemoveFilter,
   onClearAllFilters,

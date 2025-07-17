@@ -12,6 +12,7 @@ import {
   BreadcrumbSeparator,
 } from "./ui/breadcrumb"
 import { getProjectNameById } from "@/actions/project/fetch"
+import SpotlightCommand from "./general/spotlight-command"
 
 function ProjectNameCrumb({ projectId }: { projectId: string }) {
   const [name, setName] = useState("...") // Initial loading state
@@ -44,36 +45,41 @@ export default function Breadcrumbs({}: {}) {
   if (segments.length === 0) return null
 
   return (
-    <Breadcrumb className="">
-      <BreadcrumbList>
-        {segments.map((segment, index) => {
-          const isLast = index === segments.length - 1
-          const href = "/" + segments.slice(0, index + 1).join("/")
-          const prevSegment = index > 0 ? segments[index - 1] : undefined
+    <div className="flex items-center justify-between w-full">
+      <Breadcrumb className="">
+        <BreadcrumbList>
+          {segments.map((segment, index) => {
+            const isLast = index === segments.length - 1
+            const href = "/" + segments.slice(0, index + 1).join("/")
+            const prevSegment = index > 0 ? segments[index - 1] : undefined
 
-          let labelContent
-          if (prevSegment === "projects" && isUUID(segment)) {
-            labelContent = <ProjectNameCrumb projectId={segment} />
-          } else {
-            labelContent = transformLabel(segment)
-          }
+            let labelContent
+            if (prevSegment === "projects" && isUUID(segment)) {
+              labelContent = <ProjectNameCrumb projectId={segment} />
+            } else {
+              labelContent = transformLabel(segment)
+            }
 
-          return (
-            <React.Fragment key={href}>
-              <BreadcrumbItem>
-                {isLast ? (
-                  <BreadcrumbPage>{labelContent}</BreadcrumbPage>
-                ) : (
-                  <BreadcrumbLink asChild>
-                    <Link href={href}>{labelContent}</Link>
-                  </BreadcrumbLink>
-                )}
-              </BreadcrumbItem>
-              {!isLast && <BreadcrumbSeparator />}
-            </React.Fragment>
-          )
-        })}
-      </BreadcrumbList>
-    </Breadcrumb>
+            return (
+              <React.Fragment key={href}>
+                <BreadcrumbItem>
+                  {isLast ? (
+                    <BreadcrumbPage>{labelContent}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink asChild>
+                      <Link href={href}>{labelContent}</Link>
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+                {!isLast && <BreadcrumbSeparator />}
+              </React.Fragment>
+            )
+          })}
+        </BreadcrumbList>
+      </Breadcrumb>
+      
+      {/* Spotlight Command integrated into breadcrumbs */}
+      <SpotlightCommand />
+    </div>
   )
 }
