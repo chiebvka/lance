@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -133,6 +133,10 @@ interface EditProjectFormProps {
   onSuccess?: () => void
   onLoadingChange?: (isLoading: boolean) => void
   onCancel?: () => void
+  onFormValidChange?: (valid: boolean) => void
+  onCustomerChange?: (customer: any) => void
+  onProjectTypeChange?: (type: string) => void
+  onSavingChange?: (saving: boolean) => void
 }
 
 const fetchProject = async (projectId: string): Promise<ProjectWithRelations> => {
@@ -225,10 +229,20 @@ function cleanProjectForForm(project: any): ProjectFormValues {
   }
 }
 
-export default function EditProjectForm({ projectId, onSuccess, onLoadingChange, onCancel }: EditProjectFormProps) {
+export default function EditProjectForm({ 
+  projectId, 
+  onSuccess, 
+  onLoadingChange, 
+  onCancel,
+  onFormValidChange,
+  onCustomerChange,
+  onProjectTypeChange,
+  onSavingChange
+}: EditProjectFormProps) {
   const queryClient = useQueryClient();
   const [isCreateCustomerSheetOpen, setCreateCustomerSheetOpen] = useState(false)
   const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false)
+  const [isSaving, setIsSaving] = useState(false);
 
   const { data: project, isLoading: isLoadingProject, isError } = useQuery({
     queryKey: ['project', projectId],
@@ -470,36 +484,36 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
     }
   }
 
-  const addDeliverable = () => {
-    const currentDeliverables = form.getValues("deliverables") || []
-    const maxPosition = Math.max(...currentDeliverables.map((d) => d.position || 0), 0)
-    const newDeliverable: DeliverableFormValues = {
+  const addDeliverable = useCallback(() => {
+    const newDeliverable = {
       id: uuidv4(),
       name: "",
       description: "",
       dueDate: undefined,
-      position: maxPosition + 1,
-      status: "pending",
+      position: (deliverables?.length || 0) + 1,
       isPublished: false,
+      status: "pending" as const,
+    };
+    
+    const updatedDeliverables = [...(deliverables || []), newDeliverable];
+    form.setValue("deliverables", updatedDeliverables);
+    
+    // Update payment milestones if deliverable-based payment is selected
+    if (paymentStructure === "deliverablePayment") {
+      updatePaymentMilestonesFromDeliverables();
     }
-    appendDeliverable(newDeliverable)
-    if (form.getValues("paymentStructure") === "deliverablePayment") {
-      updatePaymentMilestonesFromDeliverables()
-    }
-  }
+  }, [deliverables, form, paymentStructure, updatePaymentMilestonesFromDeliverables]);
 
-  const removeDeliverable = (index: number) => {
-    const currentDeliverables = form.getValues("deliverables")
-    if (currentDeliverables && currentDeliverables.length > 1) {
-      removeDeliverableField(index)
-      const updatedDeliverables = (form.getValues("deliverables") || []).filter((_, i) => i !== index)
-      const reorderedDeliverables = reassignPositions(updatedDeliverables)
-      form.setValue("deliverables", reorderedDeliverables)
-      if (form.getValues("paymentStructure") === "deliverablePayment") {
-        updatePaymentMilestonesFromDeliverables()
-      }
+  const removeDeliverable = useCallback((index: number) => {
+    const updatedDeliverables = (deliverables || []).filter((_, i) => i !== index);
+    const reorderedDeliverables = reassignPositions(updatedDeliverables);
+    form.setValue("deliverables", reorderedDeliverables);
+    
+    // Update payment milestones if deliverable-based payment is selected
+    if (paymentStructure === "deliverablePayment") {
+      updatePaymentMilestonesFromDeliverables();
     }
-  }
+  }, [deliverables, form, paymentStructure, reassignPositions, updatePaymentMilestonesFromDeliverables]);
 
   const setPaymentStructureWithUpdates = (value: string) => {
     form.setValue("paymentStructure", value as any);
@@ -565,6 +579,8 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
     return (paymentMilestones || []).reduce((sum, milestone) => sum + (milestone.amount || 0), 0)
   }
 
+  
+
   const handleUpdate = async (values: ProjectFormValues) => {
     onLoadingChange?.(true);
     console.log('[EditProjectForm] handleUpdate called with values:', values);
@@ -592,8 +608,17 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
   }
 
   const isFormValid = () => {
-    // Use the form's built-in validation instead of custom logic
-    return form.formState.isValid && !form.formState.isValidating
+    const hasBasicInfo = projectName && projectDescription
+    const hasValidBudget = projectType === "personal" || (budget || 0) > 0
+    const hasValidDeliverables = !deliverablesEnabled || (deliverables || []).every((d) => d.name)
+    const hasValidPayment =
+      paymentStructure === "noPayment" ||
+      ((paymentStructure === "milestonePayment" || paymentStructure === "deliverablePayment") && getTotalPercentage() === 100) ||
+      paymentStructure === "fullDownPayment" ||
+      paymentStructure === "paymentOnCompletion"
+    const hasAgreement = !serviceAgreementEnabled || hasAgreedToTerms
+
+    return hasBasicInfo && hasValidBudget && hasValidDeliverables && hasValidPayment && hasAgreement
   }
 
   const getSectionIcon = (section: string) => {
@@ -704,18 +729,225 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
     { id: 'agreement', name: 'Agreement', icon: Handshake, status: getSectionStatus('agreement') },
   ];
 
+  // Add the missing functions
+  const handleSaveDraft = async () => {
+    setIsSaving(true)
+    try {
+      const values = form.getValues()
+
+      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
+        ...d,
+        id: d.id || "",
+        name: d.name,
+        description: d.description,
+        dueDate: d.dueDate, 
+        position: d.position || 0,
+        isPublished: d.isPublished || false,
+      }));
+      
+      const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones) 
+        ? values.paymentMilestones.map(m => ({
+            ...m,
+            id: m.id,
+            name: m.name,
+            percentage: m.percentage,
+            amount: m.amount,
+            dueDate: m.dueDate,
+          }))
+        : [];
+
+      const customFieldsData = (values.customFields?.name && values.customFields?.value) 
+        ? values.customFields 
+        : undefined;
+
+      const projectData = {
+        ...values,
+        startDate: values.startDate,
+        endDate: values.endDate,
+        deliverables: deliverablesData,
+        paymentMilestones: milestonesData,
+        customFields: customFieldsData,
+        isPublished: false,
+        state: "draft",
+      }
+
+      const response = await axios.post("/api/projects/create", projectData)
+
+      if (response.data.success) {
+        toast.success("Draft saved successfully!")
+      } else {
+        toast.error("Failed to save draft.", {
+          description: response.data.error || "An unknown error occurred.",
+        })
+      }
+    } catch (error) {
+      console.error("Error saving draft:", error)
+      const errorDescription =
+        axios.isAxiosError(error) && error.response?.data?.error
+          ? error.response.data.error
+          : "An unexpected error occurred. Please try again."
+      toast.error("Error saving draft.", {
+        description: errorDescription,
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handlePublishProject = async (emailToCustomer = false) => {
+    setIsSaving(true)
+
+    try {
+      const values = form.getValues()
+
+      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
+        ...d,
+        id: d.id || "",
+        name: d.name,
+        description: d.description,
+        dueDate: d.dueDate,
+        position: d.position || 0,
+        isPublished: d.isPublished || false,
+      }));
+
+      const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones)
+        ? values.paymentMilestones.map(m => ({
+          ...m,
+          id: m.id,
+          name: m.name,
+          percentage: m.percentage,
+          amount: m.amount,
+          dueDate: m.dueDate,
+        }))
+        : [];
+
+      const customFieldsData = (values.customFields?.name && values.customFields?.value) 
+        ? values.customFields 
+        : undefined;
+
+      // Prepare project data with sorted deliverables
+      const projectData = {
+        ...values,
+        startDate: values.startDate,
+        endDate: values.endDate,
+        deliverables: deliverablesData,
+        paymentMilestones: milestonesData,
+        customFields: customFieldsData,
+        isPublished: true,
+        state: "published",
+        emailToCustomer,
+      }
+
+      const response = await axios.post("/api/projects/create", projectData)
+
+      if (response.data.success) {
+        toast.success(emailToCustomer ? "Project published and sent to customer!" : "Project published successfully!")
+      } else {
+        toast.error("Failed to publish project.", {
+          description: response.data.error || "An unknown error occurred.",
+        })
+      }
+    } catch (error) {
+      console.error("Error publishing project:", error)
+      const errorDescription =
+        axios.isAxiosError(error) && error.response?.data?.error
+          ? error.response.data.error
+          : "An unexpected error occurred. Please try again."
+      toast.error("Error publishing project.", {
+        description: errorDescription,
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Move all useEffect hooks to the top, before any conditional returns
+  // Add effect to notify parent of form validity - wrap in useCallback to prevent re-renders
+  useEffect(() => {
+    if (onFormValidChange) {
+      onFormValidChange(!!isFormValid());
+    }
+  }, [form.watch(), onFormValidChange]);
+
+  // Add effect to notify parent of customer changes
+  useEffect(() => {
+    if (onCustomerChange && project?.customer) {
+      onCustomerChange(project.customer);
+    }
+  }, [project?.customer, onCustomerChange]);
+
+  // Add effect to notify parent of project type changes
+  useEffect(() => {
+    if (onProjectTypeChange && project?.type) {
+      onProjectTypeChange(project.type);
+    }
+  }, [project?.type, onProjectTypeChange]);
+
+  // Add effect to notify parent of saving state changes
+  useEffect(() => {
+    if (onSavingChange) {
+      onSavingChange(isSaving);
+    }
+  }, [isSaving, onSavingChange]);
+
+  // Add custom event listeners for form submission
+  useEffect(() => {
+    const formElement = document.getElementById('edit-project-form');
+    if (!formElement) return;
+
+    const handleSubmitDraft = (e: Event) => {
+      e.preventDefault();
+      handleSaveDraft();
+    };
+
+    const handleSubmitPublish = (e: Event) => {
+      e.preventDefault();
+      handlePublishProject(false);
+    };
+
+    const handleSubmitPublishEmail = (e: Event) => {
+      e.preventDefault();
+      handlePublishProject(true);
+    };
+
+    formElement.addEventListener('submit-draft', handleSubmitDraft);
+    formElement.addEventListener('submit-publish', handleSubmitPublish);
+    formElement.addEventListener('submit-publish-email', handleSubmitPublishEmail);
+
+    return () => {
+      formElement.removeEventListener('submit-draft', handleSubmitDraft);
+      formElement.removeEventListener('submit-publish', handleSubmitPublish);
+      formElement.removeEventListener('submit-publish-email', handleSubmitPublishEmail);
+    };
+  }, [handleSaveDraft, handlePublishProject]); // Add dependencies
+
+  // Now handle the conditional returns AFTER all hooks
   if (isLoadingProject) {
     return (
-      <div className="flex items-center justify-center h-48">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+        <span className="ml-2">Loading project...</span>
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="text-red-500 p-4 border border-red-500/20 bg-red-500/10 rounded-md">
-        Error: Project could not be loaded. Please try again.
+      <div className="p-8 text-center">
+        <div className="text-red-600 mb-4">Error loading project</div>
+        <p className="text-gray-600">
+          Error: Project could not be loaded. Please try again.
+        </p>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="p-8 text-center">
+        <div className="text-gray-600">
+          Error: Project could not be loaded. Please try again.
+        </div>
       </div>
     );
   }
@@ -828,7 +1060,7 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
 
 
           <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleUpdate as any)} id="edit-project-form" className="space-y-4">
+              <form id="edit-project-form" onSubmit={form.handleSubmit(handleUpdate)} className="space-y-6">
                 {/* Accordion Sections go here... */}
                 {/* Customer Selection */}
                 <Card>
@@ -1089,10 +1321,10 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                               <FormField
                                 control={form.control}
                                 name="currency"
-          render={({ field }) => (
-            <FormItem>
+                                render={({ field }) => (
+                                  <FormItem>
                                     <FormLabel>Currency</FormLabel>
-              <FormControl>
+                                      <FormControl>
                                       <ComboBox
                                         items={currencies.map((c) => ({
                                           ...c,
@@ -1105,10 +1337,10 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                                         placeholder="Select currency..."
                                         searchPlaceholder="Search by code or name..."
                                         emptyMessage="No currency found."
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
           )}
         />
                             )}
@@ -1189,38 +1421,38 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                       <CardContent className="pt-0">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
-        <FormField
-          control={form.control}
-                              name="name"
-          render={({ field }) => (
-            <FormItem>
-                                  <FormLabel>Project Name *</FormLabel>
-                <FormControl>
-                                    <Input {...field} placeholder="Enter project name" />
-                </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                            <FormField
+                              control={form.control}
+                                                  name="name"
+                              render={({ field }) => (
+                                <FormItem>
+                                                      <FormLabel>Project Name *</FormLabel>
+                                    <FormControl>
+                                                        <Input {...field} placeholder="Enter project name" />
+                                    </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
                           <div className="md:col-span-2">
-        <FormField
-          control={form.control}
-                              name="description"
-          render={({ field }) => (
-            <FormItem>
-                                  <FormLabel>Project Description *</FormLabel>
-                <FormControl>
-                                    <Textarea
-                                      {...field}
-                                      placeholder="Describe the project scope and objectives"
-                                      rows={3}
-                                    />
-                </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                            <FormField
+                              control={form.control}
+                                                  name="description"
+                              render={({ field }) => (
+                                <FormItem>
+                                                      <FormLabel>Project Description *</FormLabel>
+                                    <FormControl>
+                                                        <Textarea
+                                                          {...field}
+                                                          placeholder="Describe the project scope and objectives"
+                                                          rows={3}
+                                                        />
+                                    </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
                           <FormField
                             control={form.control}
@@ -1370,46 +1602,46 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                       <CollapsibleContent>
                         <CardContent className="pt-0">
                           <div className="space-y-4">
-          <FormField
-            control={form.control}
-            name="budget"
-            render={({ field }) => (
-              <FormItem>
-                                  <FormLabel>Total Project Budget *</FormLabel>
-                <FormControl>
-                                    <div className="relative">
-                  <Input 
-                    type="number" 
-                                        min="0"
-                                        step="0.01"
-                    {...field} 
-                                        value={field.value || ""}
-                                        onChange={(e) => {
-                                          const value = e.target.value === "" ? 0 : Number.parseFloat(e.target.value) || 0
-                                          field.onChange(value)
+                            <FormField
+                              control={form.control}
+                              name="budget"
+                              render={({ field }) => (
+                                <FormItem>
+                                                    <FormLabel>Total Project Budget *</FormLabel>
+                                  <FormControl>
+                                                      <div className="relative">
+                                    <Input 
+                                      type="number" 
+                                                          min="0"
+                                                          step="0.01"
+                                      {...field} 
+                                                          value={field.value || ""}
+                                                          onChange={(e) => {
+                                                            const value = e.target.value === "" ? 0 : Number.parseFloat(e.target.value) || 0
+                                                            field.onChange(value)
 
-                                          // Update all payment milestone amounts when budget changes
-                                          const updatedMilestones = (form.getValues("paymentMilestones") || []).map((milestone) => ({
-                                            ...milestone,
-                                            amount: calculateAmountFromPercentage(milestone.percentage || 0),
-                                          }))
-                                          form.setValue("paymentMilestones", updatedMilestones)
-                                        }}
-                                        placeholder="Enter total budget amount"
-                                        className="pl-16"
-                                      />
-                                      <span className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                                        {currencyEnabled ? selectedCurrency : "$"}
-                                      </span>
-                                    </div>
-                </FormControl>
-                                  <p className="text-sm  mt-1">
-                                    This budget will be used to calculate payment amounts automatically based on percentages.
-                                  </p>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                                                            // Update all payment milestone amounts when budget changes
+                                                            const updatedMilestones = (form.getValues("paymentMilestones") || []).map((milestone) => ({
+                                                              ...milestone,
+                                                              amount: calculateAmountFromPercentage(milestone.percentage || 0),
+                                                            }))
+                                                            form.setValue("paymentMilestones", updatedMilestones)
+                                                          }}
+                                                          placeholder="Enter total budget amount"
+                                                          className="pl-16"
+                                                        />
+                                                        <span className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
+                                                          {currencyEnabled ? selectedCurrency : "$"}
+                                                        </span>
+                                                      </div>
+                                  </FormControl>
+                                                    <p className="text-sm  mt-1">
+                                                      This budget will be used to calculate payment amounts automatically based on percentages.
+                                                    </p>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
                         </CardContent>
                       </CollapsibleContent>
@@ -1502,34 +1734,34 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                     <CollapsibleContent>
                       <CardContent className="pt-0">
                         <div className="space-y-4">
-          <FormField
-            control={form.control}
-                            name="deliverablesEnabled"
-            render={({ field }) => (
-                              <FormItem className="flex items-center space-x-3">
-                  <FormControl>
-                                  <Switch
-                                    id="deliverablesEnabled"
-                                    checked={field.value}
-                                    onCheckedChange={(value) => {
-                                      field.onChange(value)
-                                      setDeliverablesEnabledWithUpdates(value)
-                                    }}
-                                  />
-                  </FormControl>
-                                <FormLabel
-                                  htmlFor="deliverablesEnabled"
-                                  className={`cursor-pointer transition-all duration-300 ease-in-out ${
-                                    field.value
-                                      ? "text-[#9948fb] font-medium scale-[1.1] transform"
-                                      : " scale-100 transform"
-                                  }`}
-                                >
-                                  Enable Deliverables
-                                </FormLabel>
-              </FormItem>
-            )}
-          />
+                          <FormField
+                            control={form.control}
+                                            name="deliverablesEnabled"
+                            render={({ field }) => (
+                                              <FormItem className="flex items-center space-x-3">
+                                  <FormControl>
+                                                  <Switch
+                                                    id="deliverablesEnabled"
+                                                    checked={field.value}
+                                                    onCheckedChange={(value) => {
+                                                      field.onChange(value)
+                                                      setDeliverablesEnabledWithUpdates(value)
+                                                    }}
+                                                  />
+                                  </FormControl>
+                                                <FormLabel
+                                                  htmlFor="deliverablesEnabled"
+                                                  className={`cursor-pointer transition-all duration-300 ease-in-out ${
+                                                    field.value
+                                                      ? "text-[#9948fb] font-medium scale-[1.1] transform"
+                                                      : " scale-100 transform"
+                                                  }`}
+                                                >
+                                                  Enable Deliverables
+                                                </FormLabel>
+                              </FormItem>
+                            )}
+                          />
 
                           {deliverablesEnabled && (
                             <>
@@ -1538,7 +1770,7 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                                   💡 <strong>Tip:</strong> Drag and drop deliverables using the grip handle to reorder them.
                                   Positions are automatically saved.
                                 </p>
-        </div>
+                              </div>
                               {deliverableFields
                                 .filter(Boolean)
                                 .map((deliverable, index) => {
@@ -1591,15 +1823,15 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                                       </div>
                                       <div className="space-y-3">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-        <FormField
-          control={form.control}
+                                          <FormField
+                                            control={form.control}
                                             name={`deliverables.${index}.name`}
-          render={({ field }) => (
-            <FormItem>
+                                            render={({ field }) => (
+                                              <FormItem>
                                                 <FormLabel>Name</FormLabel>
-                <FormControl>
+                                                <FormControl>
                                                   <Input {...field} placeholder="Deliverable name" />
-                </FormControl>
+                                                </FormControl>
                                               </FormItem>
                                             )}
                                           />
@@ -1637,8 +1869,8 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                                                 </Popover>
               <FormMessage />
             </FormItem>
-          )}
-        />
+                                            )}
+                                          />
                                         </div>
                                         <FormField
                                           control={form.control}
@@ -1764,40 +1996,40 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                       <CardContent className="pt-0">
                         <div className="space-y-4">
                           <div>
-        <FormField
-          control={form.control}
-          name="paymentStructure"
-          render={({ field }) => (
-            <FormItem>
+                            <FormField
+                              control={form.control}
+                              name="paymentStructure"
+                              render={({ field }) => (
+                                <FormItem>
                                   <FormLabel>Payment Type</FormLabel>
-                                  <FormControl>
-                                    <Select
-                                      onValueChange={(value) => {
-                                        field.onChange(value)
-                                        setPaymentStructureWithUpdates(value)
-                                      }}
-                                      defaultValue={field.value}
-                                      disabled={projectType === "personal"}
-                                    >
-                <FormControl>
-                  <SelectTrigger>
-                                          <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                                        <SelectItem value="noPayment">No payment required</SelectItem>
-                                        <SelectItem value="milestonePayment">Milestone-based payments</SelectItem>
-                                        {deliverablesEnabled && (
-                                          <SelectItem value="deliverablePayment">Deliverable-based payments</SelectItem>
-                                        )}
-                                        <SelectItem value="fullDownPayment">Full payment upfront</SelectItem>
-                                        <SelectItem value="paymentOnCompletion">Payment on completion</SelectItem>
-                </SelectContent>
-              </Select>
-                                  </FormControl>
-            </FormItem>
-          )}
-        />
+                                    <FormControl>
+                                      <Select
+                                        onValueChange={(value) => {
+                                          field.onChange(value)
+                                          setPaymentStructureWithUpdates(value)
+                                        }}
+                                        defaultValue={field.value}
+                                        disabled={projectType === "personal"}
+                                      >
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="noPayment">No payment required</SelectItem>
+                                          <SelectItem value="milestonePayment">Milestone-based payments</SelectItem>
+                                          {deliverablesEnabled && (
+                                            <SelectItem value="deliverablePayment">Deliverable-based payments</SelectItem>
+                                          )}
+                                          <SelectItem value="fullDownPayment">Full payment upfront</SelectItem>
+                                          <SelectItem value="paymentOnCompletion">Payment on completion</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
                           </div>
 
                           {paymentStructure === "milestonePayment" && (
@@ -1836,38 +2068,38 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                                       projectType === "customer" && (budget || 0) > 0 ? "md:grid-cols-4" : "md:grid-cols-3"
                                     } gap-3 items-end`}
                                   >
-          <FormField
-            control={form.control}
+                                    <FormField
+                                      control={form.control}
                                       name={`paymentMilestones.${index}.name`}
-            render={({ field }) => (
-              <FormItem>
+                                      render={({ field }) => (
+                                        <FormItem>
                                           <FormLabel>Name</FormLabel>
-                <FormControl>
+                                          <FormControl>
                                             <Input {...field} value={field.value || ""} placeholder="Milestone name" />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
+                                          </FormControl>
+                                        </FormItem>
+                                          )}
+                                        />
+                                    <FormField
+                                      control={form.control}
                                       name={`paymentMilestones.${index}.percentage`}
-            render={({ field }) => (
-              <FormItem>
+                                      render={({ field }) => (
+                                        <FormItem>
                                           <FormLabel>Percentage</FormLabel>
-                <FormControl>
-                                            <Input
-                                              type="number"
-                                              min="0"
-                                              max="100"
-                                              {...field}
-                                              value={field.value || ""}
-                                              onChange={(e) => {
-                                                const value = e.target.value === "" ? 0 : Number.parseInt(e.target.value) || 0
-                                                updatePaymentMilestone(index, "percentage", value)
-                                              }}
-                                              placeholder="Enter percentage"
-                                            />
-                </FormControl>
+                                            <FormControl>
+                                              <Input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                {...field}
+                                                value={field.value || ""}
+                                                onChange={(e) => {
+                                                  const value = e.target.value === "" ? 0 : Number.parseInt(e.target.value) || 0
+                                                  updatePaymentMilestone(index, "percentage", value)
+                                                }}
+                                                placeholder="Enter percentage"
+                                              />
+                                            </FormControl>
                                         </FormItem>
                                       )}
                                     />
@@ -1935,11 +2167,11 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                                               />
                                             </PopoverContent>
                                           </Popover>
-                <FormMessage />
+                                  <FormMessage />
               </FormItem>
-            )}
-          />
-        </div>
+                                      )}
+                                    />
+                                  </div>
                                 </div>
                               ))}
                               <Button type="button"  onClick={addPaymentMilestone} className="w-full">
@@ -1950,7 +2182,7 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                           )}
 
                           {paymentStructure === "deliverablePayment" && deliverablesEnabled && (
-        <div className="space-y-4">
+                            <div className="space-y-4">
                               <div className="flex items-center justify-between">
                                 <span className="font-medium">Deliverable-Based Payments</span>
                                 <div className="flex items-center gap-2">
@@ -2193,194 +2425,194 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                     <CollapsibleContent>
                       <CardContent className="pt-0">
                         <div className="space-y-4">
-          <FormField
-            control={form.control}
+                          <FormField
+                            control={form.control}
                             name="hasServiceAgreement"
-            render={({ field }) => (
-                              <FormItem className="flex items-center space-x-3">
-                <FormControl>
-                                  <Switch
-                                    id="serviceAgreement"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                                    disabled={projectType === "personal"}
-                  />
-                </FormControl>
-                                <FormLabel
-                                  htmlFor="serviceAgreement"
-                                  className={`cursor-pointer transition-all duration-300 ease-in-out ${
-                                    field.value
-                                      ? "text-[#9948fb] font-medium scale-[1.1] transform"
-                                      : "text-gray-700 scale-100 transform"
-                                  } ${projectType === "personal" ? "cursor-not-allowed opacity-50" : ""}`}
-                                >
-                                  Enable Service Agreement
-                                </FormLabel>
-              </FormItem>
-            )}
-          />
+                            render={({ field }) => (
+                                              <FormItem className="flex items-center space-x-3">
+                                <FormControl>
+                                                  <Switch
+                                                    id="serviceAgreement"
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                                    disabled={projectType === "personal"}
+                                  />
+                                </FormControl>
+                                                <FormLabel
+                                                  htmlFor="serviceAgreement"
+                                                  className={`cursor-pointer transition-all duration-300 ease-in-out ${
+                                                    field.value
+                                                      ? "text-[#9948fb] font-medium scale-[1.1] transform"
+                                                      : "text-gray-700 scale-100 transform"
+                                                  } ${projectType === "personal" ? "cursor-not-allowed opacity-50" : ""}`}
+                                                >
+                                                  Enable Service Agreement
+                                                </FormLabel>
+                              </FormItem>
+                            )}
+                          />
 
                           {serviceAgreementEnabled && projectType === "customer" && (
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
-          <FormField
-            control={form.control}
+                                <FormField
+                                  control={form.control}
                                   name="agreementTemplate"
-            render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Agreement Template</FormLabel>
-                                      <Select
-                                        onValueChange={(value) => {
-                                          field.onChange(value)
+                                  render={({ field }) => (
+                                                          <FormItem>
+                                                            <FormLabel>Agreement Template</FormLabel>
+                                                            <Select
+                                                              onValueChange={(value) => {
+                                                                field.onChange(value)
 
-                                          const currentDate = format(new Date(), "PPP 'at' p z");
-                                          const customerName = selectedCustomer?.name || "[Client Name]";
-                                          const projectName = form.watch("name") || "[Project Name]";
-                                          const projectDescription = form.watch("description") || "[Project Description]";
-                                          const startDate = form.watch("startDate");
-                                          const endDate = form.watch("endDate");
-                                          const deliverables = form.watch("deliverables") || [];
-                                          const deliverablesEnabled = form.watch("deliverablesEnabled");
-                                          const paymentStructure = form.watch("paymentStructure");
-                                          const paymentMilestones = form.watch("paymentMilestones") || [];
-                                          const budget = form.watch("budget") || 0;
-                                          const currency = form.watch("currencyEnabled") ? form.watch("currency") : "$";
-                                          let newContent = "";
-                                          
-                                          const deliverablesList = deliverablesEnabled && deliverables.length > 0
-                                            ? deliverables.map(d => `<li><strong>${d.name || 'Untitled Deliverable'}:</strong> ${d.description || 'No description.'} (Due: ${d.dueDate ? format(new Date(d.dueDate), 'PPP') : 'Not set'})</li>`).join('')
-                                            : '<li>No deliverables have been specified for this project.</li>';
-                                            
-                                          let paymentTermsSection = '';
-                                          switch (paymentStructure) {
-                                            case 'fullDownPayment':
-                                              paymentTermsSection = `<p>Full payment of ${currency}${budget.toLocaleString()} is due upon the signing of this Agreement.</p>`;
-                                              break;
-                                            case 'paymentOnCompletion':
-                                              paymentTermsSection = `<p>Full payment of ${currency}${budget.toLocaleString()} is due upon successful completion and delivery of all project deliverables.</p>`;
-                                              break;
-                                            case 'milestonePayment':
-                                            case 'deliverablePayment':
-                                              const milestonesList = paymentMilestones.length > 0
-                                                ? paymentMilestones.map(m => `<li><strong>${m.name || 'Untitled Milestone'}:</strong> ${m.percentage}% of the total budget (${currency}${m.amount?.toLocaleString() || 'N/A'}) is due on or before ${m.dueDate ? format(new Date(m.dueDate), 'PPP') : 'Not set'}.</li>`).join('')
-                                                : '<li>No payment milestones have been specified.</li>';
-                                              paymentTermsSection = `
-                                                <p>Payment will be made according to the following milestones, based on a total project budget of ${currency}${budget.toLocaleString()}:</p>
-                                                <ul>${milestonesList}</ul>`;
-                                              break;
-                                            default: // 'noPayment' or other cases
-                                              paymentTermsSection = '<p>No payment is required for this project.</p>';
-                                              break;
-                                          }
+                                                                const currentDate = format(new Date(), "PPP 'at' p z");
+                                                                const customerName = selectedCustomer?.name || "[Client Name]";
+                                                                const projectName = form.watch("name") || "[Project Name]";
+                                                                const projectDescription = form.watch("description") || "[Project Description]";
+                                                                const startDate = form.watch("startDate");
+                                                                const endDate = form.watch("endDate");
+                                                                const deliverables = form.watch("deliverables") || [];
+                                                                const deliverablesEnabled = form.watch("deliverablesEnabled");
+                                                                const paymentStructure = form.watch("paymentStructure");
+                                                                const paymentMilestones = form.watch("paymentMilestones") || [];
+                                                                const budget = form.watch("budget") || 0;
+                                                                const currency = form.watch("currencyEnabled") ? form.watch("currency") : "$";
+                                                                let newContent = "";
+                                                                
+                                                                const deliverablesList = deliverablesEnabled && deliverables.length > 0
+                                                                  ? deliverables.map(d => `<li><strong>${d.name || 'Untitled Deliverable'}:</strong> ${d.description || 'No description.'} (Due: ${d.dueDate ? format(new Date(d.dueDate), 'PPP') : 'Not set'})</li>`).join('')
+                                                                  : '<li>No deliverables have been specified for this project.</li>';
+                                                                  
+                                                                let paymentTermsSection = '';
+                                                                switch (paymentStructure) {
+                                                                  case 'fullDownPayment':
+                                                                    paymentTermsSection = `<p>Full payment of ${currency}${budget.toLocaleString()} is due upon the signing of this Agreement.</p>`;
+                                                                    break;
+                                                                  case 'paymentOnCompletion':
+                                                                    paymentTermsSection = `<p>Full payment of ${currency}${budget.toLocaleString()} is due upon successful completion and delivery of all project deliverables.</p>`;
+                                                                    break;
+                                                                  case 'milestonePayment':
+                                                                  case 'deliverablePayment':
+                                                                    const milestonesList = paymentMilestones.length > 0
+                                                                      ? paymentMilestones.map(m => `<li><strong>${m.name || 'Untitled Milestone'}:</strong> ${m.percentage}% of the total budget (${currency}${m.amount?.toLocaleString() || 'N/A'}) is due on or before ${m.dueDate ? format(new Date(m.dueDate), 'PPP') : 'Not set'}.</li>`).join('')
+                                                                      : '<li>No payment milestones have been specified.</li>';
+                                                                    paymentTermsSection = `
+                                                                      <p>Payment will be made according to the following milestones, based on a total project budget of ${currency}${budget.toLocaleString()}:</p>
+                                                                      <ul>${milestonesList}</ul>`;
+                                                                    break;
+                                                                  default: // 'noPayment' or other cases
+                                                                    paymentTermsSection = '<p>No payment is required for this project.</p>';
+                                                                    break;
+                                                                }
 
-                                          const signatureBlock = `
-                                            <h3>10. Signatures</h3>
-                                            <p>IN WITNESS WHEREOF, the Parties have executed this Agreement as of the Effective Date.</p>
-                                            <table style="width: 100%; border-collapse: collapse; margin-top: 2rem;">
-                                              <tbody>
-                                                <tr>
-                                                  <td style="width: 50%; vertical-align: top; padding-right: 1rem;">
-                                                    <p><strong>The Client:</strong> ${customerName}</p>
-                                                    <p style="margin-top: 2rem;"><strong>Date:</strong> ____________________</p>
-                                                    <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
-                                                  </td>
-                                                  <td style="width: 50%; vertical-align: top; padding-left: 1rem;">
-                                                    <p><strong>The Provider:</strong> [Your Company Name]</p>
-                                                    <p style="margin-top: 2rem;"><strong>Date:</strong> ${currentDate}</p>
-                                                    <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
-                                                  </td>
-                                                </tr>
-                                              </tbody>
-                                            </table>`;
+                                                                const signatureBlock = `
+                                                                  <h3>10. Signatures</h3>
+                                                                  <p>IN WITNESS WHEREOF, the Parties have executed this Agreement as of the Effective Date.</p>
+                                                                  <table style="width: 100%; border-collapse: collapse; margin-top: 2rem;">
+                                                                    <tbody>
+                                                                      <tr>
+                                                                        <td style="width: 50%; vertical-align: top; padding-right: 1rem;">
+                                                                          <p><strong>The Client:</strong> ${customerName}</p>
+                                                                          <p style="margin-top: 2rem;"><strong>Date:</strong> ____________________</p>
+                                                                          <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
+                                                                        </td>
+                                                                        <td style="width: 50%; vertical-align: top; padding-left: 1rem;">
+                                                                          <p><strong>The Provider:</strong> [Your Company Name]</p>
+                                                                          <p style="margin-top: 2rem;"><strong>Date:</strong> ${currentDate}</p>
+                                                                          <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
+                                                                        </td>
+                                                                      </tr>
+                                                                    </tbody>
+                                                                  </table>`;
 
-                                          switch (value) {
-                                            case "standard":
-                                              newContent = `
-                                                <h2>Standard Service Agreement</h2>
-                                                <p>This Service Agreement ("Agreement") is made and entered into as of ${currentDate} ("Effective Date"), by and between <strong>[Your Company Name]</strong> ("Provider") and <strong>${customerName}</strong> ("Client").</p>
-                                                <h3>1. Services</h3><p>Provider agrees to perform services ("Services") for the project known as <strong>${projectName}</strong>, described as: ${projectDescription}.</p>
-                                                <h3>2. Project Deliverables</h3><p>The Provider will deliver the following items:</p><ul>${deliverablesList}</ul>
-                                                <h3>3. Term of Agreement</h3><p>This Agreement will begin on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} and will continue until ${endDate ? format(new Date(endDate), "PPP") : 'the completion of the Services'}, unless terminated earlier.</p>
-                                                <h3>4. Payment Terms</h3>${paymentTermsSection}
-                                                <h3>5. Confidentiality</h3><p>Each party agrees to keep confidential all non-public information obtained from the other party.</p>
-                                                <h3>6. Ownership of Work Product</h3><p>Upon full payment, the Client will own all rights to the final deliverables. The Provider retains the right to use the work for portfolio purposes.</p>
-                                                <h3>7. Independent Contractor</h3><p>The Provider is an independent contractor, not an employee of the Client.</p>
-                                                <h3>8. Termination</h3><p>Either party may terminate this Agreement with 30 days written notice. The Client agrees to pay for all Services performed up to the date of termination.</p>
-                                                <h3>9. Governing Law</h3><p>This Agreement shall be governed by the laws of [Your State/Jurisdiction].</p>
-                                                ${signatureBlock}`;
-                                              break;
-                                            case "consulting":
-                                              newContent = `
-                                                <h2>Consulting Agreement</h2>
-                                                <p>This Consulting Agreement ("Agreement") is effective ${currentDate} ("Effective Date"), between <strong>[Your Company Name]</strong> ("Consultant") and <strong>${customerName}</strong> ("Client").</p>
-                                                <h3>1. Consulting Services</h3><p>Consultant will provide strategic advice and expertise for the project: <strong>${projectName}</strong>. The objective is: ${projectDescription}.</p>
-                                                <h3>2. Key Activities & Reports</h3><p>Consulting activities will include:</p><ul>${deliverablesList}</ul>
-                                                <h3>3. Term</h3><p>The consulting period shall commence on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} ${endDate ? `and conclude on ${format(new Date(endDate), "PPP")}` : 'and continue until terminated'}.</p>
-                                                <h3>4. Fees and Payment</h3>${paymentTermsSection}
-                                                <h3>5. Client Responsibilities</h3><p>The Client agrees to provide timely access to necessary personnel and documentation required for the Consultant to perform the services.</p>
-                                                <h3>6. Confidential Information</h3><p>Both parties agree to protect and not disclose any confidential information received during the term of this engagement.</p>
-                                                <h3>7. Status of Consultant</h3><p>The Consultant is an independent contractor. Nothing in this Agreement shall be construed as creating an employer-employee relationship.</p>
-                                                <h3>8. Limitation of Liability</h3><p>The Consultant's liability shall be limited to the total fees paid under this Agreement.</p>
-                                                <h3>9. Termination</h3><p>This Agreement may be terminated by either party upon 14 days written notice.</p>
-                                                ${signatureBlock}`;
-                                              break;
-                                            case "development":
-                                              newContent = `
-                                                <h2>Software Development Agreement</h2>
-                                                <p>This Software Development Agreement ("Agreement") is entered into on ${currentDate} ("Effective Date") by <strong>[Your Company Name]</strong> ("Developer") and <strong>${customerName}</strong> ("Client").</p>
-                                                <h3>1. Development Services</h3><p>Developer will design, develop, and test the software for the project <strong>${projectName}</strong>, with the goal of: ${projectDescription}.</p>
-                                                <h3>2. Technical Specifications & Deliverables</h3><p>The software will be developed according to the following specifications:</p><ul>${deliverablesList}</ul>
-                                                <h3>3. Project Timeline</h3><p>The project will commence on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'}. ${endDate ? `The target completion date is ${format(new Date(endDate), "PPP")}.` : 'A completion date has not been set.'}</p>
-                                                <h3>4. Compensation</h3>${paymentTermsSection}
-                                                <h3>5. Acceptance Testing</h3><p>The Client shall have 14 days following delivery to test the software. The software will be deemed accepted if no material defects are reported within this period.</p>
-                                                <h3>6. Intellectual Property Rights</h3><p>Upon full and final payment, the Developer grants the Client a perpetual, worldwide license to use the developed software. The Developer retains ownership of all pre-existing code and tools used in the project.</p>
-                                                <h3>7. Confidentiality</h3><p>Both parties agree to hold each other's proprietary information in strict confidence.</p>
-                                                <h3>8. Warranties</h3><p>The Developer warrants that the software will be free from material defects for a period of 90 days following acceptance.</p>
-                                                <h3>9. General Provisions</h3><p>This agreement constitutes the entire understanding between the parties and is governed by the laws of [Your State/Jurisdiction].</p>
-                                                ${signatureBlock}`;
-                                              break;
-                                            case "custom":
-                                              newContent = `
-                                                <h2>Custom Agreement</h2>
-                                                <p>This Agreement is made on ${currentDate} between <strong>[Your Company Name]</strong> and <strong>${customerName}</strong>.</p>
-                                                <p><em>Please use this space to create a custom agreement tailored to your project's unique needs.</em></p>
-                                                ${signatureBlock}`;
-                                              break;
-                                          }
-                                          form.setValue("serviceAgreement", newContent)
-                                        }}
-                                        defaultValue={field.value}
-                                      >
-                <FormControl>
-                                          <SelectTrigger className="w-48">
-                                            <SelectValue placeholder="Select a template" />
-                                          </SelectTrigger>
-                </FormControl>
-                                        <SelectContent>
-                                          <SelectItem value="standard">Standard Agreement</SelectItem>
-                                          <SelectItem value="consulting">Consulting Agreement</SelectItem>
-                                          <SelectItem value="development">Development Agreement</SelectItem>
-                                          <SelectItem value="custom">Custom Agreement</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-              </FormItem>
-            )}
-          />
+                                                                switch (value) {
+                                                                  case "standard":
+                                                                    newContent = `
+                                                                      <h2>Standard Service Agreement</h2>
+                                                                      <p>This Service Agreement ("Agreement") is made and entered into as of ${currentDate} ("Effective Date"), by and between <strong>[Your Company Name]</strong> ("Provider") and <strong>${customerName}</strong> ("Client").</p>
+                                                                      <h3>1. Services</h3><p>Provider agrees to perform services ("Services") for the project known as <strong>${projectName}</strong>, described as: ${projectDescription}.</p>
+                                                                      <h3>2. Project Deliverables</h3><p>The Provider will deliver the following items:</p><ul>${deliverablesList}</ul>
+                                                                      <h3>3. Term of Agreement</h3><p>This Agreement will begin on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} and will continue until ${endDate ? format(new Date(endDate), "PPP") : 'the completion of the Services'}, unless terminated earlier.</p>
+                                                                      <h3>4. Payment Terms</h3>${paymentTermsSection}
+                                                                      <h3>5. Confidentiality</h3><p>Each party agrees to keep confidential all non-public information obtained from the other party.</p>
+                                                                      <h3>6. Ownership of Work Product</h3><p>Upon full payment, the Client will own all rights to the final deliverables. The Provider retains the right to use the work for portfolio purposes.</p>
+                                                                      <h3>7. Independent Contractor</h3><p>The Provider is an independent contractor, not an employee of the Client.</p>
+                                                                      <h3>8. Termination</h3><p>Either party may terminate this Agreement with 30 days written notice. The Client agrees to pay for all Services performed up to the date of termination.</p>
+                                                                      <h3>9. Governing Law</h3><p>This Agreement shall be governed by the laws of [Your State/Jurisdiction].</p>
+                                                                      ${signatureBlock}`;
+                                                                    break;
+                                                                  case "consulting":
+                                                                    newContent = `
+                                                                      <h2>Consulting Agreement</h2>
+                                                                      <p>This Consulting Agreement ("Agreement") is effective ${currentDate} ("Effective Date"), between <strong>[Your Company Name]</strong> ("Consultant") and <strong>${customerName}</strong> ("Client").</p>
+                                                                      <h3>1. Consulting Services</h3><p>Consultant will provide strategic advice and expertise for the project: <strong>${projectName}</strong>. The objective is: ${projectDescription}.</p>
+                                                                      <h3>2. Key Activities & Reports</h3><p>Consulting activities will include:</p><ul>${deliverablesList}</ul>
+                                                                      <h3>3. Term</h3><p>The consulting period shall commence on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} ${endDate ? `and conclude on ${format(new Date(endDate), "PPP")}` : 'and continue until terminated'}.</p>
+                                                                      <h3>4. Fees and Payment</h3>${paymentTermsSection}
+                                                                      <h3>5. Client Responsibilities</h3><p>The Client agrees to provide timely access to necessary personnel and documentation required for the Consultant to perform the services.</p>
+                                                                      <h3>6. Confidential Information</h3><p>Both parties agree to protect and not disclose any confidential information received during the term of this engagement.</p>
+                                                                      <h3>7. Status of Consultant</h3><p>The Consultant is an independent contractor. Nothing in this Agreement shall be construed as creating an employer-employee relationship.</p>
+                                                                      <h3>8. Limitation of Liability</h3><p>The Consultant's liability shall be limited to the total fees paid under this Agreement.</p>
+                                                                      <h3>9. Termination</h3><p>This Agreement may be terminated by either party upon 14 days written notice.</p>
+                                                                      ${signatureBlock}`;
+                                                                    break;
+                                                                  case "development":
+                                                                    newContent = `
+                                                                      <h2>Software Development Agreement</h2>
+                                                                      <p>This Software Development Agreement ("Agreement") is entered into on ${currentDate} ("Effective Date") by <strong>[Your Company Name]</strong> ("Developer") and <strong>${customerName}</strong> ("Client").</p>
+                                                                      <h3>1. Development Services</h3><p>Developer will design, develop, and test the software for the project <strong>${projectName}</strong>, with the goal of: ${projectDescription}.</p>
+                                                                      <h3>2. Technical Specifications & Deliverables</h3><p>The software will be developed according to the following specifications:</p><ul>${deliverablesList}</ul>
+                                                                      <h3>3. Project Timeline</h3><p>The project will commence on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'}. ${endDate ? `The target completion date is ${format(new Date(endDate), "PPP")}.` : 'A completion date has not been set.'}</p>
+                                                                      <h3>4. Compensation</h3>${paymentTermsSection}
+                                                                      <h3>5. Acceptance Testing</h3><p>The Client shall have 14 days following delivery to test the software. The software will be deemed accepted if no material defects are reported within this period.</p>
+                                                                      <h3>6. Intellectual Property Rights</h3><p>Upon full and final payment, the Developer grants the Client a perpetual, worldwide license to use the developed software. The Developer retains ownership of all pre-existing code and tools used in the project.</p>
+                                                                      <h3>7. Confidentiality</h3><p>Both parties agree to hold each other's proprietary information in strict confidence.</p>
+                                                                      <h3>8. Warranties</h3><p>The Developer warrants that the software will be free from material defects for a period of 90 days following acceptance.</p>
+                                                                      <h3>9. General Provisions</h3><p>This agreement constitutes the entire understanding between the parties and is governed by the laws of [Your State/Jurisdiction].</p>
+                                                                      ${signatureBlock}`;
+                                                                    break;
+                                                                  case "custom":
+                                                                    newContent = `
+                                                                      <h2>Custom Agreement</h2>
+                                                                      <p>This Agreement is made on ${currentDate} between <strong>[Your Company Name]</strong> and <strong>${customerName}</strong>.</p>
+                                                                      <p><em>Please use this space to create a custom agreement tailored to your project's unique needs.</em></p>
+                                                                      ${signatureBlock}`;
+                                                                    break;
+                                                                }
+                                                                form.setValue("serviceAgreement", newContent)
+                                                              }}
+                                                              defaultValue={field.value}
+                                                            >
+                                      <FormControl>
+                                                                <SelectTrigger className="w-48">
+                                                                  <SelectValue placeholder="Select a template" />
+                                                                </SelectTrigger>
+                                      </FormControl>
+                                                              <SelectContent>
+                                                                <SelectItem value="standard">Standard Agreement</SelectItem>
+                                                                <SelectItem value="consulting">Consulting Agreement</SelectItem>
+                                                                <SelectItem value="development">Development Agreement</SelectItem>
+                                                                <SelectItem value="custom">Custom Agreement</SelectItem>
+                                                              </SelectContent>
+                                                            </Select>
+                                    </FormItem>
+                                  )}
+                                />
                                 <Button type="button" variant="outlinebrimary" onClick={() => setIsEditingAgreement(!isEditingAgreement)}>
                                   {isEditingAgreement ? "Preview" : "Edit Agreement"}
                                 </Button>
-        </div>
+                            </div>
 
                               {isEditingAgreement ? (
-        <FormField
-          control={form.control}
+                                <FormField
+                                  control={form.control}
                                   name="serviceAgreement"
-          render={({ field }) => (
-            <FormItem>
+                                  render={({ field }) => (
+                                    <FormItem>
                                       <FormLabel>Agreement Content</FormLabel>
-              <FormControl>
-                                        <TipTapEditor content={field.value || ""} onChange={field.onChange} />
-                                      </FormControl>
+                                        <FormControl>
+                                          <TipTapEditor content={field.value || ""} onChange={field.onChange} />
+                                        </FormControl>
                                       <FormMessage />
                                     </FormItem>
                                   )}
@@ -2408,16 +2640,16 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
                                           checked={field.value}
                                           onCheckedChange={field.onChange}
                                           variant="agreement"
-                />
-              </FormControl>
-                                      <Label htmlFor="agreeTerms" className="text-sm text-primary">
-                                        I agree to the service agreement terms and conditions
-                                      </Label>
+                                        />
+                                      </FormControl>
+                                        <Label htmlFor="agreeTerms" className="text-sm text-primary">
+                                          I agree to the service agreement terms and conditions
+                                        </Label>
                                     </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
                             </div>
                           )}
                         </div>
@@ -2428,102 +2660,6 @@ export default function EditProjectForm({ projectId, onSuccess, onLoadingChange,
          
               </form>
             </Form>
-
-
-      {/* Fixed Footer */}
-      <div className="flex-shrink-0 p-4 border-t bg-background z-10 flex justify-end gap-2 sm:gap-4">
-          <Button variant="ghost" onClick={onCancel} disabled={updateProjectMutation.isPending}>
-            Cancel
-          </Button>
-
-          {project?.state === "published" ? (
-            <Button
-              variant="outlinebrimary"
-              onClick={() => {
-                const values = form.getValues()
-                handleUpdate({ ...values, state: "draft", isPublished: false })
-              }}
-              disabled={updateProjectMutation.isPending}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {updateProjectMutation.isPending ? "Saving..." : "Unpublish"}
-            </Button>
-          ) : (
-            <Button
-              variant="outlinebrimary"
-              onClick={() => {
-                const values = form.getValues()
-                handleUpdate({ ...values, state: "draft", isPublished: false })
-              }}
-              disabled={updateProjectMutation.isPending}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {updateProjectMutation.isPending ? "Saving..." : "Save Draft"}
-            </Button>
-          )}
-
-          <div className="inline-flex rounded-md shadow-sm">
-            <Button
-              onClick={() => {
-                form.trigger().then((isValid) => {
-                  if (isValid) {
-                    const values = form.getValues()
-                    handleUpdate({ ...values, state: "published", isPublished: true, emailToCustomer: false })
-                  } else {
-                    toast.error("Please complete all required sections.")
-                  }
-                })
-              }}
-              disabled={updateProjectMutation.isPending}
-              className="rounded-r-none px-3 sm:px-4"
-            >
-              {updateProjectMutation.isPending ? "Updating..." : project?.state === 'published' ? 'Update Project' : 'Publish Project'}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  disabled={updateProjectMutation.isPending}
-                  className="rounded-l-none border-l border-purple-700 px-3"
-                >
-                  <span className="sr-only">Open options</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => {
-                    form.trigger().then((isValid) => {
-                      if (isValid) {
-                        const values = form.getValues()
-                        handleUpdate({ ...values, state: "published", isPublished: true, emailToCustomer: false })
-                      } else {
-                        toast.error("Please complete all required sections.")
-                      }
-                    })
-                  }}
-                  disabled={updateProjectMutation.isPending}
-                >
-                  {project?.state === 'published' ? 'Update Project' : 'Publish Project'}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    form.trigger().then((isValid) => {
-                      if (isValid) {
-                        const values = form.getValues()
-                        handleUpdate({ ...values, state: "published", isPublished: true, emailToCustomer: true })
-                      } else {
-                        toast.error("Please complete all required sections.")
-                      }
-                    })
-                  }}
-                  disabled={projectType !== "customer" || !selectedCustomer || updateProjectMutation.isPending}
-                >
-                  {project?.state === 'published' ? 'Update & Resend' : 'Publish & Send to Customer'}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
     </div>
   )
 } 

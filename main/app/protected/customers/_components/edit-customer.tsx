@@ -129,7 +129,7 @@ export default function EditCustomer({ customer, onSuccess, onLoadingChange, onD
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} id="edit-customer-form" className="space-y-6">
+      <form id="edit-customer-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         {/* Customer Overview Card */}
         <Card className="border-primary border ">
           <CardContent className="p-6">

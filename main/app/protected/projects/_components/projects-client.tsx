@@ -19,22 +19,25 @@ import {
 } from "@tanstack/react-table"
 import CreateSearchFilter from "@/components/general/create-search-filter"
 import { Button } from "@/components/ui/button"
-import { SheetClose, SheetHeader } from '@/components/ui/sheet'
-import { Sheet, SheetContent, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
+import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { DataTable } from "./data-table"
 import { columns, Project } from "./columns"
 import ProjectForm from './project-form'
 import EditProjectForm from './edit-project-form'
-import { Bubbles, Trash2 } from "lucide-react"
+import { Bubbles, Trash2, Save, ChevronDown } from "lucide-react"
 import { FilterTag } from '@/components/filtering/search-filter'
 import { 
-  DropdownMenuLabel, 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
-  DropdownMenuSubContent
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu"
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTableViewOptions } from './data-table-view-options'
@@ -43,6 +46,10 @@ import Pagination from '../../../../components/pagination';
 import { getTableColumns, setTableColumns, getTableColumnsWithDefaults } from '@/cookie-persist/tableColumns';
 import ConfirmModal from '@/components/modal/confirm-modal'
 import { toast } from 'sonner'
+import { z } from 'zod'
+import { projectCreateSchema } from '@/validation/projects'
+import deliverableSchema from '@/validation/deliverables'
+import paymentTermSchema from '@/validation/payment'
 
 const fetchProjects = async (): Promise<Project[]> => {
   const response = await axios.get('/api/projects');
@@ -51,6 +58,57 @@ const fetchProjects = async (): Promise<Project[]> => {
   }
   throw new Error(response.data.message || 'Error fetching projects');
 };
+
+
+type ProjectFormValues = z.infer<typeof projectCreateSchema>
+type DeliverableFormValues = z.infer<typeof deliverableSchema>
+type PaymentTermFormValues = z.infer<typeof paymentTermSchema>
+
+// Payload-specific interfaces
+interface PayloadPaymentMilestone {
+  id?: string
+  name: string | null
+  percentage: number | null
+  amount: number | null
+  dueDate: string
+  description?: string | null
+  status?: string | null
+  type?: "milestone" | "deliverable" | null
+}
+
+interface PayloadDeliverable {
+  id: string
+  name: string
+  description: string
+  dueDate: string
+  position: number
+  isPublished: boolean
+  status: "pending" | "in_progress" | "completed"
+}
+
+interface ProjectData {
+  id?: string
+  customerId?: string | null
+  currency?: string
+  currencyEnabled?: boolean
+  projectType?: "personal" | "customer"
+  budget?: number
+  projectName?: string
+  projectDescription?: string
+  startDate?: string
+  endDate?: string
+  deliverables?: PayloadDeliverable[]
+  deliverablesEnabled?: boolean
+  paymentStructure?: string
+  paymentMilestones?: PayloadPaymentMilestone[]
+  hasServiceAgreement?: boolean
+  serviceAgreement?: string
+  agreementTemplate?: string
+  hasAgreedToTerms?: boolean
+  isPublished?: boolean
+  state?: "draft" | "published"
+  emailToCustomer?: boolean
+}
 
 const paymentTypeOptions = [
   { value: 'milestonePayment', label: 'Milestone' },
@@ -464,6 +522,39 @@ export default function ProjectsClient() {
     queryClient.invalidateQueries({ queryKey: ['projects'] });
   };
 
+  // Add these new handlers for project form actions
+  const [isSaving, setIsSaving] = useState(false);
+  const [projectFormValid, setProjectFormValid] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [projectType, setProjectType] = useState<string>('customer');
+
+  // Update the event handlers to be more robust
+  const handleSaveDraft = () => {
+    const formElement = document.getElementById('edit-project-form') || document.getElementById('project-form');
+    if (formElement) {
+      // Create a custom event with more specific details
+      const event = new CustomEvent('submit-draft', { 
+        bubbles: true, 
+        cancelable: true,
+        detail: { action: 'save-draft' }
+      });
+      formElement.dispatchEvent(event);
+    }
+  };
+
+  const handlePublishProject = (emailToCustomer = false) => {
+    const formElement = document.getElementById('edit-project-form') || document.getElementById('project-form');
+    if (formElement) {
+      const eventName = emailToCustomer ? 'submit-publish-email' : 'submit-publish';
+      const event = new CustomEvent(eventName, { 
+        bubbles: true, 
+        cancelable: true,
+        detail: { action: eventName, emailToCustomer }
+      });
+      formElement.dispatchEvent(event);
+    }
+  };
+
   const handleCloseSheet = () => {
     router.push("/protected/projects");
     setSelectedProjectId(null);
@@ -486,6 +577,90 @@ export default function ProjectsClient() {
     }
     setDeleteModalOpen(false)
   }
+
+  const footer = (
+    <>
+      <SheetClose asChild>
+        <Button variant="ghost" ref={closeRef}>Cancel</Button>
+      </SheetClose>
+      <Button variant="outlinebrimary" onClick={handleSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
+        <Save className="h-4 w-4 mr-2" />
+        {isSaving ? "Saving..." : "Save Draft"}
+      </Button>
+
+      <div className="inline-flex rounded-md shadow-sm">
+        <Button
+          onClick={() => handlePublishProject(false)}
+          disabled={!projectFormValid || isSaving}
+          className="rounded-r-none px-3 sm:px-4"
+        >
+          {isSaving ? "Publishing..." : "Publish Project"}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              disabled={!projectFormValid || isSaving}
+              className="rounded-l-none border-l border-purple-700 px-3"
+            >
+              <span className="sr-only">Open options</span>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handlePublishProject(false)}>Publish Project</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handlePublishProject(true)}
+              disabled={projectType !== "customer" || !selectedCustomer}
+            >
+              Publish & Email to Customer
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </>
+  );
+
+  const editFooter = (
+    <>
+      <SheetClose asChild>
+        <Button variant="ghost" onClick={handleCloseSheet}>Cancel</Button>
+      </SheetClose>
+      <Button variant="outlinebrimary" onClick={handleSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
+        <Save className="h-4 w-4 mr-2" />
+        {isSaving ? "Saving..." : "Save Draft"}
+      </Button>
+
+      <div className="inline-flex rounded-md shadow-sm">
+        <Button
+          onClick={() => handlePublishProject(false)}
+          disabled={!projectFormValid || isSaving}
+          className="rounded-r-none px-3 sm:px-4"
+        >
+          {isSaving ? "Publishing..." : "Update Project"}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              disabled={!projectFormValid || isSaving}
+              className="rounded-l-none border-l border-purple-700 px-3"
+            >
+              <span className="sr-only">Open options</span>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handlePublishProject(false)}>Update Project</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handlePublishProject(true)}
+              disabled={projectType !== "customer" || !selectedCustomer}
+            >
+              Update & Email to Customer
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </>
+  );
 
   const filterContent = (
     <div className="p-2">
@@ -517,13 +692,13 @@ export default function ProjectsClient() {
         <DropdownMenuSubContent>
           <DropdownMenuCheckboxItem
             checked={activeFilters.state.includes('draft')}
-            onCheckedChange={(checked) => handleFilterChange('state', 'draft', checked)}
+            onCheckedChange={(checked: boolean) => handleFilterChange('state', 'draft', checked)}
           >
             Draft
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={activeFilters.state.includes('published')}
-            onCheckedChange={(checked) => handleFilterChange('state', 'published', checked)}
+            onCheckedChange={(checked: boolean) => handleFilterChange('state', 'published', checked)}
           >
             Published
           </DropdownMenuCheckboxItem>
@@ -538,13 +713,13 @@ export default function ProjectsClient() {
         <DropdownMenuSubContent>
           <DropdownMenuCheckboxItem
             checked={activeFilters.type.includes('personal')}
-            onCheckedChange={(checked) => handleFilterChange('type', 'personal', checked)}
+            onCheckedChange={(checked: boolean) => handleFilterChange('type', 'personal', checked)}
           >
             Personal
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={activeFilters.type.includes('customer')}
-            onCheckedChange={(checked) => handleFilterChange('type', 'customer', checked)}
+            onCheckedChange={(checked: boolean) => handleFilterChange('type', 'customer', checked)}
           >
             Customer
           </DropdownMenuCheckboxItem>
@@ -561,7 +736,7 @@ export default function ProjectsClient() {
             <DropdownMenuCheckboxItem
               key={option.value}
               checked={activeFilters.paymentType.includes(option.value)}
-              onCheckedChange={(checked) => handleFilterChange('paymentType', option.value, checked)}
+              onCheckedChange={(checked: boolean) => handleFilterChange('paymentType', option.value, checked)}
             >
               {option.label}
             </DropdownMenuCheckboxItem>
@@ -577,13 +752,13 @@ export default function ProjectsClient() {
         <DropdownMenuSubContent>
           <DropdownMenuCheckboxItem
             checked={activeFilters.hasServiceAgreement.includes('true')}
-            onCheckedChange={(checked) => handleFilterChange('hasServiceAgreement', 'true', checked)}
+            onCheckedChange={(checked: boolean) => handleFilterChange('hasServiceAgreement', 'true', checked)}
           >
             Yes
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={activeFilters.hasServiceAgreement.includes('false')}
-            onCheckedChange={(checked) => handleFilterChange('hasServiceAgreement', 'false', checked)}
+            onCheckedChange={(checked: boolean) => handleFilterChange('hasServiceAgreement', 'false', checked)}
           >
             No
           </DropdownMenuCheckboxItem>
@@ -611,8 +786,19 @@ export default function ProjectsClient() {
         onClearAllFilters={handleClearAllFilters}
         sheetTriggerText="Create Project"
         sheetTitle="New Project"
-        sheetContent={<ProjectForm onSuccess={handleCreateSuccess} onLoadingChange={setIsSubmitting} onCancel={handleCreateCancel} />}
+        sheetContent={
+          <ProjectForm 
+            onSuccess={handleCreateSuccess} 
+            onLoadingChange={setIsSubmitting}
+            onCancel={handleCreateCancel}
+            onFormValidChange={setProjectFormValid}
+            onCustomerChange={setSelectedCustomer}
+            onProjectTypeChange={setProjectType}
+            onSavingChange={setIsSaving}
+          />
+        }
         sheetContentClassName='w-full sm:w-3/4 md:w-1/2 lg:w-[40%]'
+        footer={footer}
         closeRef={closeRef}
       />
 
@@ -635,7 +821,7 @@ export default function ProjectsClient() {
         >
           <SheetHeader className="p-4 border-b">
             <div className="flex justify-between items-center">
-              <SheetTitle>Edit Sheet</SheetTitle>
+              <SheetTitle>Edit Project</SheetTitle>
               {selectedProjectId && (
                 <Button
                   variant="destructive"
@@ -651,9 +837,23 @@ export default function ProjectsClient() {
           </SheetHeader>
           <ScrollArea className="flex-grow">
             <div className="p-4">
-              {selectedProjectId && <EditProjectForm projectId={selectedProjectId} onSuccess={handleEditSuccess} onLoadingChange={setIsEditSubmitting} onCancel={handleCloseSheet} />}
+              {selectedProjectId && (
+                <EditProjectForm 
+                  projectId={selectedProjectId} 
+                  onSuccess={handleEditSuccess} 
+                  onLoadingChange={setIsSubmitting} 
+                  onCancel={handleCloseSheet}
+                  onFormValidChange={setProjectFormValid}
+                  onCustomerChange={setSelectedCustomer}
+                  onProjectTypeChange={setProjectType}
+                  onSavingChange={setIsSaving}
+                />
+              )}
             </div>
           </ScrollArea>
+          <SheetFooter className="p-4 border-t">
+            {editFooter}
+          </SheetFooter>
         </SheetContent>
       </Sheet>
 
@@ -662,7 +862,11 @@ export default function ProjectsClient() {
    
           <DataTableViewOptions table={table} />
         </div>
-        <DataTable table={table} onProjectSelect={handleProjectSelect} />
+        <DataTable 
+          table={table} 
+          onProjectSelect={handleProjectSelect} 
+          searchQuery={searchQuery}
+        />
         <Pagination
           currentPage={table.getState().pagination.pageIndex + 1}
           totalPages={table.getPageCount()}

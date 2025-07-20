@@ -148,10 +148,22 @@ interface ProjectFormProps {
   onSuccess?: () => void;
   onLoadingChange?: (loading: boolean) => void;
   onCancel?: () => void;
-  // ... any existing props
+  onFormValidChange?: (valid: boolean) => void;
+  onCustomerChange?: (customer: any) => void;
+  onProjectTypeChange?: (type: string) => void;
+  onSavingChange?: (saving: boolean) => void;
 }
 
-export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...otherProps }: ProjectFormProps) {
+export default function ProjectForm({ 
+  onSuccess, 
+  onLoadingChange, 
+  onCancel, 
+  onFormValidChange,
+  onCustomerChange,
+  onProjectTypeChange,
+  onSavingChange,
+  ...otherProps 
+}: ProjectFormProps) {
   const router = useRouter()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [isCreateCustomerSheetOpen, setCreateCustomerSheetOpen] = useState(false)
@@ -228,7 +240,6 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
         value: "",
       },
       state: "draft",
-      paymentTerms: "",
     },
   })
 
@@ -503,9 +514,6 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
 
       if (response.data.success) {
         toast.success("Draft saved successfully!")
-        // Redirecting to the project's edit page to avoid duplicate key issues.
-        const projectId = response.data.data.id;
-        router.push(`/protected/projects/${projectId}`);
       } else {
         toast.error("Failed to save draft.", {
           description: response.data.error || "An unknown error occurred.",
@@ -573,8 +581,6 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
 
       if (response.data.success) {
         toast.success(emailToCustomer ? "Project published and sent to customer!" : "Project published successfully!")
-        const projectId = response.data.data.id;
-        router.push(`/protected/projects/${projectId}`);
       } else {
         toast.error("Failed to publish project.", {
           description: response.data.error || "An unknown error occurred.",
@@ -777,6 +783,62 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
     }
   };
 
+  // Add effect to notify parent of form validity
+  useEffect(() => {
+    if (onFormValidChange) {
+      onFormValidChange(!!isFormValid());
+    }
+  }, [form.watch(), onFormValidChange]);
+
+  // Add effect to notify parent of customer changes
+  useEffect(() => {
+    if (onCustomerChange) {
+      onCustomerChange(selectedCustomer);
+    }
+  }, [selectedCustomer, onCustomerChange]);
+
+  // Add effect to notify parent of project type changes
+  useEffect(() => {
+    if (onProjectTypeChange) {
+      onProjectTypeChange(projectType);
+    }
+  }, [projectType, onProjectTypeChange]);
+
+  // Add effect to notify parent of saving state changes
+  useEffect(() => {
+    if (onSavingChange) {
+      onSavingChange(isSaving);
+    }
+  }, [isSaving, onSavingChange]);
+
+  // Add custom event listeners for form submission
+  useEffect(() => {
+    const form = document.getElementById('project-form');
+    if (!form) return;
+
+    const handleSubmitDraft = () => {
+      handleSaveDraft();
+    };
+
+    const handleSubmitPublish = () => {
+      handlePublishProject(false);
+    };
+
+    const handleSubmitPublishEmail = () => {
+      handlePublishProject(true);
+    };
+
+    form.addEventListener('submit-draft', handleSubmitDraft);
+    form.addEventListener('submit-publish', handleSubmitPublish);
+    form.addEventListener('submit-publish-email', handleSubmitPublishEmail);
+
+    return () => {
+      form.removeEventListener('submit-draft', handleSubmitDraft);
+      form.removeEventListener('submit-publish', handleSubmitPublish);
+      form.removeEventListener('submit-publish-email', handleSubmitPublishEmail);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen">
       <div className=" mx-auto">
@@ -884,9 +946,9 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
 
 
           <Form {...form}>
-            <form >
+            <form id="project-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               {/* Accordion Sections */}
-              <div className="space-y-4">
+              <div className="space-y-4" >
                 {/* Customer Selection */}
                 <Card>
                   <Collapsible open={openSections.customer} onOpenChange={() => toggleSection("customer")}>
@@ -2477,47 +2539,6 @@ export default function ProjectForm({ onSuccess, onLoadingChange, onCancel, ...o
               </div>
             </form>
           </Form>
-
-        {/* Action Buttons */}
-        <div className="mt-8 flex justify-center gap-2 sm:gap-4">
-           <Button variant="ghost" onClick={onCancel}>
-             Cancel
-           </Button>
-          <Button variant="outlinebrimary" onClick={handleSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
-            <Save className="h-4 w-4 mr-2" />
-            {isSaving ? "Saving..." : "Save Draft"}
-          </Button>
-
-          <div className="inline-flex rounded-md shadow-sm">
-            <Button
-              onClick={() => handlePublishProject(false)}
-              disabled={!isFormValid() || isSaving}
-              className="rounded-r-none px-3 sm:px-4"
-            >
-              {isSaving ? "Publishing..." : "Publish Project"}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  disabled={!isFormValid() || isSaving}
-                  className="rounded-l-none border-l border-purple-700 px-3"
-                >
-                  <span className="sr-only">Open options</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handlePublishProject(false)}>Publish Project</DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handlePublishProject(true)}
-                  disabled={projectType !== "customer" || !selectedCustomer}
-                >
-                  Publish & Email to Customer
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
       </div>
     </div>
   )

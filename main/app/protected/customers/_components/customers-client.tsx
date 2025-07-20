@@ -1,12 +1,12 @@
 'use client'
 
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect, useMemo } from 'react'
 import axios from 'axios'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import CreateSearchFilter from "@/components/general/create-search-filter"
 import { Button } from "@/components/ui/button"
-import { SheetClose } from '@/components/ui/sheet'
-import { Bubbles } from "lucide-react"
+import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
+import { Bubbles, Trash2 } from "lucide-react"
 import CustomerTable from './customer-table'
 import CustomerForm from './customer-form'
 import { FilterTag } from '@/components/filtering/search-filter'
@@ -18,6 +18,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu"
+import ConfirmModal from '@/components/modal/confirm-modal'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import EditCustomer from './edit-customer'
 
 interface Customer {
   id: string
@@ -38,12 +43,20 @@ interface Customer {
   avatar?: string
 }
 
+const fetchCustomers = async (): Promise<Customer[]> => {
+  const response = await axios.get('/api/customers');
+  if (response.data.success) {
+    return response.data.customers;
+  }
+  throw new Error(response.data.message || 'Error fetching customers');
+};
+
 export default function CustomersClient() {
+  const queryClient = useQueryClient();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false)
   const [filterTags, setFilterTags] = useState<FilterTag[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -57,6 +70,16 @@ export default function CustomersClient() {
   }>({
     createdAt: [],
     rating: []
+  });
+
+  const { 
+    data: customers = [], 
+    isLoading, 
+    isError, 
+    error 
+  } = useQuery<Customer[]>({
+    queryKey: ['customers'],
+    queryFn: fetchCustomers
   });
 
   // Initialize from URL params
@@ -91,44 +114,12 @@ export default function CustomersClient() {
     });
     setFilterTags(tags);
 
-    // Handle sheet opening
-    if (searchParams.get('createCustomer') === 'true') {
-      // Trigger sheet open - you might need to manage this state
-    }
-    
+    // Sync selected customer with URL customerId
     const customerId = searchParams.get('customerId');
-    if (customerId) {
-      // Handle customer selection
-      console.log('Selected customer:', customerId);
-    }
+    setSelectedCustomerId(customerId);
   }, [searchParams]);
 
-  // Fetch customers on component mount
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
-
-  // Apply filters whenever activeFilters, customers, or searchQuery change
-  useEffect(() => {
-    applyFilters();
-  }, [activeFilters, customers, searchQuery]);
-
-  const fetchCustomers = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('/api/customers');
-      if (response.data.success) {
-        setCustomers(response.data.customers);
-        setFilteredCustomers(response.data.customers);
-      }
-    } catch (error) {
-      console.error('Error fetching customers:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const applyFilters = () => {
+  const filteredCustomers = useMemo(() => {
     let filtered = [...customers];
 
     // Apply search query
@@ -190,8 +181,32 @@ export default function CustomersClient() {
       });
     }
 
-    setFilteredCustomers(filtered);
-  };
+    return filtered;
+  }, [customers, searchQuery, activeFilters]);
+
+  const customerBeingEdited = useMemo(() => {
+    return customers.find(c => c.id === selectedCustomerId)
+  }, [customers, selectedCustomerId])
+
+  const deleteCustomerMutation = useMutation({
+    mutationFn: async (customerId: string) => {
+      return axios.delete(`/api/customers/${customerId}`);
+    },
+    onSuccess: () => {
+      toast.success("Customer deleted successfully!");
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      
+      const currentParams = new URLSearchParams(searchParams.toString());
+      currentParams.delete('customerId');
+      const newUrl = currentParams.toString() ? `${pathname}?${currentParams.toString()}` : pathname;
+      router.replace(newUrl);
+    },
+    onError: (error: any) => {
+      console.error("Delete customer error:", error.response?.data);
+      const errorMessage = error.response?.data?.error || "Failed to delete customer";
+      toast.error(errorMessage);
+    },
+  });
 
   const updateURL = (newFilters: typeof activeFilters, search?: string) => {
     const params = new URLSearchParams(searchParams);
@@ -282,26 +297,52 @@ export default function CustomersClient() {
     updateURL({ createdAt: [], rating: [] });
   };
 
-  const handleCreateCustomer = () => {
-    const params = new URLSearchParams(searchParams);
-    params.set('createCustomer', 'true');
-    router.push(`${pathname}?${params.toString()}`);
-  };
-
   const handleCustomerSelect = (customerId: string) => {
     const params = new URLSearchParams(searchParams);
     params.set('customerId', customerId);
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  const handleSuccess = () => {
+  const handleCreateSuccess = () => {
     closeRef.current?.click();
     // Remove createCustomer param
     const params = new URLSearchParams(searchParams);
     params.delete('createCustomer');
     router.replace(`${pathname}?${params.toString()}`);
-    fetchCustomers(); // Refresh customers list
+    queryClient.invalidateQueries({ queryKey: ['customers'] });
   };
+
+  const handleEditSuccess = () => {
+    setSelectedCustomerId(null);
+    // Remove customerId param
+    const params = new URLSearchParams(searchParams);
+    params.delete('customerId');
+    router.replace(`${pathname}?${params.toString()}`);
+    queryClient.invalidateQueries({ queryKey: ['customers'] });
+  };
+
+  const handleCloseSheet = () => {
+    router.push("/protected/customers");
+    setSelectedCustomerId(null);
+  };
+
+  const handleCreateCancel = () => {
+    closeRef.current?.click();
+    const params = new URLSearchParams(searchParams);
+    params.delete('createCustomer');
+    router.replace(`${pathname}?${params.toString()}`);
+  };
+
+  const handleDeleteFromSheet = () => {
+    setDeleteModalOpen(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (selectedCustomerId) {
+      deleteCustomerMutation.mutate(selectedCustomerId)
+    }
+    setDeleteModalOpen(false)
+  }
 
   const footer = (
     <>
@@ -316,6 +357,24 @@ export default function CustomersClient() {
           </>
         ) : (
           'Create Customer'
+        )}
+      </Button>
+    </>
+  );
+
+  const editFooter = (
+    <>
+      <SheetClose asChild>
+        <Button variant="ghost" onClick={handleCloseSheet}>Cancel</Button>
+      </SheetClose>
+      <Button type="submit" form="edit-customer-form" disabled={isSubmitting}>
+        {isSubmitting ? (
+          <>
+            <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.8s]" />
+            Updating customer...
+          </>
+        ) : (
+          'Update Customer'
         )}
       </Button>
     </>
@@ -385,39 +444,43 @@ export default function CustomersClient() {
             checked={activeFilters.rating.includes('80-100')}
             onCheckedChange={(checked) => handleFilterChange('rating', '80-100', checked)}
           >
-            ⭐⭐⭐⭐⭐ (80% - 100%)
+             (80% - 100%)
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={activeFilters.rating.includes('60-79')}
             onCheckedChange={(checked) => handleFilterChange('rating', '60-79', checked)}
           >
-            ⭐⭐⭐⭐ (60% - 79%)
+           (60% - 79%)
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={activeFilters.rating.includes('40-59')}
             onCheckedChange={(checked) => handleFilterChange('rating', '40-59', checked)}
           >
-            ⭐⭐⭐ (40% - 59%)
+             (40% - 59%)
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={activeFilters.rating.includes('20-39')}
             onCheckedChange={(checked) => handleFilterChange('rating', '20-39', checked)}
           >
-            ⭐⭐ (20% - 39%)
+             (20% - 39%)
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={activeFilters.rating.includes('0-19')}
             onCheckedChange={(checked) => handleFilterChange('rating', '0-19', checked)}
           >
-            ⭐ (0% - 19%)
+             (0% - 19%)
           </DropdownMenuCheckboxItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
     </div>
   );
 
-  if (loading) {
+  if (isLoading) {
     return <div className="p-8">Loading customers...</div>;
+  }
+
+  if (isError) {
+    return <div className="p-8">Error fetching customers: {(error as Error).message}</div>;
   }
 
   return (
@@ -431,10 +494,55 @@ export default function CustomersClient() {
         onClearAllFilters={handleClearAllFilters}
         sheetTriggerText="New Customer"
         sheetTitle="New Customer"
-        sheetContent={<CustomerForm onSuccess={handleSuccess} onLoadingChange={setIsSubmitting} />}
+        sheetContent={<CustomerForm onSuccess={handleCreateSuccess} onLoadingChange={setIsSubmitting} />}
         sheetContentClassName='w-full sm:w-3/4 md:w-1/2 lg:w-[40%]'
         footer={footer}
+        closeRef={closeRef}
       />
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        itemName={customerBeingEdited?.name || "this customer"}
+        itemType="Customer"
+        isLoading={deleteCustomerMutation.isPending}
+      />
+
+      {/* Edit Customer Sheet */}
+      <Sheet open={!!selectedCustomerId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
+        <SheetContent 
+          side="right" 
+          bounce="right" 
+          withGap={true} 
+          className="w-full flex flex-col p-0 sm:w-3/4 md:w-1/2 lg:w-[40%]"
+        >
+          <SheetHeader className="p-4 border-b">
+            <div className="flex justify-between items-center">
+              <SheetTitle>Edit Customer</SheetTitle>
+              {selectedCustomerId && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteFromSheet}
+                  disabled={deleteCustomerMutation.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Customer
+                </Button>
+              )}
+            </div>
+          </SheetHeader>
+          <ScrollArea className="flex-grow">
+            <div className="p-4">
+              {customerBeingEdited && <EditCustomer customer={customerBeingEdited} onSuccess={handleEditSuccess} onLoadingChange={setIsSubmitting} />}
+            </div>
+          </ScrollArea>
+          <SheetFooter className="p-4 border-t">
+            {editFooter}
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <div className="mt-6">
         <CustomerTable 

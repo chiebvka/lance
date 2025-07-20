@@ -3,10 +3,14 @@ import { GalleryVerticalEnd } from 'lucide-react';
 import { Toaster } from "sonner";
 import Link from 'next/link';
 import ResetForm from './_components/ResetForm';
+import { createClient } from '@/utils/supabase/server';
+import { redirect } from 'next/navigation';
 
 type Props = {}
 
-export default function page({}: Props) {
+export default  function page({}: Props) {
+ 
+
   return (
     <div className="border w-11/12 mx-auto border-bexoni">
         <Toaster richColors />
