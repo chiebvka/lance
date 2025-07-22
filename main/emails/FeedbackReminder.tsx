@@ -14,25 +14,27 @@ import {
   import * as React from "react";
   import { baseUrl } from "@/utils/universal";
   
-  interface IssueProjectEmailProps {
+  interface IssueFeedbackEmailProps {
     senderName?: string
     clientName?: string
+    feedbackName?: string
     projectName?: string
-
     projectId?: string
+    feedbackId?: string
     logoUrl?: string
   }
   
-  export default function IssueProject({
+  export default function FeedbackReminder({
     senderName = "Development Team",
     clientName = "Client",
-    projectName = "Your Project",
-    projectId = "123",
+    projectName = "Client",
+    feedbackName = "Your feedback",
+    feedbackId = "123",
 
     logoUrl = "https://www.bexoni.com/favicon.ico",
-  }: IssueProjectEmailProps) {
-    const previewText = ` ${projectName} has been initiated.`
-    const projectLink = `${baseUrl}/p/${projectId}`;
+  }: IssueFeedbackEmailProps) {
+    const previewText = ` ${feedbackName} is appreciated.`
+    const feedbackLink = `${baseUrl}/f/${feedbackId}`;
   
     const logoStyle = {
       width: "48px",
@@ -44,7 +46,6 @@ import {
       backgroundSize: "contain", // Changed to 'cover' to fill the circle
       backgroundRepeat: "no-repeat",
       overflow: "hidden",
-
       display: "flex",
       alignItems: "center",
       justifyContent: "center", 
@@ -64,10 +65,10 @@ import {
                 </Column>
                 <Column style={{ paddingLeft: "20px" }}>
                   <Heading as="h1" style={headerTitleStyle}>
-                    Your Project Is Underway!
+                    Still waiting on your feedback!
                   </Heading>
                   <Text style={headerSubtitleStyle}>
-                    {projectName} • From {senderName}
+                    {projectName ?? feedbackName} • From {senderName}
                   </Text>
                 </Column>
               </Row>
@@ -78,16 +79,14 @@ import {
               <Text style={greetingStyle}>Hello {clientName},</Text>
   
               <Section style={codeBlockStyle}>
-                <Text style={codeHeaderStyle}>{"You've got mail!"}</Text>
+                <Text style={codeHeaderStyle}>{"You've got another mail!"}</Text>
                 <Text style={codeLineStyle}>
-                  {"We're pleased to inform you that your project " +
-                    projectName +
-                    " has been initiated, We're kicking off today and would really apppreciate you going through the fine print to make sure that everything is to your liking and sign off on it."}
+                  {"We're still waiting on your feedback. Please take a moment to fill out the form to help us serve you better"}
                 </Text>
               </Section>
   
-              <Button href={projectLink} style={buttonStyle}>
-                View Project
+              <Button href={feedbackLink} style={buttonStyle}>
+                View Feedback
               </Button>
   
               <Text style={signatureStyle}>

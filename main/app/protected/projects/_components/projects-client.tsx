@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { DataTable } from "./data-table"
-import { columns, Project } from "./columns"
+import { columns } from "./columns"
 import ProjectForm from './project-form'
 import EditProjectForm from './edit-project-form'
 import { Bubbles, Trash2, Save, ChevronDown } from "lucide-react"
@@ -43,21 +43,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTableViewOptions } from './data-table-view-options'
 import { Calendar } from '@/components/ui/calendar'
 import Pagination from '../../../../components/pagination';
-import { getTableColumns, setTableColumns, getTableColumnsWithDefaults } from '@/cookie-persist/tableColumns';
+import { getTableColumns, setTableColumns, getTableColumnsWithDefaults, getDefaultColumns } from '@/cookie-persist/tableColumns';
 import ConfirmModal from '@/components/modal/confirm-modal'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { projectCreateSchema } from '@/validation/projects'
 import deliverableSchema from '@/validation/deliverables'
 import paymentTermSchema from '@/validation/payment'
+import { Project } from '@/validation/forms/project'
+import { useProjects } from '@/hooks/projects/use-projects'
 
-const fetchProjects = async (): Promise<Project[]> => {
-  const response = await axios.get('/api/projects');
-  if (response.data.success) {
-    return response.data.projects;
-  }
-  throw new Error(response.data.message || 'Error fetching projects');
-};
+
+interface Props {
+  initialProjects: Project[]
+}
 
 
 type ProjectFormValues = z.infer<typeof projectCreateSchema>
@@ -118,7 +117,7 @@ const paymentTypeOptions = [
   { value: 'noPaymentRequired', label: 'No Payment' }
 ];
 
-export default function ProjectsClient() {
+export default function ProjectsClient({ initialProjects }: Props) {
   const queryClient = useQueryClient();
   const closeRef = useRef<HTMLButtonElement>(null);
   const editCloseRef = useRef<HTMLButtonElement>(null);
@@ -128,6 +127,7 @@ export default function ProjectsClient() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
   
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -152,24 +152,48 @@ export default function ProjectsClient() {
     isLoading, 
     isError, 
     error 
-  } = useQuery<Project[]>({
-    queryKey: ['projects'],
-    queryFn: fetchProjects
+  } = useProjects(initialProjects);
+
+  // --- Table State ---
+  const [rowSelection, setRowSelection] = useState({})
+  
+  // Fix hydration issue: Initialize with server-safe default state
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    // Use default columns for SSR to prevent hydration mismatch
+    const defaultColumns = getDefaultColumns('projects');
+    const allColumns = ['name', 'description', 'type', 'customerName', 'budget', 'hasServiceAgreement', 'state', 'status', 'paymentType', 'endDate'];
+    
+    const state: VisibilityState = {};
+    for (const col of allColumns) {
+      state[col] = defaultColumns.includes(col);
+    }
+    
+    return state;
   });
 
-  // Initialize from URL params
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [sorting, setSorting] = useState<SortingState>([])
+
+  // Single comprehensive useEffect to handle all initialization
   useEffect(() => {
+    // Mark as hydrated
+    setIsHydrated(true);
+
+    // Extract URL parameters
     const query = searchParams.get('query') || '';
-    setSearchQuery(query);
-    
-    // Initialize filters from URL
-    const stateParams = searchParams.getAll('state');
-    const paymentTypeParams = searchParams.getAll('paymentType');
-    const hasServiceAgreementParams = searchParams.getAll('hasServiceAgreement');
-    const typeParams = searchParams.getAll('type');
+    const projectId = searchParams.get('projectId');
+    const stateFilters = searchParams.getAll('state');
+    const paymentTypeFilters = searchParams.getAll('paymentType');
+    const agreementFilters = searchParams.getAll('hasServiceAgreement');
+    const typeFilters = searchParams.getAll('type');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
-    
+
+    // Update state from URL
+    setSearchQuery(query);
+    setSelectedProjectId(projectId);
+
+    // Build date range
     let dateRange: DateRange | undefined = undefined;
     if (dateFrom) {
       dateRange = { from: parseISO(dateFrom) };
@@ -177,63 +201,86 @@ export default function ProjectsClient() {
         dateRange.to = parseISO(dateTo);
       }
     }
-    
+
+    // Update active filters
     setActiveFilters({
-      state: stateParams,
-      paymentType: paymentTypeParams,
-      hasServiceAgreement: hasServiceAgreementParams,
-      type: typeParams,
+      state: stateFilters,
+      paymentType: paymentTypeFilters,
+      hasServiceAgreement: agreementFilters,
+      type: typeFilters,
       date: dateRange,
     });
 
-    // Update filter tags based on URL params
+    // Build filter tags array
     const tags: FilterTag[] = [];
+
     if (dateRange?.from) {
-      let dateLabel = format(dateRange.from, "PPP");
+      let label = format(dateRange.from, 'PPP');
       if (dateRange.to) {
-        dateLabel = `${format(dateRange.from, "PPP")} - ${format(dateRange.to, "PPP")}`;
+        label = `${format(dateRange.from, 'PPP')} - ${format(dateRange.to, 'PPP')}`;
       }
-      tags.push({ key: 'date-range', label: 'Date', value: dateLabel });
+      tags.push({ key: 'date-range', label: 'Date', value: label });
     }
-    stateParams.forEach(value => {
-      tags.push({
-        key: `state-${value}`,
-        label: 'State',
-        value: value.charAt(0).toUpperCase() + value.slice(1)
+
+    stateFilters.forEach(value => {
+      tags.push({ 
+        key: `state-${value}`, 
+        label: 'State', 
+        value: value.charAt(0).toUpperCase() + value.slice(1) 
       });
     });
-    typeParams.forEach(value => {
-      tags.push({
-        key: `type-${value}`,
-        label: 'Type',
-        value: value.charAt(0).toUpperCase() + value.slice(1)
+
+    typeFilters.forEach(value => {
+      tags.push({ 
+        key: `type-${value}`, 
+        label: 'Type', 
+        value: value.charAt(0).toUpperCase() + value.slice(1) 
       });
     });
-    paymentTypeParams.forEach(value => {
-      tags.push({
-        key: `paymentType-${value}`,
-        label: 'Payment Type',
-        value: paymentTypeOptions.find(p => p.value === value)?.label || value
+
+    paymentTypeFilters.forEach(value => {
+      const label = paymentTypeOptions.find(p => p.value === value)?.label || value;
+      tags.push({ 
+        key: `paymentType-${value}`, 
+        label: 'Payment Type', 
+        value: label 
       });
     });
-    hasServiceAgreementParams.forEach(value => {
-      tags.push({
-        key: `hasServiceAgreement-${value}`,
-        label: 'Service Agreement',
-        value: value === 'true' ? 'Yes' : 'No'
+
+    agreementFilters.forEach(value => {
+      const label = value === 'true' ? 'Yes' : 'No';
+      tags.push({ 
+        key: `hasServiceAgreement-${value}`, 
+        label: 'Service Agreement', 
+        value: label 
       });
     });
+
     setFilterTags(tags);
 
-    // Handle sheet opening for creating
-    if (searchParams.get('createProject') === 'true') {
-      // Trigger sheet open
+    // Load saved column visibility after hydration
+    if (typeof window !== 'undefined') {
+      const savedColumns = getTableColumnsWithDefaults('projects');
+      const allColumns = ['name', 'description', 'type', 'customerName', 'budget', 'hasServiceAgreement', 'state', 'status', 'paymentType', 'endDate'];
+      
+      const newState: VisibilityState = {};
+      for (const col of allColumns) {
+        newState[col] = savedColumns.includes(col);
+      }
+      
+      setColumnVisibility(newState);
     }
-    
-    // Sync selected project with URL projectId, which controls the sheet
-    const projectId = searchParams.get('projectId');
-    setSelectedProjectId(projectId);
   }, [searchParams]);
+
+  // Persist column visibility to cookie on change (only after hydration)
+  useEffect(() => {
+    if (isHydrated) {
+      const visibleCols = Object.entries(columnVisibility)
+        .filter(([_, v]) => v)
+        .map(([k]) => k);
+      setTableColumns('projects', visibleCols);
+    }
+  }, [columnVisibility, isHydrated]);
 
   const filteredProjects = useMemo(() => {
     let filtered = [...projects];
@@ -319,41 +366,6 @@ export default function ProjectsClient() {
       toast.error(errorMessage);
     },
   });
-
-  // --- Table State ---
-  const [rowSelection, setRowSelection] = useState({})
-  // Load initial column visibility from cookie with proper defaults
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
-    if (typeof window !== 'undefined') {
-      const visibleColumns = getTableColumnsWithDefaults('projects');
-      
-      // Create visibility state: default columns visible, others hidden
-      const state: VisibilityState = {};
-      
-      // All available columns (excluding select and actions which are always visible)
-      const allColumns = ['name', 'description', 'type', 'customerName', 'budget', 'hasServiceAgreement', 'state', 'status', 'paymentType', 'endDate'];
-      
-      // Set visibility based on saved/default columns
-      for (const col of allColumns) {
-        state[col] = visibleColumns.includes(col);
-      }
-      
-      return state;
-    }
-    // Fallback for SSR
-    return {};
-  });
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [sorting, setSorting] = useState<SortingState>([])
-
-  // Persist column visibility to cookie on change
-  useEffect(() => {
-    // Only store columns that are visible
-    const visibleCols = Object.entries(columnVisibility)
-      .filter(([_, v]) => v)
-      .map(([k]) => k);
-    setTableColumns('projects', visibleCols);
-  }, [columnVisibility]);
 
   const table = useReactTable({
     data: filteredProjects,

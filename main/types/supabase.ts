@@ -185,6 +185,7 @@ export type Database = {
           createdBy: string | null
           email: string | null
           feedbackCount: number | null
+          fts: unknown | null
           fullAddress: string | null
           id: string
           invoiceCount: number | null
@@ -213,6 +214,7 @@ export type Database = {
           createdBy?: string | null
           email?: string | null
           feedbackCount?: number | null
+          fts?: unknown | null
           fullAddress?: string | null
           id?: string
           invoiceCount?: number | null
@@ -241,6 +243,7 @@ export type Database = {
           createdBy?: string | null
           email?: string | null
           feedbackCount?: number | null
+          fts?: unknown | null
           fullAddress?: string | null
           id?: string
           invoiceCount?: number | null
@@ -331,47 +334,113 @@ export type Database = {
           },
         ]
       }
+      feedback_templates: {
+        Row: {
+          created_at: string
+          createdBy: string | null
+          id: string
+          isDefault: boolean | null
+          name: string | null
+          organizationId: string | null
+          questions: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          createdBy?: string | null
+          id?: string
+          isDefault?: boolean | null
+          name?: string | null
+          organizationId?: string | null
+          questions?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          createdBy?: string | null
+          id?: string
+          isDefault?: boolean | null
+          name?: string | null
+          organizationId?: string | null
+          questions?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       feedbacks: {
         Row: {
           answers: Json | null
           created_at: string
           createdBy: string | null
           customerId: string | null
+          dueDate: string | null
           filledOn: string | null
-          id: number
+          fts: unknown | null
+          id: string
+          message: string | null
+          name: string | null
+          organizationEmail: string | null
+          organizationLogoUrl: string | null
+          organizationName: string | null
           projectId: string | null
           questions: Json | null
+          recepientEmail: string | null
+          recepientName: string | null
+          sentAt: string | null
           state: string | null
+          templateId: string | null
+          token: string | null
+          updated_at: string | null
         }
         Insert: {
           answers?: Json | null
           created_at?: string
           createdBy?: string | null
           customerId?: string | null
+          dueDate?: string | null
           filledOn?: string | null
-          id?: number
+          fts?: unknown | null
+          id?: string
+          message?: string | null
+          name?: string | null
+          organizationEmail?: string | null
+          organizationLogoUrl?: string | null
+          organizationName?: string | null
           projectId?: string | null
           questions?: Json | null
+          recepientEmail?: string | null
+          recepientName?: string | null
+          sentAt?: string | null
           state?: string | null
+          templateId?: string | null
+          token?: string | null
+          updated_at?: string | null
         }
         Update: {
           answers?: Json | null
           created_at?: string
           createdBy?: string | null
           customerId?: string | null
+          dueDate?: string | null
           filledOn?: string | null
-          id?: number
+          fts?: unknown | null
+          id?: string
+          message?: string | null
+          name?: string | null
+          organizationEmail?: string | null
+          organizationLogoUrl?: string | null
+          organizationName?: string | null
           projectId?: string | null
           questions?: Json | null
+          recepientEmail?: string | null
+          recepientName?: string | null
+          sentAt?: string | null
           state?: string | null
+          templateId?: string | null
+          token?: string | null
+          updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "feedbacks_createdBy_fkey"
-            columns: ["createdBy"]
-            referencedRelation: "profiles"
-            referencedColumns: ["profile_id"]
-          },
           {
             foreignKeyName: "feedbacks_customerId_fkey"
             columns: ["customerId"]
@@ -394,6 +463,7 @@ export type Database = {
           customerId: string | null
           dueDate: string | null
           emailSentAt: string | null
+          fts: unknown | null
           id: string
           invoiceDetails: Json | null
           invoiceNumber: string | null
@@ -419,6 +489,7 @@ export type Database = {
           customerId?: string | null
           dueDate?: string | null
           emailSentAt?: string | null
+          fts?: unknown | null
           id?: string
           invoiceDetails?: Json | null
           invoiceNumber?: string | null
@@ -444,6 +515,7 @@ export type Database = {
           customerId?: string | null
           dueDate?: string | null
           emailSentAt?: string | null
+          fts?: unknown | null
           id?: string
           invoiceDetails?: Json | null
           invoiceNumber?: string | null
@@ -490,6 +562,7 @@ export type Database = {
           created_at: string | null
           createdBy: string | null
           email: string | null
+          fts: unknown | null
           id: string
           logoUrl: string | null
           name: string | null
@@ -501,6 +574,7 @@ export type Database = {
           created_at?: string | null
           createdBy?: string | null
           email?: string | null
+          fts?: unknown | null
           id?: string
           logoUrl?: string | null
           name?: string | null
@@ -512,6 +586,7 @@ export type Database = {
           created_at?: string | null
           createdBy?: string | null
           email?: string | null
+          fts?: unknown | null
           id?: string
           logoUrl?: string | null
           name?: string | null
@@ -601,21 +676,31 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          organizationId: string | null
           profile_id: string | null
         }
         Insert: {
           created_at?: string | null
           email?: string | null
           id?: string
+          organizationId?: string | null
           profile_id?: string | null
         }
         Update: {
           created_at?: string | null
           email?: string | null
           id?: string
+          organizationId?: string | null
           profile_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {
@@ -634,6 +719,7 @@ export type Database = {
           effectiveDate: string | null
           emailToCustomer: boolean | null
           endDate: string | null
+          fts: unknown | null
           hasAgreedToTerms: boolean | null
           hasPaymentTerms: boolean | null
           hasServiceAgreement: boolean | null
@@ -670,6 +756,7 @@ export type Database = {
           effectiveDate?: string | null
           emailToCustomer?: boolean | null
           endDate?: string | null
+          fts?: unknown | null
           hasAgreedToTerms?: boolean | null
           hasPaymentTerms?: boolean | null
           hasServiceAgreement?: boolean | null
@@ -706,6 +793,7 @@ export type Database = {
           effectiveDate?: string | null
           emailToCustomer?: boolean | null
           endDate?: string | null
+          fts?: unknown | null
           hasAgreedToTerms?: boolean | null
           hasPaymentTerms?: boolean | null
           hasServiceAgreement?: boolean | null
@@ -750,6 +838,7 @@ export type Database = {
           customerId: string | null
           dueDate: string | null
           emailSentAt: string | null
+          fts: unknown | null
           id: string
           invoiceId: string | null
           issueDate: string | null
@@ -777,6 +866,7 @@ export type Database = {
           customerId?: string | null
           dueDate?: string | null
           emailSentAt?: string | null
+          fts?: unknown | null
           id?: string
           invoiceId?: string | null
           issueDate?: string | null
@@ -804,6 +894,7 @@ export type Database = {
           customerId?: string | null
           dueDate?: string | null
           emailSentAt?: string | null
+          fts?: unknown | null
           id?: string
           invoiceId?: string | null
           issueDate?: string | null
@@ -955,7 +1046,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_recent_items: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          category: string
+          id: string
+          name: string
+          type: string
+          created_at: string
+        }[]
+      }
+      smart_universal_search: {
+        Args: { search_term: string }
+        Returns: {
+          category: string
+          id: string
+          name: string
+          type: string
+          rank: number
+          related_category: string
+          customerId: string
+          projectId: string
+        }[]
+      }
     }
     Enums: {
       customer_activity_reference_enum:
@@ -1005,6 +1118,7 @@ export type Database = {
           owner: string | null
           owner_id: string | null
           public: boolean | null
+          type: Database["storage"]["Enums"]["buckettype"]
           updated_at: string | null
         }
         Insert: {
@@ -1017,6 +1131,7 @@ export type Database = {
           owner?: string | null
           owner_id?: string | null
           public?: boolean | null
+          type?: Database["storage"]["Enums"]["buckettype"]
           updated_at?: string | null
         }
         Update: {
@@ -1029,9 +1144,108 @@ export type Database = {
           owner?: string | null
           owner_id?: string | null
           public?: boolean | null
+          type?: Database["storage"]["Enums"]["buckettype"]
           updated_at?: string | null
         }
         Relationships: []
+      }
+      buckets_analytics: {
+        Row: {
+          created_at: string
+          format: string
+          id: string
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          format?: string
+          id: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          format?: string
+          id?: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      iceberg_namespaces: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iceberg_namespaces_bucket_id_fkey"
+            columns: ["bucket_id"]
+            referencedRelation: "buckets_analytics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      iceberg_tables: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          id: string
+          location: string
+          name: string
+          namespace_id: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          id?: string
+          location: string
+          name: string
+          namespace_id: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          id?: string
+          location?: string
+          name?: string
+          namespace_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "iceberg_tables_bucket_id_fkey"
+            columns: ["bucket_id"]
+            referencedRelation: "buckets_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "iceberg_tables_namespace_id_fkey"
+            columns: ["namespace_id"]
+            referencedRelation: "iceberg_namespaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       migrations: {
         Row: {
@@ -1397,7 +1611,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      buckettype: "STANDARD" | "ANALYTICS"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1405,21 +1619,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -1437,14 +1655,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -1460,14 +1680,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -1483,14 +1705,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -1498,14 +1722,16 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
@@ -1553,6 +1779,8 @@ export const Constants = {
     },
   },
   storage: {
-    Enums: {},
+    Enums: {
+      buckettype: ["STANDARD", "ANALYTICS"],
+    },
   },
 } as const

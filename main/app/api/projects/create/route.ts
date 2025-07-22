@@ -222,11 +222,9 @@ export async function POST(request: Request) {
             const fromEmail =  'no_reply@projects.bexforte.com';
             
             let fromName = 'Bexforte Projects';
-            if (organization?.name) {
-                fromName = organization?.name;
-            } else if (profile?.email) {
-                fromName = profile.email.split('@')[0];
-            }
+
+            let sendName = organization?.name ?? profile?.email.split('@')[0];
+       
 
             const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
             
@@ -240,14 +238,13 @@ export async function POST(request: Request) {
 
             console.log(`Attempting to send project email from: ${fromEmail} to: ${customer.email}`);
 
+            const fromField = `${fromName} <${fromEmail}>`;
+
             try {
               await sendgrid.send({
                   to: customer.email,
-                  from: {
-                      email: fromEmail,
-                      name: fromName
-                  },
-                  subject: `Project ${project.name} Initiated`,
+                  from: fromField,
+                  subject: `${sendName} sent you a project`,
                   html: emailHtml,
                   customArgs: {
                       projectId: project.id,
