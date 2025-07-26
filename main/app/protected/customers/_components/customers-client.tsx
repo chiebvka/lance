@@ -522,8 +522,9 @@ export default function CustomersClient() {
               <SheetTitle>Edit Customer</SheetTitle>
               {selectedCustomerId && (
                 <Button
-                  variant="destructive"
+                  variant="outline"
                   size="sm"
+                  className="gap-2 rounded-none border-destructive text-destructive hover:bg-destructive/10 mr-7 hover:text-destructive"
                   onClick={handleDeleteFromSheet}
                   disabled={deleteCustomerMutation.isPending}
                 >

@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { Project } from "./columns"
-import { MoreHorizontal, Copy, CheckCircle, Clock, Loader2 } from "lucide-react"
+import { MoreHorizontal, Loader2, CheckCircle, Clock } from "lucide-react"
 import ConfirmModal from "@/components/modal/confirm-modal"
 
 interface DataTableRowActionsProps<TData> {
@@ -260,7 +260,6 @@ export function DataTableRowActions<TData>({
             onClick={handleDuplicate}
             disabled={duplicateProjectMutation.isPending}
           >
-            <Copy className="h-4 w-4 mr-2" />
             {duplicateProjectMutation.isPending ? 'Duplicating...' : 'Duplicate Project'}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
@@ -268,8 +267,7 @@ export function DataTableRowActions<TData>({
             onClick={handleStatusToggle}
             disabled={updateStatusMutation.isPending}
           >
-            {getStatusToggleIcon()}
-            <span className="ml-2">{getStatusToggleText()}</span>
+            {getStatusToggleText()}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem 

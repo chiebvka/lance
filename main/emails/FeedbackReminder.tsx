@@ -22,6 +22,7 @@ import {
     projectId?: string
     feedbackId?: string
     logoUrl?: string
+    feedbackLink?: string
   }
   
   export default function FeedbackReminder({
@@ -30,11 +31,11 @@ import {
     projectName = "Client",
     feedbackName = "Your feedback",
     feedbackId = "123",
-
     logoUrl = "https://www.bexoni.com/favicon.ico",
+    feedbackLink,
   }: IssueFeedbackEmailProps) {
     const previewText = ` ${feedbackName} is appreciated.`
-    const feedbackLink = `${baseUrl}/f/${feedbackId}`;
+    const finalFeedbackLink = feedbackLink || `${baseUrl}/f/${feedbackId}`;
   
     const logoStyle = {
       width: "48px",
@@ -85,7 +86,7 @@ import {
                 </Text>
               </Section>
   
-              <Button href={feedbackLink} style={buttonStyle}>
+              <Button href={finalFeedbackLink} style={buttonStyle}>
                 View Feedback
               </Button>
   

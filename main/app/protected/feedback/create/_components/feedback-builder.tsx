@@ -82,14 +82,14 @@ interface Project {
     customerName?: string
 }
   
-  const questionTypes = [
-    { id: "yes_no", label: "Yes/No", icon: CheckSquare, color: "bg-green-600" },
-    { id: "multiple_choice", label: "Multiple Choice", icon: MessageSquare, color: "bg-blue-600" },
-    { id: "text", label: "Text", icon: Type, color: "bg-yellow-600" },
-    { id: "rating", label: "Rating (1-5)", icon: Star, color: "bg-orange-600" },
-    { id: "dropdown", label: "Dropdown", icon: ChevronDown, color: "bg-indigo-600" },
-    { id: "number", label: "Number", icon: Hash, color: "bg-red-600" },
-  ]
+const questionTypes = [
+  { id: "yes_no", label: "Yes/No", icon: CheckSquare, color: "bg-green-600" },
+  { id: "multiple_choice", label: "Multiple Choice", icon: MessageSquare, color: "bg-blue-600" },
+  { id: "text", label: "Text", icon: Type, color: "bg-yellow-600" },
+  { id: "rating", label: "Rating (1-5)", icon: Star, color: "bg-orange-600" },
+  { id: "dropdown", label: "Dropdown", icon: ChevronDown, color: "bg-indigo-600" },
+  { id: "number", label: "Number", icon: Hash, color: "bg-red-600" },
+]
 
 type Props = {}
 
@@ -768,840 +768,840 @@ export default function FeedbackBuilder({}: Props) {
 
   return (
     <div className="min-h-screen">
-    {/* Mobile Header */}
-    <div className="lg:hidden p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Grid3X3 className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold">Form Builder</h1>
-        </div>
-        <div className="flex gap-2">
-          <Sheet>
-            <SheetTrigger asChild>
-                                <Button variant="ghost" size="sm" className="">
-                <Menu className="h-4 w-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-80">
-              <SheetHeader>
-                <SheetTitle className="">Templates & Questions</SheetTitle>
-              </SheetHeader>
-              <div className="mt-6 space-y-6">
-                {/* Templates Section */}
-                <div>
-                  <h3 className="text-sm font-medium mb-3">Templates</h3>
-                  <div className="space-y-2">
-                                            {templates.map((template) => (
-                      <Card
-                        key={template.id}
-                                                    className="cursor-pointer transition-colors"
-                        onClick={() => loadTemplate(template.id)}
-                      >
-                        <CardContent className="p-3">
-                                                        <h5 className="font-medium text-sm">{template.name}</h5>
-                                                        <p className="text-xs">{template.questionCount} questions</p>
-                                                        {template.isDefault && (
-                                                            <Badge className="text-xs mt-1">Default</Badge>
-                                                        )}
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Drafts Section */}
-                                    <div>
-                                        <h3 className="text-sm font-medium mb-3">Drafts</h3>
-                                        <div className="space-y-2">
-                                            {drafts.map((draft) => (
-                                                <Card
-                                                    key={draft.id}
-                                                    className="cursor-pointer transition-colors"
-                                                    onClick={() => loadDraft(draft.id)}
-                                                >
-                                                    <CardContent className="p-3">
-                                                        <h5 className="font-medium text-sm">{draft.name}</h5>
-                                                        <p className="text-xs">{draft.questionCount} questions</p>
-                                                        {draft.customerName && (
-                                                            <p className="text-xs text-green-600 mt-1">Customer: {draft.customerName}</p>
-                                                        )}
-                                                        {draft.projectName && (
-                                                            <p className="text-xs text-blue-600 mt-1">Project: {draft.projectName}</p>
-                                                        )}
-                                                        <p className="text-xs text-gray-500 mt-1">{draft.createdAtFormatted}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Question Types Section */}
-                <div>
-                  <h3 className="text-sm font-medium mb-3">Question Types</h3>
-                  <div className="grid grid-cols-1 gap-2">
-                    {questionTypes.map((type) => {
-                      const Icon = type.icon
-                      return (
-                        <Button
-                          key={type.id}
-                          variant="ghost"
-                          onClick={() => addQuestion(type.id as Question["type"])}
-                          className="flex items-center justify-start p-3 h-auto transition-colors"
-                        >
-                          <div className={`p-1 rounded mr-3 ${type.color}`}>
-                                                            <Icon className="h-4 w-4" />
-                          </div>
-                          <span className="text-sm">{type.label}</span>
-                        </Button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowPreview(true)}
-            className=""
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setShowSendDialog(true)}
-            disabled={currentForm.length === 0}
-                            className="bg-primary hover:bg-primary/80"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-
-    <div className="p-4 lg:p-6 space-y-6">
-      {/* Desktop Header */}
-      <Card className="hidden lg:block">
-        <CardHeader>
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Grid3X3 className="h-6 w-6 text-primary" />
-                <h1 className="text-2xl font-bold">Form Builder</h1>
-              </div>
-              <Input
-                placeholder="Form Name"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                className="border-gray-600 w-full sm:w-64"
-              />
-              {selectedTemplate && (
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-primary/20 text-purple-300">
-                                            Template: {templates.find((t) => t.id === selectedTemplate)?.name}
-                  </Badge>
-                                        {templates.find((t) => t.id === selectedTemplate)?.isOwner && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteTemplate(selectedTemplate)}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              )}
-                                {selectedDraft && (
-                                    <Badge variant="secondary" className="bg-blue-500/20 text-blue-300">
-                                        Editing Draft: {drafts.find((d) => d.id === selectedDraft)?.name}
-                                    </Badge>
-                                )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="ghost" onClick={resetForm} className="">
-                Reset
-              </Button>
-                                <Button 
-                                    variant="ghost" 
-                                    onClick={handleSaveAsTemplate} 
-                                    className=""
-                                    disabled={savingTemplate || currentForm.length === 0}
-                                >
-                <Template className="h-4 w-4 mr-2" />
-                                    {savingTemplate ? 'Saving...' : 
-                                     isEditingExistingTemplate() ? 'Update Template' : 'Save as Template'}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  if (currentForm.length > 0) {
-                    if (formName.trim()) {
-                                                handleSaveDraft(formName)
-                    } else {
-                      setShowDraftDialog(true)
-                    }
-                  }
-                }}
-                                    disabled={savingDraft || currentForm.length === 0}
-                className=""
-              >
-                <Save className="h-4 w-4 mr-2" />
-                                    {getQuickSaveButtonText()}
-              </Button>
-              <Button variant="ghost" onClick={() => setShowPreview(true)} className="">
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
-              <Button
-                onClick={() => setShowSendDialog(true)}
-                                    disabled={sendingFeedback || currentForm.length === 0}
-                                    className="bg-primary hover:bg-primary/80"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                                    {sendingFeedback ? 'Sending...' : 'Send Form'}
-              </Button>
-            </div>
+      {/* Mobile Header */}
+      <div className="lg:hidden p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Grid3X3 className="h-4 w-4 text-primary" />
+            <h1 className="text-base font-bold">Form Builder</h1>
           </div>
-        </CardHeader>
-      </Card>
+          <div className="flex gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="">
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-80">
+                <SheetHeader>
+                  <SheetTitle className="">Templates & Questions</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-6">
+                  {/* Templates Section */}
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Templates</h3>
+                    <div className="space-y-2">
+                                              {templates.map((template) => (
+                        <Card
+                          key={template.id}
+                                                      className="cursor-pointer transition-colors"
+                          onClick={() => loadTemplate(template.id)}
+                        >
+                          <CardContent className="p-3">
+                                                          <h5 className="font-medium text-sm">{template.name}</h5>
+                                                          <p className="text-xs">{template.questionCount} questions</p>
+                                                          {template.isDefault && (
+                                                              <Badge className="text-xs mt-1">Default</Badge>
+                                                          )}
+                                                      </CardContent>
+                                                  </Card>
+                                              ))}
+                                          </div>
+                                      </div>
 
-      {/* Mobile Form Name */}
-      <div className="lg:hidden">
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Form Name"
-            value={formName}
-            onChange={(e) => setFormName(e.target.value)}
-            className="flex-1"
-          />
-                        {selectedTemplate && templates.find((t) => t.id === selectedTemplate)?.isOwner && (
+                                      {/* Drafts Section */}
+                                      <div>
+                                          <h3 className="text-sm font-medium mb-3">Drafts</h3>
+                                          <div className="space-y-2">
+                                              {drafts.map((draft) => (
+                                                  <Card
+                                                      key={draft.id}
+                                                      className="cursor-pointer transition-colors"
+                                                      onClick={() => loadDraft(draft.id)}
+                                                  >
+                                                      <CardContent className="p-3">
+                                                          <h5 className="font-medium text-sm">{draft.name}</h5>
+                                                          <p className="text-xs">{draft.questionCount} questions</p>
+                                                          {draft.customerName && (
+                                                              <p className="text-xs text-green-600 mt-1">Customer: {draft.customerName}</p>
+                                                          )}
+                                                          {draft.projectName && (
+                                                              <p className="text-xs text-blue-600 mt-1">Project: {draft.projectName}</p>
+                                                          )}
+                                                          <p className="text-xs text-gray-500 mt-1">{draft.createdAtFormatted}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Question Types Section */}
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Question Types</h3>
+                    <div className="grid grid-cols-1 gap-2">
+                      {questionTypes.map((type) => {
+                        const Icon = type.icon
+                        return (
+                          <Button
+                            key={type.id}
+                            variant="ghost"
+                            onClick={() => addQuestion(type.id as Question["type"])}
+                            className="flex items-center justify-start p-3 h-auto transition-colors"
+                          >
+                            <div className={`p-1 rounded mr-3 ${type.color}`}>
+                                                              <Icon className="h-4 w-4" />
+                            </div>
+                            <span className="text-sm">{type.label}</span>
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleDeleteTemplate(selectedTemplate)}
-              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              onClick={() => setShowPreview(true)}
+              className=""
             >
-              <Trash2 className="h-4 w-4" />
+              <Eye className="h-4 w-4" />
             </Button>
-          )}
+            <Button
+              size="sm"
+              onClick={() => setShowSendDialog(true)}
+              disabled={currentForm.length === 0}
+                              className="bg-primary hover:bg-primary/80"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        {selectedTemplate && (
-          <Badge variant="secondary" className="bg-primary/20 text-purple-300 mt-2">
-                            Template: {templates.find((t) => t.id === selectedTemplate)?.name}
-          </Badge>
-        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Left Column - Templates & Drafts (Desktop Only) */}
-        <div className="hidden lg:block lg:col-span-3 space-y-4">
-                        {/* Templates Section */}
-          <Card className="">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Layers className="h-5 w-5" />
-                Templates
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                <div className="space-y-2">
-                                    {templates.map((template) => (
-                    <Card
-                      key={template.id}
-                      className={`cursor-pointer transition-colors group ${
-                          selectedTemplate === template.id ? "border-purple-500" : ""
-                      }`}
-                      onClick={() => loadTemplate(template.id)}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h5 className="font-medium text-sm text-left">{template.name}</h5>
-                                                        <p className="text-xs">{template.questionCount} questions</p>
-                                                        {template.isDefault && (
-                                                            <Badge className="text-xs mt-1">Default</Badge>
-                                                        )}
-                                                    </div>
-                                                    {template.isOwner && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                handleDeleteTemplate(template.id)
-                                                            }}
-                                                            className="group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1 h-auto"
-                                                        >
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+      <div className="p-4 lg:p-6 space-y-6">
+        {/* Desktop Header */}
+        <Card className="hidden lg:block">
+          <CardHeader>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Grid3X3 className="h-6 w-6 text-primary" />
+                  <h1 className="text-lg font-bold">Form Builder</h1>
                 </div>
-                            </CardContent>
-                        </Card>
+                <Input
+                  placeholder="Form Name"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  className="border-gray-600 w-full sm:w-64"
+                />
+                {selectedTemplate && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="bg-primary/20 text-purple-300">
+                                              Template
+                    </Badge>
+                                          {templates.find((t) => t.id === selectedTemplate)?.isOwner && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteTemplate(selectedTemplate)}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+                                  {selectedDraft && (
+                                      <Badge variant="secondary" className="bg-blue-500/20 text-blue-300">
+                                          Editing Draft
+                                      </Badge>
+                                  )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="ghost" onClick={resetForm} className="">
+                  Reset
+                </Button>
+                                  <Button 
+                                      variant="ghost" 
+                                      onClick={handleSaveAsTemplate} 
+                                      className=""
+                                      disabled={savingTemplate || currentForm.length === 0}
+                                  >
+                  <Template className="h-4 w-4 mr-2" />
+                                      {savingTemplate ? 'Saving...' : 
+                                      isEditingExistingTemplate() ? 'Update Template' : 'Save as Template'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    if (currentForm.length > 0) {
+                      if (formName.trim()) {
+                                                  handleSaveDraft(formName)
+                      } else {
+                        setShowDraftDialog(true)
+                      }
+                    }
+                  }}
+                                      disabled={savingDraft || currentForm.length === 0}
+                  className=""
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                                      {getQuickSaveButtonText()}
+                </Button>
+                <Button variant="ghost" onClick={() => setShowPreview(true)} className="">
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview
+                </Button>
+                <Button
+                  onClick={() => setShowSendDialog(true)}
+                                      disabled={sendingFeedback || currentForm.length === 0}
+                                      className="bg-primary hover:bg-primary/80"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                                      {sendingFeedback ? 'Sending...' : 'Send Form'}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
 
-                        {/* Drafts Section */}
-                        {drafts.length > 0 && (
-                            <Card className="">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <Save className="h-5 w-5" />
-                                        Drafts
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
+        {/* Mobile Form Name */}
+        <div className="lg:hidden">
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Form Name"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              className="flex-1"
+            />
+                          {selectedTemplate && templates.find((t) => t.id === selectedTemplate)?.isOwner && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDeleteTemplate(selectedTemplate)}
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          {selectedTemplate && (
+            <Badge variant="secondary" className="bg-primary/20 text-purple-300 mt-2">
+                              Template: {templates.find((t) => t.id === selectedTemplate)?.name}
+            </Badge>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      {/* Left Column - Templates & Drafts (Desktop Only) */}
+          <div className="hidden lg:block lg:col-span-3 space-y-4">
+                          {/* Templates Section */}
+            <Card className="">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Layers className="h-5 w-5" />
+                  Templates
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
                   <div className="space-y-2">
-                                        {drafts.map((draft) => (
+                                      {templates.map((template) => (
                       <Card
-                                                key={draft.id}
-                                                className={`cursor-pointer transition-colors group ${
-                                                    selectedDraft === draft.id ? "border-purple-500" : ""
-                                                }`}
-                                                onClick={() => loadDraft(draft.id)}
+                        key={template.id}
+                        className={`cursor-pointer transition-colors group ${
+                            selectedTemplate === template.id ? "border-purple-500" : ""
+                        }`}
+                        onClick={() => loadTemplate(template.id)}
                       >
                         <CardContent className="p-3">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                                                            <h5 className="font-medium text-sm">{draft.name}</h5>
-                                                            <p className="text-xs">{draft.questionCount} questions</p>
-                                                            {draft.customerName && (
-                                                                <p className="text-xs text-green-600 mt-1">Customer: {draft.customerName}</p>
-                                                            )}
-                                                            {draft.projectName && (
-                                                                <p className="text-xs text-blue-600 mt-1">Project: {draft.projectName}</p>
-                                                            )}
-                                                            <p className="text-xs text-gray-500 mt-1">{draft.createdAtFormatted}</p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                                                handleDeleteDraft(draft.id)
-                              }}
-                                                            className="group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1 h-auto"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
+                              <h5 className="font-medium text-sm text-left">{template.name}</h5>
+                                                          <p className="text-xs">{template.questionCount} questions</p>
+                                                          {template.isDefault && (
+                                                              <Badge className="text-xs mt-1">Default</Badge>
+                                                          )}
+                                                      </div>
+                                                      {template.isOwner && (
+                                                          <Button
+                                                              variant="ghost"
+                                                              size="sm"
+                                                              onClick={(e) => {
+                                                                  e.stopPropagation()
+                                                                  handleDeleteTemplate(template.id)
+                                                              }}
+                                                              className="group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1 h-auto"
+                                                          >
+                                                              <Trash2 className="h-3 w-3" />
+                                                          </Button>
+                                                      )}
+                                                  </div>
                         </CardContent>
                       </Card>
                     ))}
                   </div>
-            </CardContent>
-          </Card>
-                        )}
+                              </CardContent>
+                          </Card>
 
-                        {/* Question Types Section */}
-          <Card className="">
-            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5" />
-                Question Types
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-2">
-                {questionTypes.map((type) => {
-                  const Icon = type.icon
-                  return (
-                    <Button
-                      key={type.id}
-                      variant="ghost"
-                      onClick={() => addQuestion(type.id as Question["type"])}
-                                                className="flex items-center justify-start p-3 h-auto hover:bg-primary/10 "
-                    >
-                      <div className={`p-1 rounded mr-3 ${type.color}`}>
-                              <Icon className="h-4 w-4 text-white" />
-                      </div>
-                      <span className="text-sm">{type.label}</span>
-                    </Button>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Center Column - Form Canvas */}
-        <div className="lg:col-span-6">
-                        <Card className="min-h-[400px] lg:min-h-[600px]">
-            <CardHeader>
-              <CardTitle className="">Form Canvas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {currentForm.length === 0 ? (
-                <div className="flex items-center justify-center h-64 lg:h-96">
-                  <div className="text-center">
-                    <MessageSquare className="h-12 w-12 mx-auto mb-4" />
-                    <p className="text-lg mb-2">Start building your form</p>
-                    <p className="text-sm mb-4">Choose a template or add questions</p>
-                    <div className="lg:hidden">
-                      <Sheet>
-                        <SheetTrigger asChild>
-                          <Button className="">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Questions
-                          </Button>
-                        </SheetTrigger>
-                                                    <SheetContent side="bottom" className="h-[80vh]">
-                          <SheetHeader>
-                            <SheetTitle className="">Add Questions</SheetTitle>
-                          </SheetHeader>
-                          <ScrollArea className="h-full mt-6">
-                            <div className="grid grid-cols-2 gap-3 pb-20">
-                              {questionTypes.map((type) => {
-                                const Icon = type.icon
-                                return (
-                                  <Card
-                                    key={type.id}
-                                                                            className="cursor-pointer hover:bg-gray-600 transition-colors"
-                                    onClick={() => addQuestion(type.id as Question["type"])}
-                                  >
-                                    <CardContent className="p-4 text-center">
-                                      <div className={`p-2 rounded mx-auto mb-2 w-fit ${type.color}`}>
-                                        <Icon className="h-5 w-5" />
-                                      </div>
-                                      <span className="text-sm font-medium">{type.label}</span>
-                                    </CardContent>
-                                  </Card>
-                                )
-                              })}
-                            </div>
-                          </ScrollArea>
-                        </SheetContent>
-                      </Sheet>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <ScrollArea className="h-[400px] lg:h-[500px]">
-                  <div className="space-y-4 pr-4">
-                    {currentForm.map((question, index) => {
-                      const questionType = questionTypes.find((t) => t.id === question.type)
-                      const Icon = questionType?.icon || MessageSquare
-                      return (
+                          {/* Drafts Section */}
+                          {drafts.length > 0 && (
+                              <Card className="">
+                                  <CardHeader>
+                                      <CardTitle className="flex items-center gap-2">
+                                          <Save className="h-5 w-5" />
+                                          Drafts
+                                      </CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-3">
+                    <div className="space-y-2">
+                                          {drafts.map((draft) => (
                         <Card
-                          key={question.id}
-                          className={`cursor-pointer transition-all hover:border-purple-500 ${
-                            editingQuestion === question.id ? "border-purple-500 shadow-lg shadow-purple-500/20" : ""
-                          }`}
-                          onClick={() => setEditingQuestion(question.id)}
+                                                  key={draft.id}
+                                                  className={`cursor-pointer transition-colors group ${
+                                                      selectedDraft === draft.id ? "border-purple-500" : ""
+                                                  }`}
+                                                  onClick={() => loadDraft(draft.id)}
                         >
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                                                        <span className="text-sm">#{index + 1}</span>
-                                                                        <GripVertical className="h-4 w-4" />
-                                </div>
-                                <div className={`p-1 rounded ${questionType?.color || ""}`}>
-                                                                        <Icon className="h-4 w-4" />
-                                </div>
-                                <Badge variant="secondary" className="bg-primary/20 text-purple-300 text-xs">
-                                  {questionType?.label}
-                                </Badge>
+                          <CardContent className="p-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                                              <h5 className="font-medium text-sm">{draft.name}</h5>
+                                                              <p className="text-xs">{draft.questionCount} questions</p>
+                                                              {draft.customerName && (
+                                                                  <p className="text-xs text-green-600 mt-1">Customer: {draft.customerName}</p>
+                                                              )}
+                                                              {draft.projectName && (
+                                                                  <p className="text-xs text-blue-600 mt-1">Project: {draft.projectName}</p>
+                                                              )}
+                                                              <p className="text-xs text-gray-500 mt-1">{draft.createdAtFormatted}</p>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setEditingQuestion(question.id)
-                                  }}
-                                  className=""
-                                >
-                                  <Edit3 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    deleteQuestion(question.id)
-                                  }}
-                                  className="text-red-400 hover:text-red-300"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                                                            <p className="font-medium">{question.text}</p>
-                            <div className="flex items-center gap-2 mt-2">
-                              {question.required && (
-                                <Badge className="bg-orange-600/20 text-orange-300 text-xs">Required</Badge>
-                              )}
-                              {question.options && (
-                                                                    <Badge variant="outline" className="text-xs">
-                                  {question.options.length} options
-                                </Badge>
-                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                                                  handleDeleteDraft(draft.id)
+                                }}
+                                                              className="group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 hover:bg-red-500/10 p-1 h-auto"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
                             </div>
                           </CardContent>
                         </Card>
-                      )
-                    })}
-                  </div>
-                </ScrollArea>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                      ))}
+                    </div>
+              </CardContent>
+            </Card>
+                          )}
 
-        {/* Right Column - Properties */}
-        <div className="lg:col-span-3">
-                        <Card className="lg:sticky lg:top-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Properties
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {editingQuestionData ? (
-                <div className="space-y-4">
-                  <div>
-                                            <Label className="text-sm">Question</Label>
-                    <Textarea
-                                                value={editingQuestionData.text}
-                                                onChange={(e) => updateQuestion(editingQuestionData.id, { text: e.target.value })}
-                                                className="mt-1"
-                      rows={3}
-                    />
-                  </div>
+                          {/* Question Types Section */}
+            <Card className="">
+              <CardHeader>
+                                  <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  Question Types
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-2">
+                  {questionTypes.map((type) => {
+                    const Icon = type.icon
+                    return (
+                      <Button
+                        key={type.id}
+                        variant="ghost"
+                        onClick={() => addQuestion(type.id as Question["type"])}
+                                                  className="flex items-center justify-start p-3 h-auto hover:bg-primary/10 "
+                      >
+                        <div className={`p-1 rounded mr-3 ${type.color}`}>
+                                <Icon className="h-4 w-4 text-white" />
+                        </div>
+                        <span className="text-sm">{type.label}</span>
+                      </Button>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-                                        {(editingQuestionData.type === "multiple_choice" || editingQuestionData.type === "dropdown") && (
-                    <div>
-                                                <Label className="text-sm">Options</Label>
-                      <div className="space-y-2 mt-1">
-                        {editingQuestionData.options?.map((option, index) => (
-                          <div key={index} className="flex gap-2">
-                            <Input
-                              value={option}
-                              onChange={(e) => {
-                                const newOptions = [...(editingQuestionData.options || [])]
-                                newOptions[index] = e.target.value
-                                updateQuestion(editingQuestionData.id, { options: newOptions })
-                              }}
-                                                                className="text-sm"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const newOptions = editingQuestionData.options?.filter((_, i) => i !== index)
-                                updateQuestion(editingQuestionData.id, { options: newOptions })
-                              }}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <Trash2 className="h-4 w-4" />
+          {/* Center Column - Form Canvas */}
+          <div className="lg:col-span-6">
+                          <Card className="min-h-[400px] lg:min-h-[600px]">
+              <CardHeader>
+                <CardTitle className="">Form Canvas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {currentForm.length === 0 ? (
+                  <div className="flex items-center justify-center h-64 lg:h-96">
+                    <div className="text-center">
+                      <MessageSquare className="h-12 w-12 mx-auto mb-4" />
+                      <p className="text-lg mb-2">Start building your form</p>
+                      <p className="text-sm mb-4">Choose a template or add questions</p>
+                      <div className="lg:hidden">
+                        <Sheet>
+                          <SheetTrigger asChild>
+                            <Button className="">
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Questions
                             </Button>
-                          </div>
-                        ))}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const newOptions = [
-                              ...(editingQuestionData.options || []),
-                              `Option ${(editingQuestionData.options?.length || 0) + 1}`,
-                            ]
-                            updateQuestion(editingQuestionData.id, { options: newOptions })
-                          }}
-                          className="text-primary w-full text-sm"
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add Option
-                        </Button>
+                          </SheetTrigger>
+                                                      <SheetContent side="bottom" className="h-[80vh]">
+                            <SheetHeader>
+                              <SheetTitle className="">Add Questions</SheetTitle>
+                            </SheetHeader>
+                            <ScrollArea className="h-full mt-6">
+                              <div className="grid grid-cols-2 gap-3 pb-20">
+                                {questionTypes.map((type) => {
+                                  const Icon = type.icon
+                                  return (
+                                    <Card
+                                      key={type.id}
+                                                                              className="cursor-pointer hover:bg-gray-600 transition-colors"
+                                      onClick={() => addQuestion(type.id as Question["type"])}
+                                    >
+                                      <CardContent className="p-4 text-center">
+                                        <div className={`p-2 rounded mx-auto mb-2 w-fit ${type.color}`}>
+                                          <Icon className="h-5 w-5" />
+                                        </div>
+                                        <span className="text-sm font-medium">{type.label}</span>
+                                      </CardContent>
+                                    </Card>
+                                  )
+                                })}
+                              </div>
+                            </ScrollArea>
+                          </SheetContent>
+                        </Sheet>
                       </div>
                     </div>
-                  )}
-
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={editingQuestionData.required}
-                      onCheckedChange={(checked) => updateQuestion(editingQuestionData.id, { required: checked })}
-                    />
-                                            <Label className="text-sm">Required</Label>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Settings className="h-8 w-8 mx-auto mb-2" />
-                  <p className="text-sm">Select a question to edit its properties</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                ) : (
+                  <ScrollArea className="h-[400px] lg:h-[500px]">
+                    <div className="space-y-4 pr-4">
+                      {currentForm.map((question, index) => {
+                        const questionType = questionTypes.find((t) => t.id === question.type)
+                        const Icon = questionType?.icon || MessageSquare
+                        return (
+                          <Card
+                            key={question.id}
+                            className={`cursor-pointer transition-all hover:border-purple-500 ${
+                              editingQuestion === question.id ? "border-purple-500 shadow-lg shadow-purple-500/20" : ""
+                            }`}
+                            onClick={() => setEditingQuestion(question.id)}
+                          >
+                            <CardHeader className="pb-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2">
+                                                                          <span className="text-sm">#{index + 1}</span>
+                                                                          <GripVertical className="h-4 w-4" />
+                                  </div>
+                                  <div className={`p-1 rounded ${questionType?.color || ""}`}>
+                                                                          <Icon className="h-4 w-4" />
+                                  </div>
+                                  <Badge variant="secondary" className="bg-primary/20 text-purple-300 text-xs">
+                                    {questionType?.label}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setEditingQuestion(question.id)
+                                    }}
+                                    className=""
+                                  >
+                                    <Edit3 className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      deleteQuestion(question.id)
+                                    }}
+                                    className="text-red-400 hover:text-red-300"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                                                              <p className="font-medium">{question.text}</p>
+                              <div className="flex items-center gap-2 mt-2">
+                                {question.required && (
+                                  <Badge className="bg-orange-600/20 text-orange-300 text-xs">Required</Badge>
+                                )}
+                                {question.options && (
+                                                                      <Badge variant="outline" className="text-xs">
+                                    {question.options.length} options
+                                  </Badge>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )
+                      })}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* Mobile Action Buttons */}
-      <div className="lg:hidden fixed bottom-4 right-4 flex flex-col gap-2">
-        <Button
-          variant="ghost"
-          onClick={() => {
-            if (currentForm.length > 0) {
-              if (formName.trim()) {
-                                    handleSaveDraft(formName)
-              } else {
-                setShowDraftDialog(true)
-              }
-            }
-          }}
-                        disabled={savingDraft || currentForm.length === 0}
-                        className="shadow-lg"
-        >
-          <Save className="h-4 w-4" />
-        </Button>
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button className="bg-primary shadow-lg">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </SheetTrigger>
-                        <SheetContent side="bottom" className="h-[80vh]">
-            <SheetHeader>
-              <SheetTitle className="">Add Questions</SheetTitle>
-            </SheetHeader>
-            <ScrollArea className="h-full mt-6">
-              <div className="grid grid-cols-2 gap-3 pb-20">
-                {questionTypes.map((type) => {
-                  const Icon = type.icon
-                  return (
-                    <Card
-                      key={type.id}
-                      className="cursor-pointer transition-colors"
-                      onClick={() => addQuestion(type.id as Question["type"])}
-                    >
-                      <CardContent className="p-4 text-center">
-                        <div className={`p-2 rounded mx-auto mb-2 w-fit ${type.color}`}>
-                          <Icon className="h-5 w-5" />
+          {/* Right Column - Properties */}
+          <div className="lg:col-span-3">
+                          <Card className="lg:sticky lg:top-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Properties
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {editingQuestionData ? (
+                  <div className="space-y-4">
+                    <div>
+                                              <Label className="text-sm">Question</Label>
+                      <Textarea
+                                                  value={editingQuestionData.text}
+                                                  onChange={(e) => updateQuestion(editingQuestionData.id, { text: e.target.value })}
+                                                  className="mt-1"
+                        rows={3}
+                      />
+                    </div>
+
+                                          {(editingQuestionData.type === "multiple_choice" || editingQuestionData.type === "dropdown") && (
+                      <div>
+                                                  <Label className="text-sm">Options</Label>
+                        <div className="space-y-2 mt-1">
+                          {editingQuestionData.options?.map((option, index) => (
+                            <div key={index} className="flex gap-2">
+                              <Input
+                                value={option}
+                                onChange={(e) => {
+                                  const newOptions = [...(editingQuestionData.options || [])]
+                                  newOptions[index] = e.target.value
+                                  updateQuestion(editingQuestionData.id, { options: newOptions })
+                                }}
+                                                                  className="text-sm"
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const newOptions = editingQuestionData.options?.filter((_, i) => i !== index)
+                                  updateQuestion(editingQuestionData.id, { options: newOptions })
+                                }}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const newOptions = [
+                                ...(editingQuestionData.options || []),
+                                `Option ${(editingQuestionData.options?.length || 0) + 1}`,
+                              ]
+                              updateQuestion(editingQuestionData.id, { options: newOptions })
+                            }}
+                            className="text-primary w-full text-sm"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Option
+                          </Button>
                         </div>
-                        <span className="text-sm font-medium">{type.label}</span>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            </ScrollArea>
-          </SheetContent>
-        </Sheet>
-      </div>
+                      </div>
+                    )}
 
-      {/* Preview Dialog */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="">Form Preview</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            <div className="text-center">
-                                <h2 className="text-2xl font-bold mb-2">{formName || "Untitled Form"}</h2>
-              <p className="">Please fill out the form below</p>
-            </div>
-            <div className="space-y-6">{currentForm.map(renderPreviewQuestion)}</div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={editingQuestionData.required}
+                        onCheckedChange={(checked) => updateQuestion(editingQuestionData.id, { required: checked })}
+                      />
+                                              <Label className="text-sm">Required</Label>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Settings className="h-8 w-8 mx-auto mb-2" />
+                    <p className="text-sm">Select a question to edit its properties</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
 
-      {/* Send Form Dialog */}
-      <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
-                    <DialogContent className="mx-4 max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="">Send Form</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* Customer Selection */}
-            <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <Switch checked={sendToCustomer} onCheckedChange={setSendToCustomer} />
-                                    <Label className="">Send to existing customer</Label>
-              </div>
-              {sendToCustomer ? (
-                                    <ComboBox
-                                        items={customerOptions}
-                                        value={selectedCustomer}
-                                        onValueChange={setSelectedCustomer}
-                                        placeholder="Choose a customer"
-                                        searchPlaceholder="Search customers..."
-                                        emptyMessage="No customers found."
-                                    />
-              ) : (
-                <div className="space-y-2">
-                  <Input
-                    type="email"
-                    value={customEmail}
-                    onChange={(e) => setCustomEmail(e.target.value)}
-                    placeholder="recipient@example.com"
-                    className=""
-                  />
-                  <Input
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder="Recipient name (optional)"
-                    className=""
-                  />
+        {/* Mobile Action Buttons */}
+        <div className="lg:hidden fixed bottom-4 right-4 flex flex-col gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              if (currentForm.length > 0) {
+                if (formName.trim()) {
+                                      handleSaveDraft(formName)
+                } else {
+                  setShowDraftDialog(true)
+                }
+              }
+            }}
+                          disabled={savingDraft || currentForm.length === 0}
+                          className="shadow-lg"
+          >
+            <Save className="h-4 w-4" />
+          </Button>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button className="bg-primary shadow-lg">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+                          <SheetContent side="bottom" className="h-[80vh]">
+              <SheetHeader>
+                <SheetTitle className="">Add Questions</SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="h-full mt-6">
+                <div className="grid grid-cols-2 gap-3 pb-20">
+                  {questionTypes.map((type) => {
+                    const Icon = type.icon
+                    return (
+                      <Card
+                        key={type.id}
+                        className="cursor-pointer transition-colors"
+                        onClick={() => addQuestion(type.id as Question["type"])}
+                      >
+                        <CardContent className="p-4 text-center">
+                          <div className={`p-2 rounded mx-auto mb-2 w-fit ${type.color}`}>
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <span className="text-sm font-medium">{type.label}</span>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
                 </div>
-              )}
-            </div>
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
+        </div>
 
-            {/* Project Selection */}
-            <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <Switch checked={attachToProject} onCheckedChange={setAttachToProject} />
-                                    <Label className="">Attach to project</Label>
+        {/* Preview Dialog */}
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="">Form Preview</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div className="text-center">
+                                  <h2 className="text-2xl font-bold mb-2">{formName || "Untitled Form"}</h2>
+                <p className="">Please fill out the form below</p>
               </div>
-              {attachToProject && (
-                                    <ComboBox
-                                        items={projectOptions}
-                                        value={selectedProject}
-                                        onValueChange={setSelectedProject}
-                                        placeholder="Choose a project"
-                                        searchPlaceholder="Search projects..."
-                                        emptyMessage="No projects found."
-                                    />
-              )}
+              <div className="space-y-6">{currentForm.map(renderPreviewQuestion)}</div>
             </div>
+          </DialogContent>
+        </Dialog>
 
-                            {/* Due Date */}
-                            <div>
-                                <Label className="text-sm mb-2 block">Due Date (optional)</Label>
-                                <Input
-                                    type="datetime-local"
-                                    value={dueDate}
-                                    onChange={(e) => setDueDate(e.target.value)}
-                                    className=""
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Leave blank to automatically set 3 days from send date
-                                </p>
-                            </div>
+        {/* Send Form Dialog */}
+        <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
+                      <DialogContent className="mx-4 max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="">Send Form</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {/* Customer Selection */}
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Switch checked={sendToCustomer} onCheckedChange={setSendToCustomer} />
+                                      <Label className="">Send to existing customer</Label>
+                </div>
+                {sendToCustomer ? (
+                                      <ComboBox
+                                          items={customerOptions}
+                                          value={selectedCustomer}
+                                          onValueChange={setSelectedCustomer}
+                                          placeholder="Choose a customer"
+                                          searchPlaceholder="Search customers..."
+                                          emptyMessage="No customers found."
+                                      />
+                ) : (
+                  <div className="space-y-2">
+                    <Input
+                      type="email"
+                      value={customEmail}
+                      onChange={(e) => setCustomEmail(e.target.value)}
+                      placeholder="recipient@example.com"
+                      className=""
+                    />
+                    <Input
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                      placeholder="Recipient name (optional)"
+                      className=""
+                    />
+                  </div>
+                )}
+              </div>
 
-                            {/* Message */}
-                            <div>
-                                <Label className="text-sm mb-2 block">Message (optional)</Label>
-                                <Textarea
-                                    value={message}
-                                    onChange={(e) => setMessage(e.target.value)}
-                                    placeholder="Additional message to include with the feedback request..."
-                                    className=""
-                                    rows={3}
-                                />
-                            </div>
+              {/* Project Selection */}
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Switch checked={attachToProject} onCheckedChange={setAttachToProject} />
+                                      <Label className="">Attach to project</Label>
+                </div>
+                {attachToProject && (
+                                      <ComboBox
+                                          items={projectOptions}
+                                          value={selectedProject}
+                                          onValueChange={setSelectedProject}
+                                          placeholder="Choose a project"
+                                          searchPlaceholder="Search projects..."
+                                          emptyMessage="No projects found."
+                                      />
+                )}
+              </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="ghost" onClick={() => setShowSendDialog(false)}>
-                Cancel
-              </Button>
-                                <Button 
-                                    className="hover:bg-primary/80" 
-                                    disabled={sendingFeedback || (!selectedCustomer && !customEmail)}
-                                    onClick={handleSendFeedback}
-                                >
-                                    {sendingFeedback ? 'Sending...' : 'Send Form'}
-              </Button>
+                              {/* Due Date */}
+                              <div>
+                                  <Label className="text-sm mb-2 block">Due Date (optional)</Label>
+                                  <Input
+                                      type="datetime-local"
+                                      value={dueDate}
+                                      onChange={(e) => setDueDate(e.target.value)}
+                                      className=""
+                                  />
+                                  <p className="text-xs text-gray-500 mt-1">
+                                      Leave blank to automatically set 3 days from send date
+                                  </p>
+                              </div>
+
+                              {/* Message */}
+                              <div>
+                                  <Label className="text-sm mb-2 block">Message (optional)</Label>
+                                  <Textarea
+                                      value={message}
+                                      onChange={(e) => setMessage(e.target.value)}
+                                      placeholder="Additional message to include with the feedback request..."
+                                      className=""
+                                      rows={3}
+                                  />
+                              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="ghost" onClick={() => setShowSendDialog(false)}>
+                  Cancel
+                </Button>
+                                  <Button 
+                                      className="hover:bg-primary/80" 
+                                      disabled={sendingFeedback || (!selectedCustomer && !customEmail)}
+                                      onClick={handleSendFeedback}
+                                  >
+                                      {sendingFeedback ? 'Sending...' : 'Send Form'}
+                </Button>
+              </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
 
-      {/* Save Template Dialog */}
-      <Dialog open={templateNameDialog} onOpenChange={setTemplateNameDialog}>
-                    <DialogContent className="mx-4">
-          <DialogHeader>
-            <DialogTitle className="">Save as Template</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-                                <Label className="">Template Name</Label>
-              <Input
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="My Custom Template"
-                className=""
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setTemplateNameDialog(false)}>
-                Cancel
-              </Button>
-                                <Button 
-                                    onClick={() => saveTemplate(templateName)} 
-                                    className="hover:bg-primary/80"
-                                    disabled={savingTemplate || !templateName.trim()}
-                                >
-                                    {savingTemplate ? 'Saving...' : 'Save Template'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Save Draft Dialog */}
-      <Dialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
-                    <DialogContent className="mx-4">
-          <DialogHeader>
-            <DialogTitle className="">Save as Draft</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-                                <Label className="">Draft Name</Label>
-              <Input
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                placeholder="My Draft"
-                className=""
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setShowDraftDialog(false)}>
-                Cancel
-              </Button>
-              <Button
-                                    onClick={() => handleSaveDraft(draftName)}
-                                    className="hover:bg-primary/80"
-                                    disabled={savingDraft || !draftName.trim()}
-                                >
-                                    {savingDraft ? 'Saving...' : 'Save Draft'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-                {/* Delete Template Confirmation Modal */}
-                <ConfirmModal
-                    isOpen={showDeleteTemplateModal}
-                    onClose={() => setShowDeleteTemplateModal(false)}
-                    onConfirm={confirmDeleteTemplate}
-                    title="Delete Template"
-                    itemName={templateToDeleteName}
-                    itemType="Template"
-                    description={`Are you sure you want to permanently delete the template "${templateToDeleteName}"? This action cannot be undone.`}
-                    isLoading={deletingTemplate}
+        {/* Save Template Dialog */}
+        <Dialog open={templateNameDialog} onOpenChange={setTemplateNameDialog}>
+                      <DialogContent className="mx-4">
+            <DialogHeader>
+              <DialogTitle className="">Save as Template</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                                  <Label className="">Template Name</Label>
+                <Input
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="My Custom Template"
+                  className=""
                 />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setTemplateNameDialog(false)}>
+                  Cancel
+                </Button>
+                                  <Button 
+                                      onClick={() => saveTemplate(templateName)} 
+                                      className="hover:bg-primary/80"
+                                      disabled={savingTemplate || !templateName.trim()}
+                                  >
+                                      {savingTemplate ? 'Saving...' : 'Save Template'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-                {/* Draft Delete Confirmation Modal */}
-                <ConfirmModal
-                    isOpen={showDeleteDraftModal}
-                    onClose={() => setShowDeleteDraftModal(false)}
-                    onConfirm={confirmDeleteDraft}
-                    title="Delete Draft"
-                    itemName={draftToDeleteName}
-                    itemType="Draft"
-                    description={`Are you sure you want to permanently delete the draft "${draftToDeleteName}"? This action cannot be undone.`}
-                    isLoading={deletingDraft}
+        {/* Save Draft Dialog */}
+        <Dialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+                      <DialogContent className="mx-4">
+            <DialogHeader>
+              <DialogTitle className="">Save as Draft</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                                  <Label className="">Draft Name</Label>
+                <Input
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  placeholder="My Draft"
+                  className=""
                 />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setShowDraftDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                                      onClick={() => handleSaveDraft(draftName)}
+                                      className="hover:bg-primary/80"
+                                      disabled={savingDraft || !draftName.trim()}
+                                  >
+                                      {savingDraft ? 'Saving...' : 'Save Draft'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+                  {/* Delete Template Confirmation Modal */}
+                  <ConfirmModal
+                      isOpen={showDeleteTemplateModal}
+                      onClose={() => setShowDeleteTemplateModal(false)}
+                      onConfirm={confirmDeleteTemplate}
+                      title="Delete Template"
+                      itemName={templateToDeleteName}
+                      itemType="Template"
+                      description={`Are you sure you want to permanently delete the template "${templateToDeleteName}"? This action cannot be undone.`}
+                      isLoading={deletingTemplate}
+                  />
+
+                  {/* Draft Delete Confirmation Modal */}
+                  <ConfirmModal
+                      isOpen={showDeleteDraftModal}
+                      onClose={() => setShowDeleteDraftModal(false)}
+                      onConfirm={confirmDeleteDraft}
+                      title="Delete Draft"
+                      itemName={draftToDeleteName}
+                      itemType="Draft"
+                      description={`Are you sure you want to permanently delete the draft "${draftToDeleteName}"? This action cannot be undone.`}
+                      isLoading={deletingDraft}
+                  />
+      </div>
     </div>
-  </div>
   )
 }

@@ -8,6 +8,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days in seconds
 const DEFAULT_COLUMNS: Record<string, string[]> = {
   projects: ['name', 'description', 'type', 'budget', 'state', 'status', 'paymentType'],
   customers: ['name', 'email', 'company', 'phone', 'status'], // Example for future use
+  feedbacks: ['name', 'recepientName', 'recipientEmail', 'state', 'dueDate', 'filledOn'],
   // Add more tables as needed
 };
 

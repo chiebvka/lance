@@ -26,15 +26,21 @@ import {
   }
   
   export default function IssueFeedback({
-    senderName = "Development Team",
-    clientName = "Client",
-    projectName = "Client",
+    senderName = "Bexforte Feedback",
+    clientName = "Valued Customer",
+    projectName,
     feedbackName = "Your feedback",
     feedbackId = "123",
     logoUrl = "https://www.bexoni.com/favicon.ico",
+    feedbackLink, // Use the provided feedbackLink prop
   }: IssueFeedbackEmailProps) {
     const previewText = ` ${feedbackName} is appreciated.`
-    const feedbackLink = `${baseUrl}/f/${feedbackId}`;
+    
+    // Use the provided feedbackLink or fall back to the old method (but this should always be provided now)
+    const finalFeedbackLink = feedbackLink || `${baseUrl}/f/${feedbackId}`;
+
+    console.log("Email template received feedbackLink:", feedbackLink);
+    console.log("Using final feedback link:", finalFeedbackLink);
   
     const logoStyle = {
       width: "48px",
@@ -43,7 +49,7 @@ import {
       backgroundColor: "#faf8f5",
       backgroundImage: `url(${logoUrl})`,
       backgroundPosition: "center ",
-      backgroundSize: "contain", // Changed to 'cover' to fill the circle
+      backgroundSize: "contain",
       backgroundRepeat: "no-repeat",
       overflow: "hidden",
       display: "flex",
@@ -87,7 +93,7 @@ import {
                 </Text>
               </Section>
   
-              <Button href={feedbackLink} style={buttonStyle}>
+              <Button href={finalFeedbackLink} style={buttonStyle}>
                 View Feedback
               </Button>
   
@@ -101,7 +107,7 @@ import {
             {/* Footer */}
             <Section style={footerStyle}>
               <Text style={footerTextStyle}>Powered by © Bexforte 2025</Text>
-              <Text style={footerTextStyle}>RPO Unversity Avenue Charlottetown PE C1A 9H6</Text>
+              <Text style={footerTextStyle}>RPO University Avenue Charlottetown PE C1A 9H6</Text>
             </Section>
           </Container>
         </Body>

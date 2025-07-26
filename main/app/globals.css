@@ -206,6 +206,13 @@
   }
 }
 
+.mobile-card {
+  width: 100% !important; /* Ensure full width within the 70vw container */
+  max-width: 70vw !important; /* Match the CarouselItem width */
+  min-width: 0 !important; /* Prevent any minimum width interference */
+  margin: 0 !important; /* Remove any default margins */
+}
+
 .bounce-in-right {
   animation: bounceInRight 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -217,4 +224,19 @@
 }
 .bounce-in-bottom {
   animation: bounceInBottom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toast {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.toast-content {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.progress {
+  width: 100% !important;
 }

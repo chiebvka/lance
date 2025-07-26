@@ -46,7 +46,7 @@ export default function RootLayout({
 
                   {children}
       
-
+{/* 
                 <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
                   <p>
                     Powered by{" "}
@@ -60,11 +60,11 @@ export default function RootLayout({
                     </a>
                   </p>
                   <ThemeSwitcher />
-                </footer>
+                </footer> */}
               </div>
             </main>
           </QueryProvider>
-          <Toaster richColors />
+          <Toaster  position="bottom-left" />
         </ThemeProvider>
       </body>
     </html>

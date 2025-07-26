@@ -35,6 +35,9 @@ export async function GET() {
         projectId,
         questions,
         dueDate,
+        questions,
+        answers,
+        token,
         state,
         recepientEmail,
         created_at,
@@ -52,6 +55,18 @@ export async function GET() {
       .eq("createdBy", user.id)
       .eq("state", "draft")
       .order("created_at", { ascending: false });
+
+
+
+      const { data: feedbacks, error: feedbacksError } = await supabase
+        .from("feedbacks")
+        .select("*") // or your desired fields
+        .eq("createdBy", user.id)
+        .order("created_at", { ascending: false });
+
+        if (feedbacksError) {
+          return NextResponse.json({ success: false, error: "Could not fetch feedbacks" }, { status: 500 });
+        }
 
     if (templatesError) {
       console.error("Error fetching feedback templates:", templatesError);
@@ -101,12 +116,37 @@ export async function GET() {
         : 'Unknown'
     }));
 
+    const feedbacksWithDetails = (feedbacks ?? []).map((feedback) => ({
+      id: feedback.id || '',
+      name: feedback?.name || 'Untitled Feedback',
+      filledOn: feedback?.filledOn || '',
+      recepientName: feedback?.recepientName || '',
+      recepientEmail: feedback?.recepientEmail || '',
+      state: feedback?.state || 'active',
+      dueDate: feedback?.dueDate || '',
+      token: feedback?.token || '',
+      created_at: feedback?.created_at || '',
+      updated_at: feedback?.updated_at || '',
+      questions: feedback?.questions || [], 
+      answers: feedback?.answers || [],
+      projectId: feedback?.projectId?.[0]?.id ?? null,
+      customerId: feedback?.customerId?.[0]?.id ?? null,
+      templateId: feedback?.templateId?.[0]?.id ?? null,
+      // Optionally, for display:
+      projectName: feedback?.projectId?.[0]?.name ?? null,
+      customerName: feedback?.customerId?.[0]?.name ?? null,
+      customerEmail: feedback?.customerId?.[0]?.email ?? null,
+      templateName: feedback?.templateId?.[0]?.name ?? null,
+    }));
+    
+    console.log(feedbacksWithDetails)
     return NextResponse.json({ 
       success: true, 
       templates: templatesWithDetails,
-      drafts: draftsWithDetails
+      drafts: draftsWithDetails,
+      feedbacks: feedbacksWithDetails,
     }, { status: 200 });
-
+    
   } catch (error) {
     console.error("Request Error:", error);
     return NextResponse.json({ error: "An unexpected error occurred." }, { status: 500 });

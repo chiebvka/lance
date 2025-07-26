@@ -6,6 +6,8 @@ import sendgrid from "@sendgrid/mail";
 import IssueFeedback from '../../../../emails/IssueFeedback';
 import { feedbackCreateSchema, feedbackTemplateSchema } from "@/validation/feedback";
 import { baseUrl } from "@/utils/universal";
+import crypto from "crypto";
+import { ratelimit } from "@/utils/rateLimit";
 var validator = require('validator');
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
@@ -16,6 +18,12 @@ export async function POST(request: Request) {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
           return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+        }
+
+        // 2. Rate limit check (use user.id as key)
+        const { success } = await ratelimit.limit(user.id);
+        if (!success) {
+        return NextResponse.json({ success: false, error: "Too Many Requests" }, { status: 429 });
         }
         
         const body = await request.json();
@@ -126,7 +134,6 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
         recepientName: data.recepientName || undefined, 
         message: data.message || undefined,
         templateId: data.templateId || undefined,
-        token: supabase.rpc('uuid_generate_v4').single(),
         answers: data.answers || undefined,
         // Determine the name: use provided name or fallback to first question
         name: data.name || (data.questions && data.questions.length > 0 ? data.questions[0].text : 'Untitled Feedback'),
@@ -152,7 +159,6 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
         recepientName,
         message,
         questions,
-        token,        // Generate UUID
         answers = []
     } = validatedFields.data;
 
@@ -205,6 +211,57 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
         }
     }
 
+    // Get organization information when sending feedback (not for drafts)
+    let organizationName = null;
+    let organizationLogoUrl = null;
+    let organizationEmail = null;
+
+    if (action === "send_feedback") {
+        // Get user profile with organizationId
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('email, organizationId')
+            .eq('profile_id', user.id)
+            .single();
+
+        if (profile) {
+            // If user has an organization, get organization details
+            if (profile.organizationId) {
+                const { data: organization } = await supabase
+                    .from('organization')
+                    .select('name, email, logoUrl')
+                    .eq('id', profile.organizationId)
+                    .single();
+
+                if (organization) {
+                    // Set organization fields with fallbacks
+                    organizationName = organization.name || (profile.email ? profile.email.split('@')[0] : null);
+                    organizationLogoUrl = organization.logoUrl || null; // Empty fallback as requested
+                    organizationEmail = organization.email || profile.email;
+                } else {
+                    // Organization not found, use profile fallbacks
+                    organizationName = profile.email ? profile.email.split('@')[0] : null;
+                    organizationLogoUrl = null;
+                    organizationEmail = profile.email;
+                }
+            } else {
+                // No organization linked, use profile fallbacks
+                organizationName = profile.email ? profile.email.split('@')[0] : null;
+                organizationLogoUrl = null;
+                organizationEmail = profile.email;
+            }
+        }
+
+        console.log("Organization data retrieved:", {
+            organizationName,
+            organizationLogoUrl,
+            organizationEmail
+        });
+    }
+
+    // Generate token for feedback access
+    const token = crypto.randomUUID();
+
     // Get current timestamp for sent date
     const currentTimestamp = new Date().toISOString();
 
@@ -225,7 +282,13 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
             createdBy: user.id,
             sentAt: action === "send_feedback" ? currentTimestamp : null,
             created_at: currentTimestamp,
-            token // Generate UUID
+            token: token,
+            // Add organization fields only when sending feedback
+            ...(action === "send_feedback" && {
+                organizationName,
+                organizationLogoUrl,
+                organizationEmail
+            })
         })
         .select()
         .single();
@@ -244,7 +307,7 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
 
     // Send email if action is "send_feedback"
     if (action === "send_feedback" && finalRecipientEmail) {
-        await sendFeedbackEmail(supabase, user, feedback, finalRecipientEmail, customerName, name, message || "", feedback.token);
+        await sendFeedbackEmail(supabase, user, feedback, finalRecipientEmail, customerName, name, token, message || "");
     }
 
     return NextResponse.json({ 
@@ -256,7 +319,7 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
     }, { status: 200 });
 }
 
-async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipientEmail: string, recepientName: string, feedbackName: string, token: string, message?: string ) {
+async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipientEmail: string, recepientName: string, feedbackName: string, token: string, message?: string) {
     try {
         // Get user profile for sender info
         const { data: profile } = await supabase
@@ -274,7 +337,7 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
 
         const fromEmail = 'no_reply@feedback.bexforte.com';
         
-        let fromName = 'Bexforte Feedback';
+        let fromName = 'Bexbot Feedback';
         let senderName = organization?.name || (profile?.email ? profile.email.split('@')[0] : 'Bexforte Feedback');
 
         const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
@@ -293,7 +356,7 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
             finalFeedbackName = "Feedback Form"; // Fallback
         }
 
-             // Determine recipient name: from customer table, recepientName, or first part of recipientEmail
+        // Determine recipient name: from customer table, recepientName, or first part of recipientEmail
         let finalrecepientName = recepientName  // Default to customerName if provided
         if (feedback.customerId) {
             const { data: customer } = await supabase
@@ -312,8 +375,8 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
 
         const emailHtml = await render(IssueFeedback({
             feedbackId: feedback.id,
-            clientName: recepientName || "Valued Customer",
-            feedbackName: feedbackName,
+            clientName: finalrecepientName || "Valued Customer",
+            feedbackName: finalFeedbackName,
             projectName: feedback.projectId ? finalFeedbackName : undefined,
             senderName: fromName,
             logoUrl: logoUrl,
@@ -321,13 +384,11 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
         }));
 
         console.log(`Attempting to send feedback email from: ${fromEmail} to: ${recipientEmail}`);
-
-        const fromField = `${fromName} <${fromEmail}>`;
-
+        console.log(`Feedback link: ${baseUrl}/f/${feedback.id}?token=${token}`);
 
         await sendgrid.send({
             to: recipientEmail,
-            from: fromField,
+            from:  `${fromName} <${fromEmail}>`,
             subject: `${senderName} sent you a form: ${finalFeedbackName}`,
             html: emailHtml,
             customArgs: {

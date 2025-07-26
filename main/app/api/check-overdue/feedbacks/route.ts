@@ -1,14 +1,23 @@
 import { createClient } from "@/utils/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import sendgrid from "@sendgrid/mail";
 import { render } from "@react-email/components";
 import FeedbackReminder from "@/emails/FeedbackReminder";
+import { baseUrl } from "@/utils/universal";
 
 var validator = require('validator');
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+
+    // 1. Secret token check
+    const secret = request.headers.get("x-cron-secret");
+    if (secret !== process.env.CRON_SECRET) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+
   const supabase = await createClient();
   const now = new Date(); // 01:33 PM ADT, July 22, 2025
 
@@ -54,13 +63,21 @@ export async function GET() {
 async function sendReminderEmail(supabase: any, feedback: any, type: string) {
   try {
     const fromEmail = 'no_reply@feedback.bexforte.com';
-    const fromName = 'Bexforte Reminder';
+    const fromName = 'Bexbot';
     let finalRecipientName = feedback.recipientName || feedback.recepientEmail.split('@')[0];
+    let token = feedback.token; 
+    if (!token) {
+      token = crypto.randomUUID();
+      await supabase.from("feedbacks").update({ token }).eq("id", feedback.id);
+    }
+
+    const feedbackLink = `${baseUrl}/f/${feedback.id}?token=${token}`;
 
     const emailHtml = await render(FeedbackReminder({
       feedbackId: feedback.id,
       clientName: finalRecipientName,
       feedbackName: feedback.name,
+      feedbackLink,
     }));
 
     await sendgrid.send({

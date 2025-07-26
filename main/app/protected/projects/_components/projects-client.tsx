@@ -1,6 +1,6 @@
-'use client'
+"use client"
 
-import React, { useMemo, useRef, useState, useEffect } from 'react'
+import React, { useMemo, useRef, useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import axios from 'axios'
 import { format, parseISO, isWithinInterval, isSameDay } from "date-fns"
@@ -38,7 +38,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTableViewOptions } from './data-table-view-options'
 import { Calendar } from '@/components/ui/calendar'
@@ -52,6 +52,7 @@ import deliverableSchema from '@/validation/deliverables'
 import paymentTermSchema from '@/validation/payment'
 import { Project } from '@/validation/forms/project'
 import { useProjects } from '@/hooks/projects/use-projects'
+import ProjectClientSkeleton from './project-client-skeleton'
 
 
 interface Props {
@@ -779,9 +780,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
     </div>
   );
 
-  if (isLoading) {
-    return <div className="p-8">Loading projects...</div>;
-  }
+
 
   if (isError) {
     return <div className="p-8">Error fetching projects: {(error as Error).message}</div>;
@@ -836,8 +835,9 @@ export default function ProjectsClient({ initialProjects }: Props) {
               <SheetTitle>Edit Project</SheetTitle>
               {selectedProjectId && (
                 <Button
-                  variant="destructive"
+                  variant="outline"
                   size="sm"
+                  className="gap-2 rounded-none border-destructive text-destructive hover:bg-destructive/10 mr-7 hover:text-destructive"
                   onClick={handleDeleteFromSheet}
                   disabled={deleteProjectMutation.isPending}
                 >
@@ -874,20 +874,22 @@ export default function ProjectsClient({ initialProjects }: Props) {
    
           <DataTableViewOptions table={table} />
         </div>
-        <DataTable 
-          table={table} 
-          onProjectSelect={handleProjectSelect} 
-          searchQuery={searchQuery}
-        />
-        <Pagination
-          currentPage={table.getState().pagination.pageIndex + 1}
-          totalPages={table.getPageCount()}
-          pageSize={table.getState().pagination.pageSize}
-          totalItems={table.getFilteredRowModel().rows.length}
-          onPageChange={page => table.setPageIndex(page - 1)}
-          onPageSizeChange={size => table.setPageSize(size)}
-          itemName="projects"
-        />
+        <Suspense fallback={<ProjectClientSkeleton />}>
+          <DataTable 
+            table={table} 
+            onProjectSelect={handleProjectSelect} 
+            searchQuery={searchQuery}
+          />
+          <Pagination
+            currentPage={table.getState().pagination.pageIndex + 1}
+            totalPages={table.getPageCount()}
+            pageSize={table.getState().pagination.pageSize}
+            totalItems={table.getFilteredRowModel().rows.length}
+            onPageChange={page => table.setPageIndex(page - 1)}
+            onPageSizeChange={size => table.setPageSize(size)}
+            itemName="projects"
+          />
+        </Suspense>
       </div>
     </>
   )

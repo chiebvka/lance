@@ -18,12 +18,13 @@ type CreateSearchFilterProps = {
   filterTags?: FilterTag[]
   onRemoveFilter?: (key: string) => void
   onClearAllFilters?: () => void
+  onCreateClick?: () => void // <-- add this
   
   // Sheet functionality
   sheetTriggerText: string
-  sheetTitle: string
+  sheetTitle?: string
   sheetHeader?: React.ReactNode
-  sheetContent: React.ReactNode
+  sheetContent?: React.ReactNode
   sheetContentClassName?: string
   footer?: React.ReactNode
   closeRef?: React.RefObject<HTMLButtonElement | null>
@@ -40,6 +41,7 @@ export default function CreateSearchFilter({
   onRemoveFilter,
   onClearAllFilters,
   sheetTriggerText,
+  onCreateClick,
   sheetTitle,
   sheetHeader,
   sheetContent,
@@ -64,34 +66,41 @@ export default function CreateSearchFilter({
           </SearchFilter>
         </div>
         
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button> 
-              <Plus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">{sheetTriggerText}</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" bounce="right" withGap={false} className={cn("flex flex-col p-0", sheetContentClassName)}>
-            {sheetHeader ? (
-              sheetHeader
-            ) : (
-              <SheetHeader className="p-4 border-b">
-                <SheetTitle>{sheetTitle}</SheetTitle>
-              </SheetHeader>
-            )}
-            <ScrollArea className="flex-grow">
-              <div className="p-4">
-                {sheetContent}
-              </div>
-            </ScrollArea>
-            {footer && (
-              <SheetFooter className="p-4 border-t">
-                {footer}
-              </SheetFooter>
-            )}
-            <SheetClose ref={closeRef as React.RefObject<HTMLButtonElement>} className="hidden" />
-          </SheetContent>
-        </Sheet>
+        {onCreateClick ?(         
+          <Button onClick={onCreateClick}>
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{sheetTriggerText}</span>
+          </Button>
+        ) :(  
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button> 
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{sheetTriggerText}</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" bounce="right" withGap={false} className={cn("flex flex-col p-0", sheetContentClassName)}>
+              {sheetHeader ? (
+                sheetHeader
+              ) : (
+                <SheetHeader className="p-4 border-b">
+                  <SheetTitle>{sheetTitle}</SheetTitle>
+                </SheetHeader>
+              )}
+              <ScrollArea className="flex-grow">
+                <div className="p-4">
+                  {sheetContent}
+                </div>
+              </ScrollArea>
+              {footer && (
+                <SheetFooter className="p-4 border-t">
+                  {footer}
+                </SheetFooter>
+              )}
+              <SheetClose ref={closeRef as React.RefObject<HTMLButtonElement>} className="hidden" />
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
 
       {/* Mobile Layout - Flex with plus icon only */}

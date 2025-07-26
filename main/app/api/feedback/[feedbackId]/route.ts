@@ -1,6 +1,66 @@
 import { createClient } from "@/utils/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { feedbackCreateSchema } from "@/validation/feedback";
+
+
+export async function GET(
+    request: NextRequest,
+    context: any
+  ) {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+  
+    if (!user) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 401 })
+    }
+  
+    const { params } = context;
+    const { feedbackId } = params
+  
+    try {
+      // Fetch the feedback
+      const { data: feedback, error: feedbackError } = await supabase
+        .from("feedbacks")
+        .select("*")
+        .eq("id", feedbackId)
+        .eq("createdBy", user.id)
+        .single()
+  
+      if (feedbackError) throw feedbackError
+      if (!feedback) throw new Error("feedback not found")
+  
+      // Fetch the customer
+      let customer = null
+      if (feedback.customerId) {
+        const { data: customerData, error: customerError } = await supabase
+          .from("customers")
+          .select("id, name, email")
+          .eq("id", feedback.customerId)
+          .single()
+        if (customerError) throw customerError
+        customer = customerData
+      }
+  
+   
+  
+      // Remap paymentTerms to paymentMilestones for frontend consistency
+      const projectResponse = {
+        ...feedback,
+        customer
+      }
+  
+      return NextResponse.json({ success: true, project: projectResponse })
+    } catch (e) {
+      const error = e as Error
+      console.error(`Error fetching project ${context.params.projectId}:`, error.message)
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 }
+      )
+    }
+}
 
 export async function PATCH(
     request: Request, 
@@ -96,6 +156,7 @@ export async function PATCH(
             })
             .eq("id", feedbackId)
             .eq("state", "draft") // Extra safety check
+            .eq("state", "overdue") // Extra safety check
             .select()
             .single();
 
@@ -120,3 +181,35 @@ export async function PATCH(
         return NextResponse.json({ success: false, error: "Failed to update feedback" }, { status: 500 });
     }
 }
+
+export async function DELETE(
+    request: NextRequest,
+    context: any
+  ) {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+  
+    const { params } = context;
+    const { feedbackId } = params
+  
+    try {
+      const { error: feedbackDeleteError } = await supabase
+        .from("feedbacks")
+        .delete()
+        .eq("id", feedbackId)
+        .eq("createdBy", user?.id)
+  
+      if (feedbackDeleteError) throw feedbackDeleteError
+  
+      return NextResponse.json({ success: true, message: "Feedback deleted successfully" })
+    } catch (e) {
+      const error = e as Error
+      console.error(`Error deleting feedback ${feedbackId}:`, error.message)
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 }
+      )
+    }
+  }
