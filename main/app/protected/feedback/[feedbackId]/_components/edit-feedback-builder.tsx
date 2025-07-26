@@ -354,7 +354,68 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
               options: dbQuestion.options?.choices || dbQuestion.options || undefined
           }
       }
-      
+
+      const handleSendFeedback = async () => {
+          if (currentForm.length === 0) return
+          
+          const recipientEmail = sendToCustomer 
+              ? customers.find(c => c.id === selectedCustomer)?.email 
+              : customEmail
+              
+          if (!recipientEmail) {
+              toast.error('No recipient email provided')
+              return
+          }
+          
+          const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          if (!emailRegex.test(recipientEmail)) {
+              toast.error('Invalid email address. Please provide a valid email format.')
+              return
+          }
+          
+          try {
+              setSendingFeedback(true)
+              
+              const feedbackDataPayload = {
+                  action: 'send_feedback', // Action to trigger send logic on backend
+                  name: formName,
+                  customerId: sendToCustomer ? selectedCustomer : null,
+                  projectId: attachToProject ? selectedProject : null,
+                  recipientEmail,
+                  recepientName: sendToCustomer ? null : customName || null,
+                  questions: currentForm.map(q => ({
+                      id: q.id,
+                      text: q.text,
+                      type: q.type,
+                      required: q.required,
+                      ...(q.options && q.options.length > 0 && { 
+                          options: { choices: q.options } 
+                      })
+                  })),
+                  dueDate: dueDate || null,
+                  message: message || undefined,
+              }
+              
+              const response = await axios.patch(`/api/feedback/${feedbackId}`, feedbackDataPayload)
+  
+              if (response.data.success) {
+                  toast.success('Feedback sent successfully!')
+                  setShowSendDialog(false)
+                  loadInitialData() // Reload to get new state and info
+              }
+          } catch (error) {
+              console.error('Error sending feedback:', error)
+              if (axios.isAxiosError(error)) {
+                  const errorMessage = error.response?.data?.error || 'Failed to send feedback'
+                  toast.error(errorMessage)
+              } else {
+                  toast.error('An unexpected error occurred.')
+              }
+          } finally {
+              setSendingFeedback(false)
+          }
+      }
+
       // Update feedback function
       const handleUpdateFeedback = async () => {
           if (!canEditForm()) {
@@ -1150,7 +1211,7 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                 <Button 
                     className="hover:bg-primary/80" 
                     disabled={sendingFeedback || (!selectedCustomer && !customEmail)}
-                    onClick={() => {/* handleSendFeedback */}}
+                    onClick={handleSendFeedback}
                 >
                         {sendingFeedback ? 'Sending...' : 'Send Form'}
                 </Button>

@@ -103,9 +103,16 @@ async function sendReminderEmail(feedback: any) {
 
     await sendgrid.send({
       to: feedback.recepientEmail,
-      from: `${fromName} <${fromEmail}>`,
-      subject: `Reminder: Pending Feedback - ${feedback.name}`,
+      from:  `${fromName} <${fromEmail}>`,
+      subject: `Reminder: Pending Forms - ${feedback.name}`,
       html: emailHtml,
+      customArgs: {
+        feedbackId: feedback.id,
+        customerId: feedback.customerId || "",
+        userId: feedback.createdBy,
+        type: "feedback_requested",
+        token: token,
+    },
     });
 
     return true;

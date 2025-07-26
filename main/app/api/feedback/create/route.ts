@@ -337,7 +337,7 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
 
         const fromEmail = 'no_reply@feedback.bexforte.com';
         
-        let fromName = 'Bexbot Feedback';
+        const fromName = 'Bexbot';
         let senderName = organization?.name || (profile?.email ? profile.email.split('@')[0] : 'Bexforte Feedback');
 
         const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
@@ -389,13 +389,13 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
         await sendgrid.send({
             to: recipientEmail,
             from:  `${fromName} <${fromEmail}>`,
-            subject: `${senderName} sent you a form: ${finalFeedbackName}`,
+            subject: `You have a form to fill out`,
             html: emailHtml,
             customArgs: {
                 feedbackId: feedback.id,
                 customerId: feedback.customerId || "",
                 userId: user.id,
-                type: "feedback_sent",
+                type: "feedback_requested",
                 token: token,
             },
         });

@@ -3,7 +3,7 @@
 import React from 'react'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { AlertTriangle, Trash2, Loader2 } from 'lucide-react'
+import { AlertTriangle, Trash2, Loader2, Bubbles } from 'lucide-react'
 
 type Props = {
   isOpen: boolean
@@ -39,7 +39,7 @@ export default function ConfirmModal({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-none bg-destructive/10">
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
             <div>
@@ -101,7 +101,7 @@ export default function ConfirmModal({
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.8s]" />
                 Deleting...
               </>
             ) : (

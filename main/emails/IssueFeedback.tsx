@@ -39,8 +39,6 @@ import {
     // Use the provided feedbackLink or fall back to the old method (but this should always be provided now)
     const finalFeedbackLink = feedbackLink || `${baseUrl}/f/${feedbackId}`;
 
-    console.log("Email template received feedbackLink:", feedbackLink);
-    console.log("Using final feedback link:", finalFeedbackLink);
   
     const logoStyle = {
       width: "48px",

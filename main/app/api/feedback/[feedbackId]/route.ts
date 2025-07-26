@@ -1,6 +1,89 @@
 import { createClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { feedbackCreateSchema } from "@/validation/feedback";
+import { render } from "@react-email/components";
+import sendgrid from "@sendgrid/mail";
+
+import { baseUrl } from "@/utils/universal";
+import crypto from "crypto";
+import IssueFeedback from "@/emails/IssueFeedback";
+var validator = require('validator');
+
+sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
+
+async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipientEmail: string, recepientName: string, feedbackName: string, token: string, message?: string) {
+    try {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('profile_id', user.id)
+            .single();
+
+        const { data: organization } = await supabase
+            .from('organization')
+            .select('name, email, logoUrl')
+            .eq('createdBy', user.id)
+            .maybeSingle();
+
+        const fromEmail = 'no_reply@feedback.bexforte.com';
+        
+        let fromName = 'Bexbot Feedback';
+        let senderName = organization?.name || (profile?.email ? profile.email.split('@')[0] : 'Bexforte Feedback');
+        const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
+        
+        let finalFeedbackName = feedbackName;
+        if (feedback.projectId) {
+            const { data: project } = await supabase
+                .from('projects')
+                .select('name')
+                .eq('id', feedback.projectId)
+                .single();
+                finalFeedbackName = project?.name || finalFeedbackName; 
+        }
+        if (!finalFeedbackName) {
+            finalFeedbackName = "Feedback Form";
+        }
+
+        let finalrecepientName = recepientName;
+        if (feedback.customerId) {
+            const { data: customer } = await supabase
+                .from('customers')
+                .select('name')
+                .eq('id', feedback.customerId)
+                .single();
+            finalrecepientName = customer?.name || finalrecepientName;
+        }
+        if (!finalrecepientName && feedback.recepientName) {
+            finalrecepientName = feedback.recepientName;
+        }
+        if (!finalrecepientName) {
+            finalrecepientName = recipientEmail.split('@')[0];
+        }
+
+        const feedbackLink = `${baseUrl}/f/${feedback.id}?token=${token}`;
+
+        const emailHtml = await render(IssueFeedback({
+            feedbackId: feedback.id,
+            clientName: finalrecepientName || "Valued Customer",
+            feedbackName: finalFeedbackName,
+            projectName: feedback.projectId ? finalFeedbackName : undefined,
+            senderName: fromName,
+            feedbackLink,
+        }));
+
+        await sendgrid.send({
+            to: recipientEmail,
+            from:  `${fromName} <${fromEmail}>`,
+            subject: `${senderName} sent you a form: ${finalFeedbackName}`,
+            html: emailHtml,
+        });
+
+        console.log("Feedback email sent to:", recipientEmail);
+
+    } catch (emailError: any) {
+        console.error("SendGrid Error:", emailError);
+    }
+}
 
 
 export async function GET(
@@ -74,15 +157,16 @@ export async function PATCH(
 
     const body = await request.json();
     const { feedbackId } = await context.params;
+    const { action, ...data } = body;
     
     if (!feedbackId) {
         return NextResponse.json({ error: "Feedback ID is required" }, { status: 400 });
     }
 
-    // Check if feedback exists and belongs to user
+    // Check if feedback exists and belongs to user, and get current recipient/dueDate
     const { data: existingFeedback, error: checkError } = await supabase
         .from("feedbacks")
-        .select("createdBy, state")
+        .select("createdBy, state, recepientEmail, dueDate")
         .eq("id", feedbackId)
         .single();
 
@@ -94,22 +178,19 @@ export async function PATCH(
         return NextResponse.json({ error: "Unauthorized to update this feedback" }, { status: 403 });
     }
 
-    // Only allow updating drafts
-    if (existingFeedback.state !== "draft") {
-        return NextResponse.json({ error: "Only draft feedback can be updated" }, { status: 400 });
+    // Allow updating/sending for draft, overdue, and sent states
+    if (!["draft", "overdue", "sent"].includes(existingFeedback.state)) {
+        return NextResponse.json({ error: "Only draft, overdue, and sent feedback can be updated" }, { status: 400 });
     }
 
     // Clean and validate the data - handle null values properly
     const cleanData = {
-        ...body,
-        // Handle optional fields - convert empty strings to undefined for email
-        recipientEmail: body.recipientEmail === "" ? undefined : body.recipientEmail,
-        // Keep null values for recepientName and message as they're now allowed
-        recepientName: body.recepientName,
-        message: body.message,
-        templateId: body.templateId || undefined,
-        // Determine the name: use provided name or fallback to first question
-        name: body.name || (body.questions && body.questions.length > 0 ? body.questions[0].text : 'Untitled Feedback'),
+        ...data,
+        recipientEmail: data.recipientEmail === "" ? undefined : data.recipientEmail,
+        recepientName: data.recepientName,
+        message: data.message,
+        templateId: data.templateId || undefined,
+        name: data.name || (data.questions && data.questions.length > 0 ? data.questions[0].text : 'Untitled Feedback'),
     }
 
     const validatedFields = feedbackCreateSchema.safeParse(cleanData);
@@ -123,40 +204,68 @@ export async function PATCH(
     }
 
     const {
-        name,
-        customerId,
-        projectId,
-        templateId,
-        dueDate,
-        recipientEmail,
-        recepientName,
-        message,
-        questions,
-        answers = []
+        name, customerId, projectId, templateId, dueDate,
+        recipientEmail, recepientName, message, questions, answers = []
     } = validatedFields.data;
 
-    // Get current timestamp
     const currentTimestamp = new Date().toISOString();
+    let finalRecipientEmail = recipientEmail;
+    let customerName = "";
+
+    if (customerId) {
+        const { data: customer, error: customerError } = await supabase
+            .from("customers").select("name, email").eq("id", customerId).single();
+        if (customerError) {
+            return NextResponse.json({ success: false, error: "Customer not found" }, { status: 404 });
+        }
+        finalRecipientEmail = customer.email;
+        customerName = customer.name || "";
+    }
+
+    // New Due Date Logic
+    let finalDueDate;
+    const recipientHasChanged = finalRecipientEmail && finalRecipientEmail !== existingFeedback.recepientEmail;
+
+    if (recipientHasChanged) {
+        if (dueDate) {
+            // New recipient, new due date provided: use it.
+            finalDueDate = dueDate;
+        } else {
+            // New recipient, no due date provided: default to 3 days from now.
+            const now = new Date();
+            const threeDaysFromNow = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
+            finalDueDate = threeDaysFromNow;
+        }
+    } else {
+        // Recipient hasn't changed. Only update due date if a new one is provided.
+        // Otherwise, keep the existing one.
+        finalDueDate = dueDate || existingFeedback.dueDate;
+    }
 
     try {
+        const updatePayload: any = {
+            name, customerId, projectId, templateId,
+            dueDate: finalDueDate,
+            recepientEmail: finalRecipientEmail,
+            recepientName: customerId ? null : recepientName,
+            questions, answers, message,
+            updated_at: currentTimestamp,
+        };
+
+        if (action === 'send_feedback') {
+            if (!finalRecipientEmail || !validator.isEmail(finalRecipientEmail)) {
+                return NextResponse.json({ success: false, error: "Invalid email address." }, { status: 400 });
+            }
+            updatePayload.token = crypto.randomUUID();
+            updatePayload.state = 'sent';
+            updatePayload.sentAt = currentTimestamp;
+        }
+
         const { data: updatedFeedback, error: updateError } = await supabase
             .from("feedbacks")
-            .update({
-                name,
-                customerId,
-                projectId,
-                templateId,
-                dueDate,
-                recepientEmail: recipientEmail, // Note: matches DB column name
-                recepientName, // This can now be null
-                questions,
-                answers,
-                message, // This can now be null
-                updated_at: currentTimestamp,
-            })
+            .update(updatePayload)
             .eq("id", feedbackId)
-            .eq("state", "draft") // Extra safety check
-            .eq("state", "overdue") // Extra safety check
+            .in("state", ["draft", "overdue", "sent"])
             .select()
             .single();
 
@@ -165,16 +274,11 @@ export async function PATCH(
             return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
         }
 
-        if (!updatedFeedback) {
-            return NextResponse.json({ success: false, error: "Failed to update feedback" }, { status: 500 });
+        if (action === 'send_feedback' && finalRecipientEmail) {
+            await sendFeedbackEmail(supabase, user, updatedFeedback, finalRecipientEmail, customerName, name, updatedFeedback.token, message || "");
         }
 
-        console.log("Feedback updated successfully. Feedback ID:", updatedFeedback.id);
-
-        return NextResponse.json({ 
-            success: true, 
-            data: updatedFeedback 
-        }, { status: 200 });
+        return NextResponse.json({ success: true, data: updatedFeedback }, { status: 200 });
 
     } catch (error) {
         console.error("Error updating feedback:", error);

@@ -50,8 +50,8 @@ export default function SuccessConfirmModal({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-              <Mail className="h-6 w-6 text-blue-700" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-none bg-purple-100">
+              <Mail className="h-6 w-6 text-purple-700" />
             </div>
             <div>
               <DialogTitle className="text-left">

@@ -1,0 +1,39 @@
+general
+- Change the layout colors for the light and dark mode
+- Try to style tables better
+- Change sheet on desktop to shadcn drawers for mobile
+- 
+
+
+Feedback
+- Change the data content fits the toast div for generating zip file
+- Allow for editing the file 
+- Add the preview form action to the feedback table 
+- Allow for the system to automatically change the state to overdue when the date passes locally
+- Figure out how to handle RLS for the table in question as it is currently disbaled 
+- Add a small block in teh form detail sheet to preview the forms 
+- Confirm the card info 
+- Finish the edit form page and allow for uppdates on forms not cancelled
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Update list
+Feedbacks
+- Brand filled out form preview page with teh organization name and logo once filled out 
