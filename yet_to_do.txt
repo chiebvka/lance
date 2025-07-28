@@ -20,6 +20,24 @@ Feedback
 
 
 
+Organization
+- User fills signup form (email, password, etc.)
+- After successful auth, show organization setup form
+- Create organization with provided name
+- Link user to organization
+- Start 7-day trial
+- Redirect to dashboard with full access
+
+
+
+
+ALTER TABLE organization 
+ADD COLUMN subscription_status TEXT DEFAULT 'trial',
+ADD COLUMN trial_ends_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN subscription_plan TEXT,
+ADD COLUMN subscription_ends_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN stripe_customer_id TEXT,
+ADD COLUMN stripe_subscription_id TEXT; 
 
 
 
@@ -27,7 +45,8 @@ Feedback
 
 
 
-
+Links
+- A live link for your clients that sort of acts like a blog post with every instruction you migth want to leave with them 
 
 
 
@@ -36,4 +55,164 @@ Feedback
 
 Update list
 Feedbacks
-- Brand filled out form preview page with teh organization name and logo once filled out 
+- Brand filled out form preview page with the organization name and logo once filled out 
+- Add api to let the user see the state of each crytpo shared to the usd equivalence 
+- When trying to resend email for a feedback form reset the calendar due date on popup 
+- 
+
+
+Organization & subscription
+- Go back to middleware to handle state for pending within a time frame to at least make state move from pending to either active, cancelled or suspended 
+
+
+
+Links
+- When working with the expiry date for the link compare it with the users/organizations subscription start date and tie teh link being active to that 
+- 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CREATE TABLE organization (
+  -- Primary key
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Basic organization info
+  name TEXT,
+  logoUrl TEXT,
+  email TEXT,
+  phone TEXT,
+  website TEXT,
+  
+  -- Address fields
+  addressLine1 TEXT,
+  addressLine2 TEXT,
+  city TEXT,
+  state TEXT,
+  postal TEXT,
+  country TEXT,
+  
+  -- Business info
+  taxId TEXT,
+  
+  -- Currency and billing
+  baseCurrency TEXT,
+  
+  -- Subscription and billing fields
+  subscription_status TEXT DEFAULT 'pending' CHECK (subscription_status IN ('pending', 'trial', 'active', 'expired', 'cancelled', 'suspended')),
+  plan_type TEXT CHECK (plan_type IN ('starter', 'pro', 'enterprise')),
+  billing_cycle TEXT CHECK (billing_cycle IN ('monthly', 'yearly')),
+  
+  -- Trial management
+  trial_start_date TIMESTAMP,
+  trial_end_date TIMESTAMP,
+  
+  -- Subscription dates
+  subscription_start_date TIMESTAMP,
+  subscription_end_date TIMESTAMP,
+  
+  -- Billing info
+  billing_email TEXT,
+  payment_method_id TEXT,
+  stripe_customer_id TEXT,
+  
+  -- Setup completion tracking
+  setup_completed_at TIMESTAMP,
+  setup_completed_by UUID REFERENCES profiles(profile_id),
+  
+  -- Usage tracking (for limits that matter)
+  user_count INTEGER DEFAULT 0,
+  storage_used_mb INTEGER DEFAULT 0,
+  
+  -- Audit fields
+  created_by UUID REFERENCES profiles(profile_id),
+  created_at TIMESTAMP DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMP DEFAULT timezone('utc'::text, now()),
+  
+  -- Full-text search
+  fts TSVECTOR GENERATED ALWAYS AS (
+    to_tsvector('english', 
+      COALESCE(name, '') || ' ' || 
+      COALESCE(email, '') || ' ' || 
+      COALESCE(website, '')
+    )
+  ) STORED
+);
+
+-- Indexes for performance
+CREATE INDEX idx_organization_subscription_status ON organization(subscription_status);
+CREATE INDEX idx_organization_created_by ON organization(created_by);
+CREATE INDEX idx_organization_trial_end_date ON organization(trial_end_date);
+CREATE INDEX idx_organization_subscription_end_date ON organization(subscription_end_date);
+CREATE INDEX idx_organization_setup_completed_at ON organization(setup_completed_at);
+
+-- Trigger to update updated_at
+CREATE TRIGGER update_organization_updated_at
+  BEFORE UPDATE ON organization
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+
+
+
+  sub flow
+  - enhance middleware protection 
+  - create subscription state management
+  - setup pricing page (should have this and teh option above and below it tied to stripe so that chnages to pricing/name from stripe dashboard reflects)
+  - create webhook Handler
+  - test complete flow

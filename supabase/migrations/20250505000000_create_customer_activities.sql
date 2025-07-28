@@ -23,6 +23,10 @@ CREATE TYPE customer_activity_type_enum AS ENUM (
   'project_viewed'
 );
 
+ALTER TYPE customer_activity_type_enum ADD VALUE IF NOT EXISTS 'feedback_sent';
+ALTER TYPE customer_activity_type_enum ADD VALUE IF NOT EXISTS 'feedback_reminder';
+ALTER TYPE customer_activity_type_enum ADD VALUE IF NOT EXISTS 'feedback_overdue';
+
 CREATE TYPE customer_activity_reference_enum AS ENUM (
   'invoice',
   'receipt',

@@ -106,6 +106,82 @@ export type Database = {
           },
         ]
       }
+      banks: {
+        Row: {
+          accountName: string | null
+          accountNumber: string | null
+          bankAddress: string | null
+          bankName: string | null
+          country: string | null
+          created_at: string
+          createdBy: string | null
+          currency: string | null
+          iban: string | null
+          id: number
+          institutionNumber: string | null
+          isDefault: boolean | null
+          organizationId: string | null
+          paypalPaymentLink: string | null
+          routingNumber: string | null
+          sortCode: string | null
+          stripePaymentLink: string | null
+          swiftCode: string | null
+          transitNumber: string | null
+          updatedAt: string | null
+        }
+        Insert: {
+          accountName?: string | null
+          accountNumber?: string | null
+          bankAddress?: string | null
+          bankName?: string | null
+          country?: string | null
+          created_at?: string
+          createdBy?: string | null
+          currency?: string | null
+          iban?: string | null
+          id?: number
+          institutionNumber?: string | null
+          isDefault?: boolean | null
+          organizationId?: string | null
+          paypalPaymentLink?: string | null
+          routingNumber?: string | null
+          sortCode?: string | null
+          stripePaymentLink?: string | null
+          swiftCode?: string | null
+          transitNumber?: string | null
+          updatedAt?: string | null
+        }
+        Update: {
+          accountName?: string | null
+          accountNumber?: string | null
+          bankAddress?: string | null
+          bankName?: string | null
+          country?: string | null
+          created_at?: string
+          createdBy?: string | null
+          currency?: string | null
+          iban?: string | null
+          id?: number
+          institutionNumber?: string | null
+          isDefault?: boolean | null
+          organizationId?: string | null
+          paypalPaymentLink?: string | null
+          routingNumber?: string | null
+          sortCode?: string | null
+          stripePaymentLink?: string | null
+          swiftCode?: string | null
+          transitNumber?: string | null
+          updatedAt?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banks_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_activities: {
         Row: {
           amount: number | null
@@ -474,7 +550,10 @@ export type Database = {
           paymentLink: string | null
           paymentType: string | null
           projectId: string | null
+          recepientEmail: string | null
+          recepientName: string | null
           sentViaEmail: boolean | null
+          state: string | null
           status: string | null
           subTotalAmount: number | null
           taxRate: number | null
@@ -500,7 +579,10 @@ export type Database = {
           paymentLink?: string | null
           paymentType?: string | null
           projectId?: string | null
+          recepientEmail?: string | null
+          recepientName?: string | null
           sentViaEmail?: boolean | null
+          state?: string | null
           status?: string | null
           subTotalAmount?: number | null
           taxRate?: number | null
@@ -526,7 +608,10 @@ export type Database = {
           paymentLink?: string | null
           paymentType?: string | null
           projectId?: string | null
+          recepientEmail?: string | null
+          recepientName?: string | null
           sentViaEmail?: boolean | null
+          state?: string | null
           status?: string | null
           subTotalAmount?: number | null
           taxRate?: number | null
@@ -557,7 +642,14 @@ export type Database = {
       }
       organization: {
         Row: {
+          accountNumber: string | null
+          addressLine1: string | null
+          addressLine2: string | null
+          bankName: string | null
           baseCurrency: string | null
+          billingCycle: Database["public"]["Enums"]["billing_cycle_enum"] | null
+          billingEmail: string | null
+          city: string | null
           country: string | null
           created_at: string | null
           createdBy: string | null
@@ -566,10 +658,40 @@ export type Database = {
           id: string
           logoUrl: string | null
           name: string | null
+          paymentMethodId: string | null
+          phone: string | null
+          planType: Database["public"]["Enums"]["plan_type_enum"] | null
+          postal: string | null
+          setupCompletedAt: string | null
+          setupCompletedBy: string | null
+          setupData: Json | null
+          setupStatus: string | null
+          state: string | null
+          stripeMetadata: Json | null
+          subscriptionEndDate: string | null
+          subscriptionId: string | null
+          subscriptionMetadata: Json | null
+          subscriptionStartDate: string | null
+          subscriptionstatus:
+            | Database["public"]["Enums"]["subscription_status_enum"]
+            | null
+          subscriptionStatus: string | null
+          taxId: string | null
+          trialEndsAt: string | null
           updated_at: string | null
+          website: string | null
         }
         Insert: {
+          accountNumber?: string | null
+          addressLine1?: string | null
+          addressLine2?: string | null
+          bankName?: string | null
           baseCurrency?: string | null
+          billingCycle?:
+            | Database["public"]["Enums"]["billing_cycle_enum"]
+            | null
+          billingEmail?: string | null
+          city?: string | null
           country?: string | null
           created_at?: string | null
           createdBy?: string | null
@@ -578,10 +700,40 @@ export type Database = {
           id?: string
           logoUrl?: string | null
           name?: string | null
+          paymentMethodId?: string | null
+          phone?: string | null
+          planType?: Database["public"]["Enums"]["plan_type_enum"] | null
+          postal?: string | null
+          setupCompletedAt?: string | null
+          setupCompletedBy?: string | null
+          setupData?: Json | null
+          setupStatus?: string | null
+          state?: string | null
+          stripeMetadata?: Json | null
+          subscriptionEndDate?: string | null
+          subscriptionId?: string | null
+          subscriptionMetadata?: Json | null
+          subscriptionStartDate?: string | null
+          subscriptionstatus?:
+            | Database["public"]["Enums"]["subscription_status_enum"]
+            | null
+          subscriptionStatus?: string | null
+          taxId?: string | null
+          trialEndsAt?: string | null
           updated_at?: string | null
+          website?: string | null
         }
         Update: {
+          accountNumber?: string | null
+          addressLine1?: string | null
+          addressLine2?: string | null
+          bankName?: string | null
           baseCurrency?: string | null
+          billingCycle?:
+            | Database["public"]["Enums"]["billing_cycle_enum"]
+            | null
+          billingEmail?: string | null
+          city?: string | null
           country?: string | null
           created_at?: string | null
           createdBy?: string | null
@@ -590,7 +742,28 @@ export type Database = {
           id?: string
           logoUrl?: string | null
           name?: string | null
+          paymentMethodId?: string | null
+          phone?: string | null
+          planType?: Database["public"]["Enums"]["plan_type_enum"] | null
+          postal?: string | null
+          setupCompletedAt?: string | null
+          setupCompletedBy?: string | null
+          setupData?: Json | null
+          setupStatus?: string | null
+          state?: string | null
+          stripeMetadata?: Json | null
+          subscriptionEndDate?: string | null
+          subscriptionId?: string | null
+          subscriptionMetadata?: Json | null
+          subscriptionStartDate?: string | null
+          subscriptionstatus?:
+            | Database["public"]["Enums"]["subscription_status_enum"]
+            | null
+          subscriptionStatus?: string | null
+          taxId?: string | null
+          trialEndsAt?: string | null
           updated_at?: string | null
+          website?: string | null
         }
         Relationships: [
           {
@@ -842,6 +1015,7 @@ export type Database = {
           id: string
           invoiceId: string | null
           issueDate: string | null
+          issuedBy: string | null
           notes: string | null
           paymentConfirmedat: string | null
           paymentDetails: Json | null
@@ -850,6 +1024,8 @@ export type Database = {
           projectId: string | null
           receiptDetails: Json | null
           receiptNumber: string | null
+          recepientEmail: string | null
+          recepientName: string | null
           sentViaEmail: boolean | null
           status: string | null
           subTotalAmount: number | null
@@ -870,6 +1046,7 @@ export type Database = {
           id?: string
           invoiceId?: string | null
           issueDate?: string | null
+          issuedBy?: string | null
           notes?: string | null
           paymentConfirmedat?: string | null
           paymentDetails?: Json | null
@@ -878,6 +1055,8 @@ export type Database = {
           projectId?: string | null
           receiptDetails?: Json | null
           receiptNumber?: string | null
+          recepientEmail?: string | null
+          recepientName?: string | null
           sentViaEmail?: boolean | null
           status?: string | null
           subTotalAmount?: number | null
@@ -898,6 +1077,7 @@ export type Database = {
           id?: string
           invoiceId?: string | null
           issueDate?: string | null
+          issuedBy?: string | null
           notes?: string | null
           paymentConfirmedat?: string | null
           paymentDetails?: Json | null
@@ -906,6 +1086,8 @@ export type Database = {
           projectId?: string | null
           receiptDetails?: Json | null
           receiptNumber?: string | null
+          recepientEmail?: string | null
+          recepientName?: string | null
           sentViaEmail?: boolean | null
           status?: string | null
           subTotalAmount?: number | null
@@ -996,6 +1178,86 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          amount: number | null
+          billingCycle: Database["public"]["Enums"]["billing_cycle_enum"] | null
+          created_at: string
+          createdBy: string | null
+          currency: string | null
+          endsAt: string | null
+          id: number
+          organizationId: string | null
+          paymentMethod: Json | null
+          planType: Database["public"]["Enums"]["plan_type_enum"] | null
+          startsAt: string | null
+          stripeCustomerId: string | null
+          stripeMetadata: Json | null
+          stripeSubscriptionId: string | null
+          subscriptionStatus:
+            | Database["public"]["Enums"]["subscription_status_enum"]
+            | null
+          updatedAt: string | null
+        }
+        Insert: {
+          amount?: number | null
+          billingCycle?:
+            | Database["public"]["Enums"]["billing_cycle_enum"]
+            | null
+          created_at?: string
+          createdBy?: string | null
+          currency?: string | null
+          endsAt?: string | null
+          id?: number
+          organizationId?: string | null
+          paymentMethod?: Json | null
+          planType?: Database["public"]["Enums"]["plan_type_enum"] | null
+          startsAt?: string | null
+          stripeCustomerId?: string | null
+          stripeMetadata?: Json | null
+          stripeSubscriptionId?: string | null
+          subscriptionStatus?:
+            | Database["public"]["Enums"]["subscription_status_enum"]
+            | null
+          updatedAt?: string | null
+        }
+        Update: {
+          amount?: number | null
+          billingCycle?:
+            | Database["public"]["Enums"]["billing_cycle_enum"]
+            | null
+          created_at?: string
+          createdBy?: string | null
+          currency?: string | null
+          endsAt?: string | null
+          id?: number
+          organizationId?: string | null
+          paymentMethod?: Json | null
+          planType?: Database["public"]["Enums"]["plan_type_enum"] | null
+          startsAt?: string | null
+          stripeCustomerId?: string | null
+          stripeMetadata?: Json | null
+          stripeSubscriptionId?: string | null
+          subscriptionStatus?:
+            | Database["public"]["Enums"]["subscription_status_enum"]
+            | null
+          updatedAt?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_subscriptions_organization"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vault: {
         Row: {
           bucketUrl: string | null
@@ -1041,6 +1303,52 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet: {
+        Row: {
+          created_at: string
+          createdBy: string | null
+          crypto: string | null
+          id: number
+          isDefault: boolean | null
+          network: string | null
+          organizationId: string | null
+          updatedAt: string | null
+          walletAddress: string | null
+          walletName: string | null
+        }
+        Insert: {
+          created_at?: string
+          createdBy?: string | null
+          crypto?: string | null
+          id?: number
+          isDefault?: boolean | null
+          network?: string | null
+          organizationId?: string | null
+          updatedAt?: string | null
+          walletAddress?: string | null
+          walletName?: string | null
+        }
+        Update: {
+          created_at?: string
+          createdBy?: string | null
+          crypto?: string | null
+          id?: number
+          isDefault?: boolean | null
+          network?: string | null
+          organizationId?: string | null
+          updatedAt?: string | null
+          walletAddress?: string | null
+          walletName?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1055,6 +1363,10 @@ export type Database = {
           type: string
           created_at: string
         }[]
+      }
+      set_feedback_token: {
+        Args: { token_param: string }
+        Returns: undefined
       }
       smart_universal_search: {
         Args: { search_term: string }
@@ -1071,6 +1383,7 @@ export type Database = {
       }
     }
     Enums: {
+      billing_cycle_enum: "monthly" | "yearly"
       customer_activity_reference_enum:
         | "invoice"
         | "receipt"
@@ -1100,6 +1413,17 @@ export type Database = {
         | "email_opened"
         | "project_sent"
         | "project_viewed"
+        | "feedback_sent"
+        | "feedback_reminder"
+        | "feedback_overdue"
+      plan_type_enum: "starter" | "pro" | "corporate"
+      subscription_status_enum:
+        | "trial"
+        | "pending"
+        | "active"
+        | "expired"
+        | "cancelled"
+        | "suspended"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1745,6 +2069,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      billing_cycle_enum: ["monthly", "yearly"],
       customer_activity_reference_enum: [
         "invoice",
         "receipt",
@@ -1775,6 +2100,18 @@ export const Constants = {
         "email_opened",
         "project_sent",
         "project_viewed",
+        "feedback_sent",
+        "feedback_reminder",
+        "feedback_overdue",
+      ],
+      plan_type_enum: ["starter", "pro", "corporate"],
+      subscription_status_enum: [
+        "trial",
+        "pending",
+        "active",
+        "expired",
+        "cancelled",
+        "suspended",
       ],
     },
   },

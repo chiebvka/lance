@@ -1,4 +1,5 @@
 "use client"
+
 import React from 'react'
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -6,17 +7,14 @@ import clsx from "clsx";
 
 type Props = {}
 
-
-
 const tabs = [
-    { label: "General", href: "/protected/settings" },
-    { label: "Finance", href: "/protected/settings/finance" },
-    { label: "Notification", href: "/protected/settings/notifications" },
-    { label: "Subscription", href: "/protected/settings/subscription" },
+    { label: "General", href: "/protected/account" },
+    { label: "Security", href: "/protected/account/security" },
+    { label: "Billing", href: "/protected/account/billing" }
 ];
 
 
-export default function SettingsNavigation({}: Props) {
+export default function AccountNavigation({}: Props) {
     const pathname = usePathname();
   return (
     <div className="border-b border-gray-200 flex space-x-6">

@@ -1,8 +1,133 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
+import { createClient } from "@/utils/supabase/server";
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  // First, handle authentication (existing logic)
+  const response = await updateSession(request);
+  
+  // If authentication failed, return the response
+  if (response.status !== 200) {
+    return response;
+  }
+
+  // Get the pathname
+  const pathname = request.nextUrl.pathname;
+
+  // Define routes that don't need subscription checks
+  const exemptFromSubscriptionCheck = [
+    // Auth and general pages
+    '/login',
+    '/signup',
+    '/sign-in',
+    '/sign-up',
+    '/forgot',
+    '/reset',
+    '/forgot-password',
+    '/reset-password',
+    '/pricing',
+    
+    // General folder routes (public pages)
+    '/page',
+    '/smtp-message',
+    
+    // Preview routes (public previews)
+    '/f/',
+    '/i/',
+    '/p/',
+    '/r/',
+    
+    // Protected routes that don't need subscription checks
+    '/protected/team/create',
+    '/protected/account/billing',
+    '/protected/account/security',
+    '/protected/settings',
+    
+    // API routes that are webhooks/cronjobs
+    '/api/webhooks/stripe',
+    '/api/subscribe-webhook',
+    '/api/check-overdue',
+    '/api/sendgrid-events',
+    
+    // Any other webhook endpoints
+    '/api/webhooks/',
+  ];
+
+  // Skip subscription checks for exempt routes
+  if (exemptFromSubscriptionCheck.some(route => pathname.startsWith(route))) {
+    return response;
+  }
+
+  // Only check subscription for protected routes
+  if (pathname.startsWith('/protected')) {
+    try {
+      // Create Supabase client for server-side operations
+      const supabase = await createClient();
+      
+      // Get user from the request
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+
+      // Check if user has an organization
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("profile_id, organizationId")
+        .eq("profile_id", user.id)
+        .single();
+
+      // If user doesn't have an organization, redirect to team creation
+      if (!userProfile?.organizationId) {
+        return NextResponse.redirect(new URL('/protected/team/create', request.url));
+      }
+
+      // Check if organization exists and get subscription status
+      const { data: organization } = await supabase
+        .from("organization")
+        .select("id, name, subscriptionStatus, trialEndsAt, planType")
+        .eq("id", userProfile.organizationId)
+        .single();
+
+      // If organization doesn't exist, redirect to team creation
+      if (!organization) {
+        return NextResponse.redirect(new URL('/protected/team/create', request.url));
+      }
+
+      // Handle subscription status checks
+      const subscriptionStatus = organization.subscriptionStatus;
+
+      // Check if trial has expired
+      if (subscriptionStatus === 'trial' && organization.trialEndsAt) {
+        const trialEndDate = new Date(organization.trialEndsAt);
+        const now = new Date();
+        
+        if (now > trialEndDate) {
+          // Trial has expired, redirect to billing
+          return NextResponse.redirect(new URL('/protected/account/billing', request.url));
+        }
+      }
+
+      // Check if subscription is in a problematic state
+      if (['expired', 'cancelled', 'suspended'].includes(subscriptionStatus || '')) {
+        return NextResponse.redirect(new URL('/protected/account/billing', request.url));
+      }
+
+      // If subscription is pending, allow access but could show a warning
+      if (subscriptionStatus === 'pending') {
+        // You could add a header to indicate pending status
+        response.headers.set('x-subscription-status', 'pending');
+      }
+
+    } catch (error) {
+      console.error('Middleware subscription check error:', error);
+      // On error, allow the request to proceed (fail open)
+      // You might want to log this for monitoring
+    }
+  }
+
+  return response;
 }
 
 export const config = {
