@@ -20,6 +20,20 @@ export async function POST(request: Request) {
           return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
         }
 
+        // Check if user has an organization
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('organizationId')
+            .eq('profile_id', user.id)
+            .single();
+
+        if (profileError || !profile?.organizationId) {
+            return NextResponse.json({ 
+                success: false, 
+                error: "You must be part of an organization to create feedback or templates. Please contact your administrator." 
+            }, { status: 403 });
+        }
+
         // 2. Rate limit check (use user.id as key)
         const { success } = await ratelimit.limit(user.id);
         if (!success) {
@@ -31,9 +45,9 @@ export async function POST(request: Request) {
 
         // Handle different actions
         if (action === "save_template") {
-            return await handleSaveTemplate(supabase, user, data);
+            return await handleSaveTemplate(supabase, user, data, profile.organizationId);
         } else if (action === "save_draft" || action === "send_feedback") {
-            return await handleCreateFeedback(supabase, user, data, action);
+            return await handleCreateFeedback(supabase, user, data, action, profile.organizationId);
         } else if (action === "delete_draft") {
             return await handleDeleteDraft(supabase, user, data);
         } else {
@@ -53,10 +67,23 @@ async function handleDeleteDraft(supabase: any, user: any, data: any) {
         return NextResponse.json({ error: "Draft ID is required" }, { status: 400 });
     }
 
-    // Check if user owns this draft
+    // Get user's organization
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('organizationId')
+        .eq('profile_id', user.id)
+        .single();
+
+    if (profileError || !profile?.organizationId) {
+        return NextResponse.json({ 
+            error: "You must be part of an organization to manage drafts." 
+        }, { status: 403 });
+    }
+
+    // Check if user owns this draft and it belongs to their organization
     const { data: existingDraft, error: checkError } = await supabase
         .from("feedbacks")
-        .select("createdBy")
+        .select("createdBy, organizationId")
         .eq("id", draftId)
         .eq("state", "draft")
         .single();
@@ -66,6 +93,10 @@ async function handleDeleteDraft(supabase: any, user: any, data: any) {
     }
 
     if (existingDraft.createdBy !== user.id) {
+        return NextResponse.json({ error: "Unauthorized to delete this draft" }, { status: 403 });
+    }
+
+    if (existingDraft.organizationId !== profile.organizationId) {
         return NextResponse.json({ error: "Unauthorized to delete this draft" }, { status: 403 });
     }
 
@@ -84,11 +115,12 @@ async function handleDeleteDraft(supabase: any, user: any, data: any) {
     return NextResponse.json({ success: true, message: "Draft deleted successfully" }, { status: 200 });
 }
 
-async function handleSaveTemplate(supabase: any, user: any, data: any) {
+async function handleSaveTemplate(supabase: any, user: any, data: any, organizationId: string) {
     // Add the createdBy field before validation
     const templateData = {
         ...data,
-        createdBy: user.id
+        createdBy: user.id,
+        organizationId: organizationId
     };
 
     const validatedFields = feedbackTemplateSchema.safeParse(templateData);
@@ -111,6 +143,7 @@ async function handleSaveTemplate(supabase: any, user: any, data: any) {
             questions,
             isDefault: isDefault || false,
             createdBy: user.id,
+            organizationId: organizationId,
             created_at: new Date().toISOString(),
         })
         .select()
@@ -125,7 +158,7 @@ async function handleSaveTemplate(supabase: any, user: any, data: any) {
     return NextResponse.json({ success: true, data: template }, { status: 200 });
 }
 
-async function handleCreateFeedback(supabase: any, user: any, data: any, action: string) {
+async function handleCreateFeedback(supabase: any, user: any, data: any, action: string, organizationId: string) {
     // Clean the data before validation
     const cleanData = {
         ...data,
@@ -280,6 +313,7 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
             questions,
             answers,
             createdBy: user.id,
+            organizationId: organizationId,
             sentAt: action === "send_feedback" ? currentTimestamp : null,
             created_at: currentTimestamp,
             token: token,

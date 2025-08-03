@@ -4,6 +4,7 @@ const feedbackCreateSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
   customerId: z.string().nullable().optional(),
   projectId: z.string().nullable().optional(),
+  organizationId: z.string().uuid().nullable().optional(),
   organizationName: z.string().nullable().optional(),
   organizationLogoUrl: z.string().nullable().optional(),
   organizationEmail: z.string().nullable().optional(),

@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createServiceRoleClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import sendgrid from "@sendgrid/mail";
 import { render } from "@react-email/components";
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceRoleClient();
   const now = new Date();
 
   try {
@@ -43,7 +43,19 @@ export async function GET(request: NextRequest) {
     let processedCount = 0;
     for (const project of overdueProjects) {
       try {
-        // Update project status to overdue
+        // Check organization's project notification preference
+        const { data: organization, error: orgError } = await supabase
+          .from("organization")
+          .select("projectNotifications")
+          .eq("id", project.organizationId)
+          .single();
+
+        if (orgError) {
+          console.error(`Error fetching organization settings for project ${project.id}:`, orgError);
+          continue;
+        }
+
+        // Update project status to overdue (always do this)
         const { error: updateError } = await supabase
           .from("projects")
           .update({ status: "overdue" })
@@ -54,35 +66,43 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Create notification for the organization
-        const { error: notificationError } = await supabase
-          .from("notifications")
-          .insert({
-            organizationId: project.organizationId,
-            title: "Project Overdue",
-            message: `Project "${project.name}" for ${project.customers?.name || 'Unknown Customer'} is overdue for signoff.`,
-            type: "warning",
-            actionUrl: `${baseUrl}/protected/projects/${project.id}`,
-            metadata: {
-              projectName: project.name,
-              customerName: project.customers?.name,
-              endDate: project.endDate,
-              budget: project.budget,
-              currency: project.currency
-            },
-            tableName: "projects",
-            tableId: project.id,
-            state: "active"
-          });
+        // Only send emails and create notifications if organization has projectNotifications enabled
+        if (organization?.projectNotifications) {
+          // Create notification for the organization
+          const { error: notificationError } = await supabase
+            .from("notifications")
+            .insert({
+              organizationId: project.organizationId,
+              title: "Project Overdue",
+              message: `Project "${project.name}" for ${project.customers?.name || 'Unknown Customer'} is overdue for signoff.`,
+              type: "warning",
+              actionUrl: `${baseUrl}/protected/projects/${project.id}`,
+              metadata: {
+                projectName: project.name,
+                customerName: project.customers?.name,
+                endDate: project.endDate,
+                budget: project.budget,
+                currency: project.currency
+              },
+              tableName: "projects",
+              tableId: project.id,
+              state: "active"
+            });
 
-        if (notificationError) {
-          console.error(`Error creating notification for project ${project.id}:`, notificationError);
-          continue;
-        }
+          if (notificationError) {
+            console.error(`Error creating notification for project ${project.id}:`, notificationError);
+            continue;
+          }
 
-        // Send email reminder if customer email exists
-        if (project.customers?.email) {
-          await sendProjectReminderEmail(project);
+          // Send email reminder if customer email exists
+          if (project.customers?.email) {
+            await sendProjectReminderEmail(project);
+            console.log(`Project reminder email sent for project ${project.id}`);
+          } else {
+            console.log(`Skipping email for project ${project.id} - no customer email available`);
+          }
+        } else {
+          console.log(`Skipping email and notification for project ${project.id} - organization has projectNotifications disabled`);
         }
 
         processedCount++;

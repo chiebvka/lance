@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createServiceRoleClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import sendgrid from "@sendgrid/mail";
 import { render } from "@react-email/components";
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceRoleClient();
   const now = new Date();
 
   try {
@@ -43,7 +43,19 @@ export async function GET(request: NextRequest) {
     let processedCount = 0;
     for (const invoice of overdueInvoices) {
       try {
-        // Update invoice status to overdue
+        // Check organization's invoice notification preference
+        const { data: organization, error: orgError } = await supabase
+          .from("organization")
+          .select("invoiceNotifications")
+          .eq("id", invoice.organizationId)
+          .single();
+
+        if (orgError) {
+          console.error(`Error fetching organization settings for invoice ${invoice.id}:`, orgError);
+          continue;
+        }
+
+        // Update invoice status to overdue (always do this)
         const { error: updateError } = await supabase
           .from("invoices")
           .update({ status: "overdue" })
@@ -54,35 +66,43 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Create notification for the organization
-        const { error: notificationError } = await supabase
-          .from("notifications")
-          .insert({
-            organizationId: invoice.organizationId,
-            title: "Invoice Overdue",
-            message: `Invoice #${invoice.invoiceNumber} for ${invoice.customers?.name || 'Unknown Customer'} is overdue. Amount: ${invoice.currency} ${invoice.totalAmount}`,
-            type: "warning",
-            actionUrl: `${baseUrl}/protected/invoices/${invoice.id}`,
-            metadata: {
-              invoiceNumber: invoice.invoiceNumber,
-              customerName: invoice.customers?.name,
-              amount: invoice.totalAmount,
-              currency: invoice.currency,
-              dueDate: invoice.dueDate
-            },
-            tableName: "invoices",
-            tableId: invoice.id,
-            state: "active"
-          });
+        // Only send emails and create notifications if organization has invoiceNotifications enabled
+        if (organization?.invoiceNotifications) {
+          // Create notification for the organization
+          const { error: notificationError } = await supabase
+            .from("notifications")
+            .insert({
+              organizationId: invoice.organizationId,
+              title: "Invoice Overdue",
+              message: `Invoice #${invoice.invoiceNumber} for ${invoice.customers?.name || 'Unknown Customer'} is overdue. Amount: ${invoice.currency} ${invoice.totalAmount}`,
+              type: "warning",
+              actionUrl: `${baseUrl}/protected/invoices/${invoice.id}`,
+              metadata: {
+                invoiceNumber: invoice.invoiceNumber,
+                customerName: invoice.customers?.name,
+                amount: invoice.totalAmount,
+                currency: invoice.currency,
+                dueDate: invoice.dueDate
+              },
+              tableName: "invoices",
+              tableId: invoice.id,
+              state: "active"
+            });
 
-        if (notificationError) {
-          console.error(`Error creating notification for invoice ${invoice.id}:`, notificationError);
-          continue;
-        }
+          if (notificationError) {
+            console.error(`Error creating notification for invoice ${invoice.id}:`, notificationError);
+            continue;
+          }
 
-        // Send email reminder if customer email exists
-        if (invoice.customers?.email) {
-          await sendInvoiceReminderEmail(invoice);
+          // Send email reminder if customer email exists
+          if (invoice.customers?.email) {
+            await sendInvoiceReminderEmail(invoice);
+            console.log(`Invoice reminder email sent for invoice ${invoice.id}`);
+          } else {
+            console.log(`Skipping email for invoice ${invoice.id} - no customer email available`);
+          }
+        } else {
+          console.log(`Skipping email and notification for invoice ${invoice.id} - organization has invoiceNotifications disabled`);
         }
 
         processedCount++;
