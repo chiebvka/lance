@@ -12,6 +12,7 @@ import { signUpAction } from "@/actions/auth/signup";
 import { Message } from "@/components/form-message";
 import Link from "next/link";
 import { signInAction } from '@/actions/auth/login';
+import { Bubbles } from 'lucide-react';
 
 
 const initialState: Message | undefined = undefined;
@@ -79,7 +80,7 @@ export function LoginForm({
           disabled={isGoogleLoading}
         >
           {isGoogleLoading ? (
-            <Icons.spinner className="mr-2 text-lance size-4 animate-spin" />
+            <Bubbles className="mr-2 text-lance size-4 animate-spin [animation-duration:0.5s]" />
           ) : (
             <Icons.google className="mr-2 text-lance size-6" />
           )}{" "}

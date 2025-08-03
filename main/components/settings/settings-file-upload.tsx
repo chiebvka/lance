@@ -1,9 +1,9 @@
 "use client"
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Bubbles, Upload, X } from 'lucide-react';
+import { Bubbles, Trash, Upload, X } from 'lucide-react';
 import Image from 'next/image';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 interface SettingsFileUploadProps {
   label: string;
@@ -11,6 +11,7 @@ interface SettingsFileUploadProps {
   value?: string | null;
   onChange: (file: File | null) => void;
   onSave: () => void;
+  onDelete?: () => void;
   loading?: boolean;
   disabled?: boolean;
   accept?: string;
@@ -23,6 +24,7 @@ export default function SettingsFileUpload({
   value,
   onChange,
   onSave,
+  onDelete,
   loading = false,
   disabled = false,
   accept = "image/*",
@@ -32,6 +34,11 @@ export default function SettingsFileUpload({
   const [isHovered, setIsHovered] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Update preview when value changes (for existing logos)
+  useEffect(() => {
+    setPreview(value || null);
+  }, [value]);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -57,11 +64,18 @@ export default function SettingsFileUpload({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the upload click
-    setPreview(null);
-    setIsDirty(true);
-    onChange(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    
+    // If there's an existing logo and onDelete is provided, call it
+    if (value && onDelete) {
+      onDelete();
+    } else {
+      // Otherwise, just clear the preview for new file selection
+      setPreview(null);
+      setIsDirty(true);
+      onChange(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -77,22 +91,22 @@ export default function SettingsFileUpload({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-lightCard text-card-foreground dark:bg-darkCard border  p-6">
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-2">
-          <Label className="text-sm font-medium text-gray-900">
+          <Label className="text-sm font-bold text-primary ">
             {label}
           </Label>
           {description && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm ">
               {description}
             </p>
           )}
           
           <div className="relative">
             <div
-              className={`relative w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 cursor-pointer transition-all duration-200 ${
-                isHovered ? 'border-gray-400 bg-gray-50' : 'bg-gray-50'
+              className={`relative w-20 h-20  border-2 border-dashed border-primary cursor-pointer transition-all duration-200 ${
+                isHovered ? 'border-gray-400 ' : ''
               } ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={handleClick}
               onMouseEnter={() => setIsHovered(true)}
@@ -104,20 +118,20 @@ export default function SettingsFileUpload({
                     src={preview}
                     alt="Preview"
                     fill
-                    className="rounded-lg object-cover"
+                    className=" object-cover"
                   />
                   {isHovered && !disabled && !loading && (
                     <div 
-                      className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center cursor-pointer"
+                      className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center cursor-pointer"
                       onClick={handleDelete}
                     >
-                      <X className="h-6 w-6 text-white" />
+                      <Trash className="h-4 w-4 text-red-500" />
                     </div>
                   )}
                 </>
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <Upload className="h-6 w-6 text-gray-400" />
+                  <Upload className="h-6 w-6 text-primary" />
                 </div>
               )}
             </div>
@@ -131,7 +145,7 @@ export default function SettingsFileUpload({
               disabled={disabled || loading}
             />
             
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-xs mt-2">
               An avatar is optional but strongly recommended.
             </p>
           </div>
@@ -140,11 +154,11 @@ export default function SettingsFileUpload({
         <Button
           onClick={handleSave}
           disabled={!isDirty || loading || disabled}
-          className="ml-6 bg-black hover:bg-gray-800 text-white"
+          className="ml-6 "
         >
           {loading ? (
             <>
-              <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.8s]" />
+              <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.5s]" />
               Saving...
             </>
           ) : (

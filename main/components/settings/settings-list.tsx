@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Bubbles, CreditCard, Coins, MoreHorizontal, RefreshCw, Trash2, Plus } from 'lucide-react';
+import { Bubbles, CreditCard, Coins, MoreHorizontal, RefreshCw, Trash2, Plus, SquarePen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface BankAccount {
@@ -76,6 +76,7 @@ interface SettingsListProps {
   onDeleteAccount: (id: string) => void;
   onSetDefault: (id: string) => void;
   onRefreshAccount: (id: string) => void;
+  onEditAccount: (id: string, account: AccountInput) => void;
   loading?: boolean;
 }
 
@@ -100,9 +101,12 @@ export default function SettingsList({
   onDeleteAccount,
   onSetDefault,
   onRefreshAccount,
+  onEditAccount,
   loading = false
 }: SettingsListProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<'bank' | 'crypto' | 'stripe' | 'paypal'>('bank');
   const [country, setCountry] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -175,6 +179,51 @@ export default function SettingsList({
     }
   }, [country]);
 
+  const handleEditAccount = (id: string, account: AccountInput) => {
+    setIsEditMode(true);
+    setEditingAccountId(id);
+    setIsAddDialogOpen(true);
+    
+    // Determine account type and populate form
+    if (account.type === 'bank') {
+      setAccountType('bank');
+      setCountry(account.country || '');
+      setBankForm({
+        accountName: account.accountName || '',
+        accountNumber: account.accountNumber || '',
+        routingNumber: account.routingNumber || '',
+        institutionNumber: account.institutionNumber || '',
+        transitNumber: account.transitNumber || '',
+        iban: account.iban || '',
+        swiftCode: account.swiftCode || '',
+        sortCode: account.sortCode || '',
+        bankName: account.bankName || '',
+        bankAddress: account.bankAddress || '',
+        currency: account.currency || ''
+      });
+    } else if (account.type === 'crypto') {
+      setAccountType('crypto');
+      setCryptoForm({
+        walletName: account.walletName || '',
+        cryptoType: account.cryptoType || '',
+        network: account.network || '',
+        walletAddress: account.walletAddress || ''
+      });
+    } else if (account.type === 'stripe') {
+      setAccountType('stripe');
+      setStripeForm({
+        accountName: account.accountName || '',
+        paymentLink: account.paymentLink || ''
+      });
+    } else if (account.type === 'paypal') {
+      setAccountType('paypal');
+      setPaypalForm({
+        accountName: account.accountName || '',
+        paymentLink: account.paymentLink || ''
+      });
+    }
+  };
+
   const getRequiredFields = (type: 'bank', country: string) => {
     switch (country) {
       case 'US':
@@ -221,7 +270,11 @@ export default function SettingsList({
           currency: bankForm.currency
         };
 
-        await onAddAccount(bankAccount);
+        if (isEditMode && editingAccountId) {
+          await onEditAccount(editingAccountId, bankAccount);
+        } else {
+          await onAddAccount(bankAccount);
+        }
       } else if (accountType === 'crypto') {
         if (!cryptoForm.walletName || !cryptoForm.cryptoType || !cryptoForm.network || !cryptoForm.walletAddress) {
           alert('Please fill in all required fields');
@@ -237,7 +290,11 @@ export default function SettingsList({
           usdRate: getCryptoRate(cryptoForm.cryptoType)
         };
 
-        await onAddAccount(cryptoWallet);
+        if (isEditMode && editingAccountId) {
+          await onEditAccount(editingAccountId, cryptoWallet);
+        } else {
+          await onAddAccount(cryptoWallet);
+        }
       } else if (accountType === 'stripe') {
         if (!stripeForm.accountName || !stripeForm.paymentLink) {
           alert('Please fill in all required fields');
@@ -251,7 +308,11 @@ export default function SettingsList({
           currency: 'USD'
         };
 
-        await onAddAccount(stripeAccount);
+        if (isEditMode && editingAccountId) {
+          await onEditAccount(editingAccountId, stripeAccount);
+        } else {
+          await onAddAccount(stripeAccount);
+        }
       } else if (accountType === 'paypal') {
         if (!paypalForm.accountName || !paypalForm.paymentLink) {
           alert('Please fill in all required fields');
@@ -265,13 +326,17 @@ export default function SettingsList({
           currency: 'USD'
         };
 
-        await onAddAccount(paypalAccount);
+        if (isEditMode && editingAccountId) {
+          await onEditAccount(editingAccountId, paypalAccount);
+        } else {
+          await onAddAccount(paypalAccount);
+        }
       }
 
       setIsAddDialogOpen(false);
       resetForms();
     } catch (error) {
-      console.error('Error adding account:', error);
+      console.error('Error adding/editing account:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -306,6 +371,8 @@ export default function SettingsList({
       paymentLink: ''
     });
     setCountry('');
+    setIsEditMode(false);
+    setEditingAccountId(null);
   };
 
   const renderBankForm = () => (
@@ -701,10 +768,18 @@ export default function SettingsList({
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => handleEditAccount(account.id, account)}
+                disabled={loading}
+              >
+                <SquarePen className="h-4 w-4 text-blue-500" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => onDeleteAccount(account.id)}
                 disabled={loading}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4 text-red-500" />
               </Button>
             </div>
           </div>
@@ -719,7 +794,7 @@ export default function SettingsList({
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Add New Account</DialogTitle>
+              <DialogTitle>{isEditMode ? 'Edit Account' : 'Add New Account'}</DialogTitle>
             </DialogHeader>
             
             <div className="space-y-4">
@@ -759,10 +834,10 @@ export default function SettingsList({
                   {isSubmitting ? (
                     <>
                       <Bubbles className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
+                      {isEditMode ? 'Updating...' : 'Adding...'}
                     </>
                   ) : (
-                    'Add Account'
+                    isEditMode ? 'Update Account' : 'Add Account'
                   )}
                 </Button>
               </div>

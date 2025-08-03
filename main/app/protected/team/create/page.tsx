@@ -1,29 +1,20 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { CreateTeamForm } from "./_components/create-team-form";
+import { userHasOrganization } from "@/utils/user-profile";
+import { getAuthenticatedUser } from "@/utils/auth";
 
 export default async function CreateTeamPage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return redirect("/login");
-  }
+  const user = await getAuthenticatedUser(supabase);
 
   // Check if user already has an organization
-  const { data: userProfile } = await supabase
-    .from("profiles")
-    .select("profile_id, organizationId")
-    .eq("profile_id", user?.id)
-    .single();
+  const hasOrganization = await userHasOrganization(supabase, user.id);
 
   // If user already has an organization, redirect to dashboard
-  // if (userProfile?.organizationId) {
-  //   return redirect("/");
-  // }
+  if (hasOrganization) {
+    return redirect("/protected");
+  }
 
   return (
     <div className="container mx-auto max-w-2xl py-8">

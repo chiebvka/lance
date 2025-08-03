@@ -18,7 +18,8 @@ interface SettingsInputProps {
   disabled?: boolean;
 }
 
-export default function SettingsInput({
+export default function 
+SettingsInput({
   label,
   description,
   value,
@@ -44,10 +45,10 @@ export default function SettingsInput({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-lightCard text-card-foreground dark:bg-darkCard  border border-gray-200 p-6">
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-2">
-          <Label className="text-sm font-medium text-gray-900">
+          <Label className="text-sm font-bold text-primary">
             {label}
           </Label>
           {description && (
@@ -75,11 +76,11 @@ export default function SettingsInput({
         <Button
           onClick={handleSave}
           disabled={!isDirty || loading || disabled}
-          className="ml-6 bg-black hover:bg-gray-800 text-white"
+          className="ml-6 "
         >
           {loading ? (
             <>
-              <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.8s]" />
+              <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.5s]" />
               Saving...
             </>
           ) : (

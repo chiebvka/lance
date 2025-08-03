@@ -78,7 +78,7 @@ export default function SuccessConfirmModal({
           >
             {isLoading ? (
               <>
-                <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.8s]" />
+                <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.5s]" />
                 Sending...
               </>
             ) : (

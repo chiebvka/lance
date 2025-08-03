@@ -101,7 +101,7 @@ export default function ConfirmModal({
           >
             {isLoading ? (
               <>
-                <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.8s]" />
+                <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
                 Deleting...
               </>
             ) : (

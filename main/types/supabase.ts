@@ -441,7 +441,14 @@ export type Database = {
           questions?: Json | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "feedback_templates_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feedbacks: {
         Row: {
@@ -456,6 +463,7 @@ export type Database = {
           message: string | null
           name: string | null
           organizationEmail: string | null
+          organizationId: string | null
           organizationLogoUrl: string | null
           organizationName: string | null
           projectId: string | null
@@ -480,6 +488,7 @@ export type Database = {
           message?: string | null
           name?: string | null
           organizationEmail?: string | null
+          organizationId?: string | null
           organizationLogoUrl?: string | null
           organizationName?: string | null
           projectId?: string | null
@@ -504,6 +513,7 @@ export type Database = {
           message?: string | null
           name?: string | null
           organizationEmail?: string | null
+          organizationId?: string | null
           organizationLogoUrl?: string | null
           organizationName?: string | null
           projectId?: string | null
@@ -521,6 +531,12 @@ export type Database = {
             foreignKeyName: "feedbacks_customerId_fkey"
             columns: ["customerId"]
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedbacks_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
             referencedColumns: ["id"]
           },
           {
@@ -545,6 +561,7 @@ export type Database = {
           invoiceNumber: string | null
           issueDate: string | null
           notes: string | null
+          organizationId: string | null
           paidOn: string | null
           paymentDetails: Json | null
           paymentLink: string | null
@@ -574,6 +591,7 @@ export type Database = {
           invoiceNumber?: string | null
           issueDate?: string | null
           notes?: string | null
+          organizationId?: string | null
           paidOn?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
@@ -603,6 +621,7 @@ export type Database = {
           invoiceNumber?: string | null
           issueDate?: string | null
           notes?: string | null
+          organizationId?: string | null
           paidOn?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
@@ -633,9 +652,55 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "invoices_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "invoices_projectid_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      members: {
+        Row: {
+          addedBy: string | null
+          author: string | null
+          created_at: string
+          email: string | null
+          id: string
+          organizationId: string | null
+          paidSub: boolean | null
+          roles: string | null
+        }
+        Insert: {
+          addedBy?: string | null
+          author?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          organizationId?: string | null
+          paidSub?: boolean | null
+          roles?: string | null
+        }
+        Update: {
+          addedBy?: string | null
+          author?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          organizationId?: string | null
+          paidSub?: boolean | null
+          roles?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
             referencedColumns: ["id"]
           },
         ]
@@ -785,6 +850,7 @@ export type Database = {
           hasPaymentTerms: boolean | null
           id: string
           name: string | null
+          organizationId: string | null
           percentage: number | null
           projectId: string | null
           status: string | null
@@ -801,6 +867,7 @@ export type Database = {
           hasPaymentTerms?: boolean | null
           id?: string
           name?: string | null
+          organizationId?: string | null
           percentage?: number | null
           projectId?: string | null
           status?: string | null
@@ -817,6 +884,7 @@ export type Database = {
           hasPaymentTerms?: boolean | null
           id?: string
           name?: string | null
+          organizationId?: string | null
           percentage?: number | null
           projectId?: string | null
           status?: string | null
@@ -837,12 +905,100 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "paymentTerms_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "paymentTerms_projectId_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
+      }
+      pricing: {
+        Row: {
+          billingCycle: string | null
+          created_at: string | null
+          currency: string
+          id: string
+          isActive: boolean | null
+          metadata: Json | null
+          productId: string | null
+          stripePriceId: string
+          stripeProductId: string
+          unitAmount: number
+          updated_at: string | null
+        }
+        Insert: {
+          billingCycle?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          isActive?: boolean | null
+          metadata?: Json | null
+          productId?: string | null
+          stripePriceId: string
+          stripeProductId: string
+          unitAmount: number
+          updated_at?: string | null
+        }
+        Update: {
+          billingCycle?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          isActive?: boolean | null
+          metadata?: Json | null
+          productId?: string | null
+          stripePriceId?: string
+          stripeProductId?: string
+          unitAmount?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_productid_fkey"
+            columns: ["productId"]
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          isActive: boolean | null
+          metadata: Json | null
+          name: string
+          stripeProductId: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          isActive?: boolean | null
+          metadata?: Json | null
+          name: string
+          stripeProductId: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          isActive?: boolean | null
+          metadata?: Json | null
+          name?: string
+          stripeProductId?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -901,6 +1057,7 @@ export type Database = {
           isPublished: boolean | null
           name: string | null
           notes: string | null
+          organizationId: string | null
           paymentMilestones: Json | null
           paymentStructure: string | null
           projectTypeId: string | null
@@ -938,6 +1095,7 @@ export type Database = {
           isPublished?: boolean | null
           name?: string | null
           notes?: string | null
+          organizationId?: string | null
           paymentMilestones?: Json | null
           paymentStructure?: string | null
           projectTypeId?: string | null
@@ -975,6 +1133,7 @@ export type Database = {
           isPublished?: boolean | null
           name?: string | null
           notes?: string | null
+          organizationId?: string | null
           paymentMilestones?: Json | null
           paymentStructure?: string | null
           projectTypeId?: string | null
@@ -1000,6 +1159,12 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "projects_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
         ]
       }
       receipts: {
@@ -1017,6 +1182,7 @@ export type Database = {
           issueDate: string | null
           issuedBy: string | null
           notes: string | null
+          organizationId: string | null
           paymentConfirmedat: string | null
           paymentDetails: Json | null
           paymentLink: string | null
@@ -1048,6 +1214,7 @@ export type Database = {
           issueDate?: string | null
           issuedBy?: string | null
           notes?: string | null
+          organizationId?: string | null
           paymentConfirmedat?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
@@ -1079,6 +1246,7 @@ export type Database = {
           issueDate?: string | null
           issuedBy?: string | null
           notes?: string | null
+          organizationId?: string | null
           paymentConfirmedat?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
@@ -1116,62 +1284,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "receipts_organizationId_fkey"
+            columns: ["organizationId"]
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "receipts_projectId_fkey"
-            columns: ["projectId"]
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      service_agreements: {
-        Row: {
-          answers: Json | null
-          created_at: string
-          createdBy: string | null
-          customerId: string | null
-          filledOn: string | null
-          id: number
-          projectId: string | null
-          questions: Json | null
-          state: string | null
-        }
-        Insert: {
-          answers?: Json | null
-          created_at?: string
-          createdBy?: string | null
-          customerId?: string | null
-          filledOn?: string | null
-          id?: number
-          projectId?: string | null
-          questions?: Json | null
-          state?: string | null
-        }
-        Update: {
-          answers?: Json | null
-          created_at?: string
-          createdBy?: string | null
-          customerId?: string | null
-          filledOn?: string | null
-          id?: number
-          projectId?: string | null
-          questions?: Json | null
-          state?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "service_agreement_createdBy_fkey"
-            columns: ["createdBy"]
-            referencedRelation: "profiles"
-            referencedColumns: ["profile_id"]
-          },
-          {
-            foreignKeyName: "service_agreement_customerId_fkey"
-            columns: ["customerId"]
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "service_agreement_projectId_fkey"
             columns: ["projectId"]
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -1308,9 +1427,8 @@ export type Database = {
           created_at: string
           createdBy: string | null
           crypto: string | null
-          id: number
+          id: string
           isDefault: boolean | null
-          network: string | null
           organizationId: string | null
           updatedAt: string | null
           walletAddress: string | null
@@ -1320,9 +1438,8 @@ export type Database = {
           created_at?: string
           createdBy?: string | null
           crypto?: string | null
-          id?: number
+          id?: string
           isDefault?: boolean | null
-          network?: string | null
           organizationId?: string | null
           updatedAt?: string | null
           walletAddress?: string | null
@@ -1332,9 +1449,8 @@ export type Database = {
           created_at?: string
           createdBy?: string | null
           crypto?: string | null
-          id?: number
+          id?: string
           isDefault?: boolean | null
-          network?: string | null
           organizationId?: string | null
           updatedAt?: string | null
           walletAddress?: string | null

@@ -9,7 +9,7 @@ interface SettingsSwitchProps {
   description?: string;
   value: boolean;
   onChange: (value: boolean) => void;
-  onSave: () => void;
+  onSave: (value: boolean) => Promise<void>
   loading?: boolean;
   disabled?: boolean;
 }
@@ -23,10 +23,25 @@ export default function SettingsSwitch({
   loading = false,
   disabled = false
 }: SettingsSwitchProps) {
+  const [isSaving, setIsSaving] = useState(false);
+
   const handleChange = async (newValue: boolean) => {
     onChange(newValue);
-    await onSave();
+    
+    // Only save if not already saving
+    if (!isSaving && !loading) {
+      setIsSaving(true);
+      try {
+        await onSave(newValue);
+      } catch (error) {
+        console.error('Error saving setting:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    }
   };
+
+  const isProcessing = loading || isSaving;
 
   return (
     <div className="flex items-center justify-between py-4">
@@ -42,13 +57,13 @@ export default function SettingsSwitch({
       </div>
       
       <div className="flex items-center space-x-2">
-        {loading && (
-          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.8s] text-gray-400" />
+        {isProcessing && (
+          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] text-gray-400" />
         )}
         <Switch
           checked={value}
           onCheckedChange={handleChange}
-          disabled={disabled || loading}
+          disabled={disabled || isProcessing}
         />
       </div>
     </div>

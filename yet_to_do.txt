@@ -4,6 +4,26 @@ general
 - Change sheet on desktop to shadcn drawers for mobile
 - 
 
+Projects
+- Fix issue that causes duplicate whenever we try to update an existing Project
+- Fix width of sheet for Projects
+- Ensure that every project is tied to an organization and whoever is creating teh project has teh right authorization level to do so as well as having the organization subscription state  
+
+Customers
+- Ensure that every customer is tied to an organization
+- Whoever is creating the customer is tied to said organization and they have the right authorization level to do so
+- 
+
+Search functionality
+- Ensure teh global search is rather tied to an organization instead of a user 
+
+
+
+
+
+Invoice
+- 
+
 
 Feedback
 - Change the data content fits the toast div for generating zip file
@@ -21,10 +41,10 @@ Feedback
 
 
 Organization
-- User fills signup form (email, password, etc.)
-- After successful auth, show organization setup form
-- Create organization with provided name
-- Link user to organization
+- User fills signup form (email, password, etc.) ✅
+- After successful auth, show organization setup form ✅
+- Create organization with provided name ✅
+- Link user to organization ✅
 - Start 7-day trial
 - Redirect to dashboard with full access
 
@@ -73,146 +93,161 @@ Links
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-CREATE TABLE organization (
-  -- Primary key
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Basic organization info
-  name TEXT,
-  logoUrl TEXT,
-  email TEXT,
-  phone TEXT,
-  website TEXT,
-  
-  -- Address fields
-  addressLine1 TEXT,
-  addressLine2 TEXT,
-  city TEXT,
-  state TEXT,
-  postal TEXT,
-  country TEXT,
-  
-  -- Business info
-  taxId TEXT,
-  
-  -- Currency and billing
-  baseCurrency TEXT,
-  
-  -- Subscription and billing fields
-  subscription_status TEXT DEFAULT 'pending' CHECK (subscription_status IN ('pending', 'trial', 'active', 'expired', 'cancelled', 'suspended')),
-  plan_type TEXT CHECK (plan_type IN ('starter', 'pro', 'enterprise')),
-  billing_cycle TEXT CHECK (billing_cycle IN ('monthly', 'yearly')),
-  
-  -- Trial management
-  trial_start_date TIMESTAMP,
-  trial_end_date TIMESTAMP,
-  
-  -- Subscription dates
-  subscription_start_date TIMESTAMP,
-  subscription_end_date TIMESTAMP,
-  
-  -- Billing info
-  billing_email TEXT,
-  payment_method_id TEXT,
-  stripe_customer_id TEXT,
-  
-  -- Setup completion tracking
-  setup_completed_at TIMESTAMP,
-  setup_completed_by UUID REFERENCES profiles(profile_id),
-  
-  -- Usage tracking (for limits that matter)
-  user_count INTEGER DEFAULT 0,
-  storage_used_mb INTEGER DEFAULT 0,
-  
-  -- Audit fields
-  created_by UUID REFERENCES profiles(profile_id),
-  created_at TIMESTAMP DEFAULT timezone('utc'::text, now()),
-  updated_at TIMESTAMP DEFAULT timezone('utc'::text, now()),
-  
-  -- Full-text search
-  fts TSVECTOR GENERATED ALWAYS AS (
-    to_tsvector('english', 
-      COALESCE(name, '') || ' ' || 
-      COALESCE(email, '') || ' ' || 
-      COALESCE(website, '')
-    )
-  ) STORED
-);
-
--- Indexes for performance
-CREATE INDEX idx_organization_subscription_status ON organization(subscription_status);
-CREATE INDEX idx_organization_created_by ON organization(created_by);
-CREATE INDEX idx_organization_trial_end_date ON organization(trial_end_date);
-CREATE INDEX idx_organization_subscription_end_date ON organization(subscription_end_date);
-CREATE INDEX idx_organization_setup_completed_at ON organization(setup_completed_at);
-
--- Trigger to update updated_at
-CREATE TRIGGER update_organization_updated_at
-  BEFORE UPDATE ON organization
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
-
-
-
   sub flow
-  - enhance middleware protection 
+  - enhance middleware protection  
   - create subscription state management
   - setup pricing page (should have this and teh option above and below it tied to stripe so that chnages to pricing/name from stripe dashboard reflects)
   - create webhook Handler
   - test complete flow
+
+
+Clean up checks
+- Clean up feedback form to make sure it is tied to organization as well as organization notification setting for updates 
+- Clean project bugs, allow for customer sign off and tie notification to signedStatus state of overdue
+- After finishing invoice, project and feedback table clean up ensure that the notification is tied to organization setting 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  "use client";
+
+import { useEffect, useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { Database } from '@/types/supabase';
+
+// Create a partial type for the organization fields we actually need
+type OrganizationSubscription = Pick<
+  Database["public"]["Tables"]["organization"]["Row"],
+  | "id"
+  | "name"
+  | "subscriptionStatus"
+  | "trialEndsAt"
+  | "planType"
+  | "billingCycle"
+  | "subscriptionStartDate"
+  | "subscriptionEndDate"
+  | "stripeMetadata"
+  | "subscriptionMetadata"
+>;
+
+type SubscriptionStatus = Database["public"]["Enums"]["subscription_status_enum"];
+
+interface SubscriptionState {
+  organization: OrganizationSubscription | null;
+  isLoading: boolean;
+  error: string | null;
+  hasActiveSubscription: boolean;
+  trialDaysRemaining: number;
+  isTrialExpiringSoon: boolean;
+}
+
+export function useSubscription() {
+  const [state, setState] = useState<SubscriptionState>({
+    organization: null,
+    isLoading: true,
+    error: null,
+    hasActiveSubscription: false,
+    trialDaysRemaining: 0,
+    isTrialExpiringSoon: false,
+  });
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function loadSubscription() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          setState(prev => ({ ...prev, isLoading: false }));
+          return;
+        }
+
+        // Get user profile
+        const { data: userProfile } = await supabase
+          .from("profiles")
+          .select("organizationId")
+          .eq("profile_id", user.id)
+          .single();
+
+        if (!userProfile?.organizationId) {
+          setState(prev => ({ ...prev, isLoading: false }));
+          return;
+        }
+
+        // Get organization details
+        const { data: organization } = await supabase
+          .from("organization")
+          .select(`
+            id,
+            name,
+            subscriptionStatus,
+            trialEndsAt,
+            planType,
+            billingCycle,
+            subscriptionStartDate,
+            subscriptionEndDate,
+            stripeMetadata,
+            subscriptionMetadata
+          `)
+          .eq("id", userProfile.organizationId)
+          .single();
+
+        if (!organization) {
+          setState(prev => ({ ...prev, isLoading: false }));
+          return;
+        }
+
+        // Calculate subscription state
+        const validStatuses: SubscriptionStatus[] = ['active', 'trial'];
+        const hasActiveSubscription = validStatuses.includes(organization.subscriptionStatus || 'trial');
+
+        // Calculate trial days remaining
+        let trialDaysRemaining = 0;
+        if (organization.subscriptionStatus === 'trial' && organization.trialEndsAt) {
+          const trialEndDate = new Date(organization.trialEndsAt);
+          const now = new Date();
+          const diffTime = trialEndDate.getTime() - now.getTime();
+          trialDaysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        }
+
+        const isTrialExpiringSoon = trialDaysRemaining <= 3 && trialDaysRemaining > 0;
+
+        setState({
+          organization,
+          isLoading: false,
+          error: null,
+          hasActiveSubscription,
+          trialDaysRemaining,
+          isTrialExpiringSoon,
+        });
+
+      } catch (error) {
+        console.error('Error loading subscription:', error);
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: 'Failed to load subscription data',
+        }));
+      }
+    }
+
+    loadSubscription();
+  }, []);
+
+  return state;
+} 

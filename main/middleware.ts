@@ -39,9 +39,10 @@ export async function middleware(request: NextRequest) {
     
     // Protected routes that don't need subscription checks
     '/protected/team/create',
+    '/protected/settings/billing',
     '/protected/account/billing',
     '/protected/account/security',
-    '/protected/settings',
+    // '/protected/settings',
     
     // API routes that are webhooks/cronjobs
     '/api/webhooks/stripe',
@@ -98,21 +99,42 @@ export async function middleware(request: NextRequest) {
       // Handle subscription status checks
       const subscriptionStatus = organization.subscriptionStatus;
 
-      // Check if trial has expired
+      // Stripe subscription statuses that allow full access
+      const allowedStatuses = [
+        'trialing',        // During trial period
+        'active',          // Paid and active
+        'incomplete',      // Trial subscription (allow_incomplete)
+      ];
+
+      // Stripe subscription statuses that should redirect to billing
+      const blockedStatuses = [
+        'incomplete_expired',  // Trial expired, no payment method
+        'past_due',           // Payment failed, grace period
+        'canceled',           // Subscription cancelled
+        'unpaid',            // Payment failed, final state
+        'expired',           // Legacy status
+        'cancelled',         // Legacy status
+        'suspended',         // Legacy status
+      ];
+
+      // Check if subscription is in a blocked state
+      if (blockedStatuses.includes(subscriptionStatus || '')) {
+        return NextResponse.redirect(new URL('/protected/settings/billing', request.url));
+      }
+
+      // Handle legacy trial status (for existing accounts)
       if (subscriptionStatus === 'trial' && organization.trialEndsAt) {
         const trialEndDate = new Date(organization.trialEndsAt);
         const now = new Date();
         
         if (now > trialEndDate) {
-          // Trial has expired, redirect to billing
-          return NextResponse.redirect(new URL('/protected/account/billing', request.url));
+          // Legacy trial has expired, redirect to billing
+          return NextResponse.redirect(new URL('/protected/settings/billing', request.url));
         }
       }
 
-      // Check if subscription is in a problematic state
-      if (['expired', 'cancelled', 'suspended'].includes(subscriptionStatus || '')) {
-        return NextResponse.redirect(new URL('/protected/account/billing', request.url));
-      }
+      // If status is not explicitly allowed or blocked, be permissive for now
+      // This handles edge cases and new statuses from Stripe
 
       // If subscription is pending, allow access but could show a warning
       if (subscriptionStatus === 'pending') {

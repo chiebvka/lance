@@ -10,16 +10,14 @@ var validator = require('validator');
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
 export async function GET(request: NextRequest) {
-
-    // 1. Secret token check
-    const secret = request.headers.get("x-cron-secret");
-    if (secret !== process.env.CRON_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+  // 1. Secret token check
+  const secret = request.headers.get("x-cron-secret");
+  if (secret !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const supabase = await createClient();
-  const now = new Date(); // 01:33 PM ADT, July 22, 2025
+  const now = new Date();
 
   try {
     const { data: overdueFeedback, error: queryError } = await supabase
@@ -27,7 +25,8 @@ export async function GET(request: NextRequest) {
       .select("*")
       .lt("dueDate", now.toISOString())
       .neq("state", "overdue")
-      .eq("state", "sent");
+      .eq("state", "sent")
+      .eq("allowReminders", true);
 
     if (queryError) {
       console.error("Error querying overdue feedback:", queryError);
@@ -39,21 +38,55 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, message: "No overdue feedback" }, { status: 200 });
     }
 
+    let processedCount = 0;
     for (const feedback of overdueFeedback) {
-      const { error: updateError } = await supabase
-        .from("feedbacks")
-        .update({ state: "overdue" })
-        .eq("id", feedback.id);
+      try {
+        const { error: updateError } = await supabase
+          .from("feedbacks")
+          .update({ state: "overdue" })
+          .eq("id", feedback.id);
 
-      if (updateError) {
-        console.error(`Error updating feedback ${feedback.id}:`, updateError);
-        continue;
+        if (updateError) {
+          console.error(`Error updating feedback ${feedback.id}:`, updateError);
+          continue;
+        }
+
+        // Create notification for the organization
+        const { error: notificationError } = await supabase
+          .from("notifications")
+          .insert({
+            organizationId: feedback.organizationId,
+            title: "Feedback Overdue",
+            message: `Feedback "${feedback.name}" for ${feedback.recepientName || feedback.recepientEmail} is overdue.`,
+            type: "warning",
+            actionUrl: `${baseUrl}/protected/feedback/${feedback.id}`,
+            metadata: {
+              feedbackName: feedback.name,
+              recipientName: feedback.recepientName,
+              recipientEmail: feedback.recepientEmail,
+              dueDate: feedback.dueDate
+            },
+            tableName: "feedbacks",
+            tableId: feedback.id,
+            state: "active"
+          });
+
+        if (notificationError) {
+          console.error(`Error creating notification for feedback ${feedback.id}:`, notificationError);
+          continue;
+        }
+
+        await sendReminderEmail(supabase, feedback, "feedback");
+        processedCount++;
+      } catch (error) {
+        console.error(`Error processing feedback ${feedback.id}:`, error);
       }
-
-      await sendReminderEmail(supabase, feedback, "feedback");
     }
 
-    return NextResponse.json({ success: true, message: "Overdue feedback processed" }, { status: 200 });
+    return NextResponse.json({ 
+      success: true, 
+      message: `Processed ${processedCount} overdue feedbacks` 
+    }, { status: 200 });
   } catch (error) {
     console.error("Error in check-overdue-feedback:", error);
     return NextResponse.json({ success: false, error: "Failed to process overdue feedback" }, { status: 500 });

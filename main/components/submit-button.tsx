@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Bubbles } from "lucide-react";
 import { type ComponentProps } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -17,7 +18,14 @@ export function SubmitButton({
 
   return (
     <Button type="submit" aria-disabled={pending} {...props}>
-      {pending ? pendingText : children}
+      {pending ? (
+        <>
+          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+          {pendingText}
+        </>
+      ) : (
+        children
+      )}
     </Button>
   );
 }

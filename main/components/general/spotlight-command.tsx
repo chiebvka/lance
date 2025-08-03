@@ -9,23 +9,18 @@ import { Bell, StickyNote, Search, Command, Settings, ScanSearch } from 'lucide-
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import Link from 'next/link'
+import { createClient } from '@/utils/supabase/client'
+import { useTrialCountdown } from '@/hooks/use-trial-countdown'
+import { useNotifications } from '@/hooks/use-notifications'
 
 type Props = {}
 
 export default function SpotlightCommand({}: Props) {
   const [isCommandOpen, setIsCommandOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState('');
+  const trialStatus = useTrialCountdown();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   useEffect(() => {
-    // Set formatted date
-    const today = new Date();
-    const formatted = today.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    }).replace(/\s/g, '').toLowerCase();
-    setCurrentDate(formatted);
-
     // Add keyboard shortcut
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -38,35 +33,61 @@ export default function SpotlightCommand({}: Props) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const notificationItems = [
-    {
-      title: "Revenue vs $241 last period",
-      time: "2h ago",
-      type: "metric"
-    },
-    {
-      title: "New project milestone completed",
-      time: "4h ago", 
-      type: "achievement"
-    },
-    {
-      title: "Client feedback received",
-      time: "1d ago",
-      type: "feedback"
-    },
-    {
-      title: "Invoice payment overdue",
-      time: "2d ago",
-      type: "warning"
+  // Format notification time
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const notificationDate = new Date(dateString);
+    const diffInHours = Math.floor((now.getTime() - notificationDate.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return "Now";
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d ago`;
+  };
+
+  // Get notification type badge color
+  const getNotificationTypeColor = (type: string) => {
+    switch (type) {
+      case 'trial_reminder': return 'bg-blue-500';
+      case 'error': return 'bg-red-500';
+      case 'warning': return 'bg-yellow-500';
+      case 'success': return 'bg-green-500';
+      default: return 'bg-gray-500';
     }
-  ];
+  };
+
+  const getBadgeContent = () => {
+    if (trialStatus.isLoading) {
+      return "Loading...";
+    }
+    
+    return trialStatus.displayText || "Unknown status";
+  };
+
+  const getBadgeVariant = () => {
+    if (trialStatus.isExpired) {
+      return "destructive";
+    }
+    if (trialStatus.subscriptionStatus === 'active') {
+      return "default";
+    }
+    return "outline";
+  };
 
   return (
     <>
       <div className={cn("flex items-center gap-3")}>
-        {/* Free Trial Badge */}
-        <Badge variant="outline" className="bg-background/95 backdrop-blur-sm">
-          Free Trial · {currentDate}
+        {/* Trial Status Badge */}
+        <Badge 
+          variant={getBadgeVariant()} 
+          className={cn(
+            "bg-background/95 backdrop-blur-sm",
+            trialStatus.isExpired && "bg-destructive/10 text-destructive border-destructive",
+            trialStatus.subscriptionStatus === 'active' && "bg-green-50 text-green-700 border-green-200"
+          )}
+        >
+          {getBadgeContent()}
         </Badge>
 
         {/* Notifications */}
@@ -74,37 +95,98 @@ export default function SpotlightCommand({}: Props) {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon" className="relative backdrop-blur-sm">
               <Bell className="h-4 w-4" />
-              <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-red-500">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Badge>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
             <div className="p-3 border-b flex items-center justify-between">
               <h4 className="font-medium">Notifications</h4>
-              <Link href="/protected/settings/notifications">
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs h-6"
+                    onClick={markAllAsRead}
+                  >
+                    Mark all read
+                  </Button>
+                )}
+                <Link href="/protected/settings/notifications">
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
             </div>
             <div className="max-h-80 overflow-y-auto">
-              {notificationItems.map((item, index) => (
-                <DropdownMenuItem key={index} className="flex flex-col items-start p-3 space-y-1">
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-sm font-medium">{item.title}</span>
-                    <span className="text-xs text-muted-foreground">{item.time}</span>
-                  </div>
-                  <div className="w-full">
-                    <Badge variant="secondary" className="text-xs">
-                      {item.type}
-                    </Badge>
-                  </div>
-                </DropdownMenuItem>
-              ))}
+              {notifications.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  No notifications
+                </div>
+              ) : (
+                notifications.slice(0, 5).map((notification) => (
+                  <DropdownMenuItem 
+                    key={notification.id} 
+                    className="flex flex-col items-start p-3 space-y-1 cursor-pointer"
+                    onClick={() => {
+                      if (!notification.isRead) {
+                        markAsRead(notification.id);
+                      }
+                      if (notification.actionUrl) {
+                        window.location.href = notification.actionUrl;
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className={cn(
+                        "text-sm",
+                        !notification.isRead ? "font-medium" : "font-normal"
+                      )}>
+                        {notification.title}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {getTimeAgo(notification.created_at)}
+                      </span>
+                    </div>
+                    {notification.message && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 w-full">
+                        {notification.message}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between w-full">
+                      <Badge 
+                        variant="secondary" 
+                        className={cn(
+                          "text-xs",
+                          getNotificationTypeColor(notification.type),
+                          "text-white"
+                        )}
+                      >
+                        {notification.type.replace('_', ' ')}
+                      </Badge>
+                      {!notification.isRead && (
+                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      )}
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              )}
             </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-center text-sm text-muted-foreground">
-              View all notifications
-            </DropdownMenuItem>
+            {notifications.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-center text-sm text-muted-foreground">
+                  <Link href="/protected/notifications" className="w-full">
+                    View all notifications
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
