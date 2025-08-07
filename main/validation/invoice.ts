@@ -27,8 +27,41 @@ const invoiceCreateSchema = z.object({
         unitPrice: z.number().optional(),
         total: z.number().optional(),
     })),
-    state: z.enum(["draft", "unassigned", "sent", "completed", "overdue", "cancelled"]).optional(),
+    state: z.enum(["draft", "unassigned", "sent", "settled", "overdue", "cancelled"]).optional(),
     emailToCustomer: z.boolean().optional(),
 });
 
-export { invoiceCreateSchema };
+const invoiceEditSchema = z.object({
+    id: z.string().uuid().optional(),
+    customerId: z.string().nullable().optional(),
+    projectId: z.string().nullable().optional(),
+    organizationName: z.string().nullable().optional(),
+    organizationLogoUrl: z.string().nullable().optional(),
+    organizationEmail: z.string().nullable().optional(),
+    recepientName: z.string().nullable().optional(),
+    recepientEmail: z.string().nullable().optional(),
+    issueDate: z.coerce.date().optional().nullable(),
+    dueDate: z.coerce.date().optional().nullable(),
+    currency: z.string().optional(),
+    hasVat: z.boolean().optional(),
+    hasTax: z.boolean().optional(),
+    hasDiscount: z.boolean().optional(),
+    vatRate: z.number().optional(),
+    taxRate: z.number().optional(),
+    discount: z.number().optional(),
+    notes: z.string().nullable().optional(),
+    paymentInfo: z.string().nullable().optional(),
+    paymentDetails: z.string().nullable().optional(),
+    invoiceDetails: z.array(z.object({
+        position: z.number().optional(),
+        description: z.string().nullable().optional(),
+        quantity: z.number().optional(),
+        unitPrice: z.number().optional(),
+        total: z.number().optional(),
+    })).optional(),
+    state: z.enum(["draft", "unassigned", "sent", "settled", "overdue", "cancelled"]).optional(),
+    emailToCustomer: z.boolean().optional(),
+    paidOn: z.string().optional().nullable(),
+});
+
+export { invoiceCreateSchema, invoiceEditSchema };

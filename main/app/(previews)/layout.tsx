@@ -10,7 +10,7 @@ export default async function Layout({
         <main className=" w-full ">
             {children}
         </main>
-        <span className="flex justify-end ">Powered by<Link href="https://bexforte.com" target="_blank" className="text-primary ml-1"> bexforte</Link> </span>
+        <span className="flex fixed bottom-2 left-6 w-full text-sm justify-start ">Powered by<Link href="https://bexforte.com" target="_blank" className="text-primary ml-1"> bexforte</Link> </span>
       </div>
     );
   }

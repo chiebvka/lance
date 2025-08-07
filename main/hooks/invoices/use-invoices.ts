@@ -74,8 +74,9 @@ export interface CreateInvoiceData {
     unitPrice?: number
     total?: number
   }>
-  state?: "draft" | "unassigned" | "sent" | "completed" | "overdue" | "cancelled"
+  state?: "draft" | "unassigned" | "sent" | "settled" | "overdue" | "cancelled"
   emailToCustomer?: boolean
+  paidOn?: string | null
 }
 
 export async function fetchInvoices(): Promise<Invoice[]> {
@@ -100,6 +101,51 @@ export function useCreateInvoice() {
       const { data } = await axios.post<{ success: boolean; data: Invoice }>('/api/invoices/create', invoiceData)
       if (!data.success) throw new Error('Error creating invoice')
       return data.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+  })
+}
+
+export async function fetchInvoice(invoiceId: string): Promise<Invoice> {
+  const { data } = await axios.get<{ success: boolean; invoice: Invoice }>(`/api/invoices/${invoiceId}`)
+  if (!data.success) throw new Error('Error fetching invoice')
+  return data.invoice
+}
+
+export function useInvoice(invoiceId: string) {
+  return useQuery<Invoice>({
+    queryKey: ['invoice', invoiceId],
+    queryFn: () => fetchInvoice(invoiceId),
+    enabled: !!invoiceId,
+  })
+}
+
+export function useUpdateInvoice() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ invoiceId, invoiceData }: { invoiceId: string; invoiceData: Partial<CreateInvoiceData> }) => {
+      const { data } = await axios.put<{ success: boolean; invoice: Invoice }>(`/api/invoices/${invoiceId}`, invoiceData)
+      if (!data.success) throw new Error('Error updating invoice')
+      return data.invoice
+    },
+    onSuccess: (_, { invoiceId }) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['invoice', invoiceId] })
+    },
+  })
+}
+
+export function useDeleteInvoice() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const { data } = await axios.delete<{ success: boolean }>(`/api/invoices/${invoiceId}`)
+      if (!data.success) throw new Error('Error deleting invoice')
+      return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })

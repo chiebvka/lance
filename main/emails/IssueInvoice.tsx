@@ -18,7 +18,6 @@ interface IssueInvoiceEmailProps {
   senderName?: string
   clientName?: string
   invoiceName?: string
-
   invoiceId?: string
   logoUrl?: string
 }

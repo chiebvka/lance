@@ -271,7 +271,7 @@ const InvoiceForm = forwardRef<InvoiceFormRef, Props>(({
     if (newQuantity < 0) return
     setInvoiceItems(prev => prev.map(item => 
       item.id === itemId 
-        ? { ...item, quantity: newQuantity, total: newQuantity * item.price }
+        ? { ...item, quantity: newQuantity, total: Math.round((newQuantity * item.price) * 100) / 100 }
         : item
     ))
   }
@@ -280,7 +280,7 @@ const InvoiceForm = forwardRef<InvoiceFormRef, Props>(({
   const handlePriceChange = (itemId: number, newPrice: number) => {
     setInvoiceItems(prev => prev.map(item => 
       item.id === itemId 
-        ? { ...item, price: newPrice, total: item.quantity * newPrice }
+        ? { ...item, price: newPrice, total: Math.round((item.quantity * newPrice) * 100) / 100 }
         : item
     ))
   }

@@ -299,7 +299,7 @@ export default function ProjectForm({
 
   // Helper function to calculate amount from percentage
   const calculateAmountFromPercentage = (percentage: number): number => {
-    return Math.round((percentage / 100) * (budget || 0))
+    return Math.round(((percentage / 100) * (budget || 0)) * 100) / 100
   }
 
   // Helper function to get sorted deliverables by position

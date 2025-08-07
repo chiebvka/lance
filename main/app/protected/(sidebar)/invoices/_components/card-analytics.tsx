@@ -14,21 +14,21 @@ export default function CardAnalytics({}: Props) {
   const now = new Date();
 
   // Paid invoices (state = 'paid')
-  const paidCount = invoices.filter(inv => inv.state === "paid").length;
+  const paidCount = invoices.filter(inv => inv.state === "settled").length;
 
   // Pending invoices (state = 'sent' - these are invoices that have been sent but not paid)
   const pendingCount = invoices.filter(inv => inv.state === "sent").length;
 
   // Overdue invoices (dueDate < now and not paid)
   const overdueCount = invoices.filter(inv => {
-    if (inv.state === "paid") return false; // Paid invoices are not overdue
+    if (inv.state === "settled") return false; // Paid invoices are not overdue
     if (!inv.dueDate) return false;
     return new Date(inv.dueDate) < now;
   }).length;
 
   // Invoice rating calculation
   const totalInvoices = invoices.length;
-  const paidInvoices = invoices.filter(inv => inv.state === "paid").length;
+  const paidInvoices = invoices.filter(inv => inv.state === "settled").length;
   
   // Calculate various metrics for rating
   let rating = 0;
@@ -41,7 +41,7 @@ export default function CardAnalytics({}: Props) {
     // On-time payment score (20% weight)
     let onTimePaymentScore = 0;
     const paidInvoicesWithDates = invoices.filter(inv => 
-      inv.state === "paid" && inv.paidOn && inv.dueDate
+      inv.state === "settled" && inv.paidOn && inv.dueDate
     );
     
     if (paidInvoicesWithDates.length > 0) {
@@ -78,9 +78,9 @@ export default function CardAnalytics({}: Props) {
   // Carousel cards data
   const cards = [
     {
-      title: "Paid",
+      title: "Settled",
       value: paidCount,
-      subtitle: `${paidCount} invoice${paidCount === 1 ? "" : "s"} paid`,
+      subtitle: `${paidCount} invoice${paidCount === 1 ? "" : "s"} settled`,
     },
     {
       title: "Pending",
@@ -104,7 +104,7 @@ export default function CardAnalytics({}: Props) {
       ),
       isRating: true,
       subtitle: totalInvoices > 0
-        ? `${paidInvoices} of ${totalInvoices} paid`
+        ? `${paidInvoices} of ${totalInvoices} settled`
         : "No invoices yet",
     },
   ];
@@ -132,7 +132,7 @@ export default function CardAnalytics({}: Props) {
               title="Invoice Rating"
               subtitle={
                 totalInvoices > 0
-                  ? `${paidInvoices} of ${totalInvoices} paid`
+                  ? `${paidInvoices} of ${totalInvoices} settled`
                   : "No invoices yet"
               }
               calculationExplanation={calculationExplanation}

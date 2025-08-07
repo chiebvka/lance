@@ -72,14 +72,14 @@ const getStateColor = (state: string) => {
       return 'bg-blue-100 text-blue-800'
     case 'sent':
       return 'bg-yellow-100 text-yellow-800'
-    case 'paid':
+    case 'settled':
       return 'bg-green-100 text-green-800'
     case 'overdue':
       return 'bg-red-100 text-red-800'
     case 'unassigned':
       return 'bg-purple-100 text-purple-800'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-stone-300 text-stone-800 line-through'
   }
 }
 

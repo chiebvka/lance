@@ -1,9 +1,16 @@
 import React from 'react'
+import InvoicePreview from './_components/invoice-preview'
 
-type Props = {}
+interface PageProps {
+  params: Promise<{ invoiceId: string }>
+}
 
-export default function page({}: Props) {
+export default async function InvoicePage({ params }: PageProps) {
+  const { invoiceId } = await params;
+
   return (
-    <div>page</div>
+    <div>
+      <InvoicePreview invoiceId={invoiceId} />
+    </div>
   )
 }

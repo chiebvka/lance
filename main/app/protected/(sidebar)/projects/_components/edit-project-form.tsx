@@ -425,7 +425,7 @@ export default function EditProjectForm({
   }
 
   const calculateAmountFromPercentage = (percentage: number): number => {
-    return Math.round((percentage / 100) * (budget || 0))
+    return Math.round(((percentage / 100) * (budget || 0)) * 100) / 100
   }
 
   const getSortedDeliverables = () => {

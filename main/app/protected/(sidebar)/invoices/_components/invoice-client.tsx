@@ -55,7 +55,7 @@ import { DataTable } from './data-table'
 import ProjectClientSkeleton from '../../projects/_components/project-client-skeleton'
 import CardAnalytics from './card-analytics'
 import InvoiceDetailsSheet from './invoice-details-sheet'
-import EditInvoice from './edit-invoice'
+import EditInvoice, { EditInvoiceRef } from './edit-invoice'
 import { generateInvoicePDFBlob, type InvoicePDFData } from '@/utils/invoice-pdf'
 import JSZip from 'jszip'
 
@@ -93,6 +93,8 @@ export default function InvoiceClient({ initialInvoices }: Props) {
   
   // Create a ref to the form component to call its methods
   const formRef = useRef<InvoiceFormRef>(null);
+  // Create a ref to the edit component to call its methods
+  const editFormRef = useRef<EditInvoiceRef>(null);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -712,6 +714,19 @@ export default function InvoiceClient({ initialInvoices }: Props) {
     }
   };
 
+  // Edit-specific handlers
+  const handleEditSaveDraftClick = () => {
+    if (editFormRef.current) {
+      editFormRef.current.handleSubmit(false);
+    }
+  };
+
+  const handleEditInvoiceClick = (emailToCustomer = false) => {
+    if (editFormRef.current) {
+      editFormRef.current.handleSubmit(emailToCustomer);
+    }
+  };
+
   const handleLayoutOptionChange = (key: string, value: boolean) => {
     // Handle submenu items (hasTax_yes, hasTax_no, etc.)
     if (key.includes('_')) {
@@ -946,19 +961,19 @@ export default function InvoiceClient({ initialInvoices }: Props) {
       <SheetClose asChild>
         <Button variant="ghost" onClick={handleCloseSheet}>Cancel</Button>
       </SheetClose>
-      <Button variant="outlinebrimary" onClick={handleSaveDraftClick} disabled={isSaving} className="px-3 sm:px-4">
+      <Button variant="outlinebrimary" onClick={handleEditSaveDraftClick} disabled={isSaving} className="px-3 sm:px-4">
         <Save className="h-4 w-4 mr-2" />
         {isSaving ?  (
               <>
                 <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
                 Saving...
               </>
-            ) : "Save Draft"}
+            ) : "Save Changes"}
       </Button>
 
       <div className="inline-flex rounded-md shadow-sm">
         <Button
-          onClick={() => handleCreateInvoiceClick(false)}
+          onClick={() => handleEditInvoiceClick(false)}
           disabled={isSavingDraft || isCreatingInvoice}
           className="rounded-r-none px-3 sm:px-4"
         >
@@ -980,10 +995,10 @@ export default function InvoiceClient({ initialInvoices }: Props) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleCreateInvoiceClick(false)}>Update Project</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleEditInvoiceClick(false)}>Update Invoice</DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => handleCreateInvoiceClick(true)}
-              disabled={!selectedCustomer}
+              onClick={() => handleEditInvoiceClick(true)}
+              disabled={!invoiceBeingEdited?.customerId}
             >
               Update & Email to Customer
             </DropdownMenuItem>
@@ -1053,10 +1068,10 @@ export default function InvoiceClient({ initialInvoices }: Props) {
             Sent
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
-            checked={activeFilters.state.includes('paid')}
-            onCheckedChange={(checked: boolean) => handleFilterChange('state', 'paid', checked)}
+            checked={activeFilters.state.includes('settled')}
+            onCheckedChange={(checked: boolean) => handleFilterChange('state', 'settled', checked)}
           >
-            Paid
+            Settled
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
             checked={activeFilters.state.includes('overdue')}
@@ -1069,6 +1084,12 @@ export default function InvoiceClient({ initialInvoices }: Props) {
             onCheckedChange={(checked: boolean) => handleFilterChange('state', 'unassigned', checked)}
           >
             Unassigned
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={activeFilters.state.includes('cancelled')}
+            onCheckedChange={(checked: boolean) => handleFilterChange('state', 'cancelled', checked)}
+          >
+            Cancelled
           </DropdownMenuCheckboxItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
@@ -1202,7 +1223,9 @@ export default function InvoiceClient({ initialInvoices }: Props) {
                 <InvoiceDetailsSheet invoice={invoiceBeingEdited} />
               ) : (
                 <EditInvoice 
-                  invoice={invoiceBeingEdited}
+                  ref={editFormRef}
+                  invoiceId={invoiceBeingEdited.id}
+                  userEmail={userEmail}
                   onSuccess={handleEditSuccess}
                   onCancel={handleCloseSheet}
                 />

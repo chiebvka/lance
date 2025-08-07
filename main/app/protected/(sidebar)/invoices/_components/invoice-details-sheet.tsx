@@ -1,10 +1,10 @@
 "use client"
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { AlertTriangle, BarChart3, Bell, Calendar, Clock, Copy, Edit, ExternalLink, FileText, HardDriveDownload, Mail, MessageSquareShare, SquareArrowOutUpRight, User, DollarSign, Receipt, CalendarDays, CalendarFold, GitCommitVertical, Grip } from 'lucide-react';
+import { AlertTriangle, BarChart3, Bell, Calendar, Clock, Copy, Edit, ExternalLink, FileText, HardDriveDownload, Mail, MessageSquareShare, SquareArrowOutUpRight, User, DollarSign, Receipt, CalendarDays, CalendarFold, GitCommitVertical, Grip, Trash2, UserPlus, X, Check, Ban } from 'lucide-react';
 import { differenceInDays, isBefore, format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
@@ -12,12 +12,38 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { baseUrl } from '@/utils/universal';
 import { downloadInvoiceAsPDF, type InvoicePDFData } from '@/utils/invoice-pdf';
+import { useUpdateInvoice, useDeleteInvoice } from '@/hooks/invoices/use-invoices';
+import { useCustomers, type Customer } from '@/hooks/customers/use-customers';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent
+} from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import ComboBox from '@/components/combobox';
+import ConfirmModal from '@/components/modal/confirm-modal';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 
 type Invoice = {
   id: string
   invoiceNumber?: string | null
   recepientEmail?: string | null
   recepientName?: string | null
+  customerId?: string | null
   created_at?: string | null
   paidOn?: string | null
   dueDate?: string | null
@@ -59,12 +85,14 @@ const getStateColor = (state: string) => {
       return "bg-blue-100 text-blue-800";
     case "sent":
       return "bg-yellow-100 text-yellow-800";
-    case "paid":
+    case "settled":
       return "bg-green-100 text-green-800";
     case "overdue":
       return "bg-red-100 text-red-800";
     case "unassigned":
       return "bg-purple-100 text-purple-800";
+    case "cancelled":
+      return 'bg-stone-300 text-stone-800 line-through'
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -72,7 +100,139 @@ const getStateColor = (state: string) => {
 
 export default function InvoiceDetailsSheet({ invoice }: Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   
+  // Hooks for data and mutations
+  const { data: customers = [] } = useCustomers();
+  const updateInvoiceMutation = useUpdateInvoice();
+  const deleteInvoiceMutation = useDeleteInvoice();
+  
+  // State for UI interactions
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  
+  // State management functions
+  const handleDeleteInvoice = async () => {
+    try {
+      await deleteInvoiceMutation.mutateAsync(invoice.id);
+      toast.success("Invoice deleted successfully!");
+      setIsDeleteModalOpen(false);
+      // Close the sheet by navigating back
+      const params = new URLSearchParams(window.location.search);
+      params.delete('invoiceId');
+      params.delete('type');
+      router.push(`${window.location.pathname}?${params.toString()}`);
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      toast.error("Failed to delete invoice");
+    }
+  };
+
+  const handleMarkAsSettled = async (settleDate: Date) => {
+    try {
+      await updateInvoiceMutation.mutateAsync({
+        invoiceId: invoice.id,
+        invoiceData: {
+          state: 'settled',
+          paidOn: settleDate.toISOString(),
+        }
+      });
+      toast.success("Invoice marked as settled!");
+    } catch (error) {
+      console.error('Error marking invoice as settled:', error);
+      toast.error("Failed to mark invoice as settled");
+    }
+  };
+
+  const handleUnassign = async () => {
+    try {
+      await updateInvoiceMutation.mutateAsync({
+        invoiceId: invoice.id,
+        invoiceData: {
+          state: 'unassigned',
+          customerId: null,
+          recepientName: null,
+          recepientEmail: null,
+        }
+      });
+      toast.success("Invoice unassigned successfully!");
+    } catch (error) {
+      console.error('Error unassigning invoice:', error);
+      toast.error("Failed to unassign invoice");
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      await updateInvoiceMutation.mutateAsync({
+        invoiceId: invoice.id,
+        invoiceData: {
+          state: 'cancelled',
+        }
+      });
+      toast.success("Invoice cancelled successfully!");
+    } catch (error) {
+      console.error('Error cancelling invoice:', error);
+      toast.error("Failed to cancel invoice");
+    }
+  };
+
+  const handleAssignToCustomer = async (customerId: string) => {
+    const selectedCustomer = customers.find(c => c.id === customerId);
+    if (!selectedCustomer) {
+      toast.error("Selected customer not found");
+      return;
+    }
+
+    try {
+      await updateInvoiceMutation.mutateAsync({
+        invoiceId: invoice.id,
+        invoiceData: {
+          state: 'draft',
+          customerId: customerId,
+          recepientName: selectedCustomer.name,
+          recepientEmail: selectedCustomer.email,
+        }
+      });
+      toast.success("Invoice assigned to customer successfully!");
+    } catch (error) {
+      console.error('Error assigning invoice to customer:', error);
+      toast.error("Failed to assign invoice to customer");
+    }
+  };
+
+  const handleSetToUnassigned = async () => {
+    try {
+      await updateInvoiceMutation.mutateAsync({
+        invoiceId: invoice.id,
+        invoiceData: {
+          state: 'unassigned',
+        }
+      });
+      toast.success("Invoice set to unassigned successfully!");
+    } catch (error) {
+      console.error('Error setting invoice to unassigned:', error);
+      toast.error("Failed to set invoice to unassigned");
+    }
+  };
+
+  // Helper function to get available actions based on state
+  const getAvailableActions = (state: string) => {
+    switch (state.toLowerCase()) {
+      case 'draft':
+        return ['delete'];
+      case 'sent':
+        return ['settle', 'unassign', 'cancel', 'delete'];
+      case 'unassigned':
+        return ['cancel', 'settle', 'delete', 'assign'];
+      case 'cancelled':
+        return ['unassigned', 'delete'];
+      case 'settled':
+        return ['unassigned', 'delete'];
+      default:
+        return ['delete'];
+    }
+  };
+
   const recipient = invoice.recepientEmail ?? 'N/A'
   const created = invoice.created_at ? format(new Date(invoice.created_at), 'd MMMM yyyy') : 'N/A'
   const due = invoice.dueDate ? format(new Date(invoice.dueDate), 'd MMMM yyyy') : 'N/A'
@@ -123,7 +283,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
         estDays = `Est. ${Math.abs(days)} days`
       }
     }
-  } else if (state === 'paid') {
+  } else if (state === 'settled') {
     progress = 100
     progressLabel = '100%'
     daysRemaining = '0 days remaining'
@@ -159,9 +319,106 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
         </span>
         <div className='flex items-center gap-2'>
           <span className="text-sm text-muted-foreground">{invoice.invoiceNumber?.slice(0, 8) || invoice.id.slice(0, 8)}</span>
-          <Button variant="outline"  className='  items-center'>
-            <Grip size={12} className='' />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0 border rounded-none">
+                <Grip size={12} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {/* Mark as settled with date picker */}
+              {getAvailableActions(state).includes('settle') && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Check className="w-4 h-4 mr-2" />
+                    Mark as settled
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="p-0 h-[350px] w-auto">
+                    <CalendarComponent
+                      mode="single"
+                      selected={new Date()}
+                      onSelect={(date) => {
+                        if (date) {
+                          handleMarkAsSettled(date);
+                        }
+                      }}
+                      initialFocus
+                      className="h-full"
+                    />
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+              
+              {/* Assign to customer with customer selection */}
+              {getAvailableActions(state).includes('assign') && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Assign to customer
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-64 h-[350px] p-0">
+                    <Command className="h-full">
+                      <CommandInput placeholder="Search customers..." />
+                      <CommandList className="h-full max-h-none">
+                        <CommandEmpty>No customers found.</CommandEmpty>
+                        <CommandGroup>
+                          {customers.map((customer) => (
+                            <CommandItem
+                              key={customer.id}
+                              value={customer.name}
+                              onSelect={() => {
+                                handleAssignToCustomer(customer.id);
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Check className="mr-2 h-4 w-4 opacity-0" />
+                              {customer.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+              
+              {/* Direct action items */}
+              {getAvailableActions(state).includes('unassign') && (
+                <DropdownMenuItem onClick={handleUnassign}>
+                  <X className="w-4 h-4 mr-2" />
+                  Unassign
+                </DropdownMenuItem>
+              )}
+              
+              {getAvailableActions(state).includes('cancel') && (
+                <DropdownMenuItem onClick={handleCancel}>
+                  <Ban className="w-4 h-4 mr-2" />
+                  Cancel
+                </DropdownMenuItem>
+              )}
+              
+              {getAvailableActions(state).includes('unassigned') && (
+                <DropdownMenuItem onClick={handleSetToUnassigned}>
+                  <User className="w-4 h-4 mr-2" />
+                  Mark as unassigned
+                </DropdownMenuItem>
+              )}
+              
+              {/* Delete with separator */}
+              {getAvailableActions(state).includes('delete') && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       <Separator />
@@ -204,11 +461,11 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
             </div>
             <span className="text-sm font-medium">{formattedAmount}</span>
           </div>
-          {state === 'paid' && (
+          {state === 'settled' && (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Paid On</span>
+                <span className="text-sm font-medium">Settled On</span>
               </div>
               <span className="text-sm">{paid}</span>
             </div>
@@ -288,7 +545,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
             </div>
           ) : (
             <div className="p-3 border text-sm text-muted-foreground">
-              Form link will be available once the feedback is sent.
+              Form link will be available once the invoice is sent.
             </div>
           )}
         </div>
@@ -338,8 +595,8 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
                 </TooltipTrigger>
                 {state !== "sent" && state !== "overdue" && (
                   <TooltipContent>
-                    {state === "paid"
-                      ? "This invoice has already been paid."
+                    {state === "settled"
+                      ? "This invoice has already been settled."
                       : "This invoice is still in draft mode."}
                   </TooltipContent>
                 )}
@@ -348,6 +605,18 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteInvoice}
+        title="Delete Invoice"
+        itemName={invoice.invoiceNumber || invoice.id.slice(0, 8)}
+        itemType="invoice"
+        description="This action cannot be undone."
+        isLoading={deleteInvoiceMutation.isPending}
+      />
     </div>
   )
 } 
