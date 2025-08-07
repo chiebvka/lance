@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { ratelimit } from '@/utils/rateLimit';
+import { createBankSchema, getBankType } from '@/validation/banks';
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,61 +47,121 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const {
-      accountName,
-      accountNumber,
-      routingNumber,
-      institutionNumber,
-      transitNumber,
-      iban,
-      swiftCode,
-      sortCode,
-      bankName,
-      bankAddress,
-      country,
-      currency,
-      isDefault,
-      stripePaymentLink,
-      paypalPaymentLink
-    } = body;
+    
+    // Validate the request body
+    const validationResult = createBankSchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json({ 
+        error: 'Validation failed', 
+        details: validationResult.error.errors 
+      }, { status: 400 });
+    }
 
-    // If this is the first bank account or isDefault is true, unset other defaults
-    if (isDefault) {
+    const validatedData = validationResult.data;
+    
+    // Determine the bank type based on account type and country
+    const bankType = getBankType(validatedData.accountType, 
+      validatedData.accountType === 'bank' ? validatedData.country : undefined
+    );
+
+    // Check if this is the first bank for the organization
+    const { data: existingBanks, error: countError } = await supabase
+      .from('banks')
+      .select('id')
+      .eq('organizationId', profile.organizationId);
+
+    if (countError) {
+      console.error('Error checking existing banks:', countError);
+      return NextResponse.json({ error: 'Failed to check existing banks' }, { status: 500 });
+    }
+
+    // If this is the first bank, set it as default
+    const isFirstBank = !existingBanks || existingBanks.length === 0;
+    const shouldBeDefault = isFirstBank || validatedData.isDefault;
+
+    // If setting this as default, unset other defaults
+    if (shouldBeDefault) {
       await supabase
         .from('banks')
         .update({ isDefault: false })
         .eq('organizationId', profile.organizationId);
     }
 
+    // Prepare bank data based on account type
+    let bankData: any = {
+      organizationId: profile.organizationId,
+      createdBy: user.id,
+      type: bankType,
+      isDefault: shouldBeDefault,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Map data based on account type
+    if (validatedData.accountType === 'bank') {
+      bankData = {
+        ...bankData,
+        accountName: validatedData.accountName,
+        accountNumber: validatedData.accountNumber,
+        routingNumber: validatedData.routingNumber,
+        institutionNumber: validatedData.institutionNumber,
+        transitNumber: validatedData.transitNumber,
+        iban: validatedData.iban,
+        swiftCode: validatedData.swiftCode,
+        sortCode: validatedData.sortCode,
+        bankName: validatedData.bankName,
+        bankAddress: validatedData.bankAddress,
+        country: validatedData.country,
+        currency: validatedData.currency,
+      };
+    } else if (validatedData.accountType === 'crypto') {
+      bankData = {
+        ...bankData,
+        accountName: validatedData.walletName,
+        bankName: `${validatedData.cryptoType} Wallet`,
+        country: 'CRYPTO',
+        currency: 'USD',
+        accountNumber: validatedData.walletAddress,
+        routingNumber: validatedData.cryptoType,
+        institutionNumber: validatedData.network,
+      };
+    } else if (validatedData.accountType === 'stripe') {
+      bankData = {
+        ...bankData,
+        accountName: validatedData.accountName,
+        bankName: 'Stripe Payment',
+        country: 'US',
+        currency: 'USD',
+        stripePaymentLink: validatedData.paymentLink,
+      };
+    } else if (validatedData.accountType === 'paypal') {
+      bankData = {
+        ...bankData,
+        accountName: validatedData.accountName,
+        bankName: 'PayPal Payment',
+        country: 'US',
+        currency: 'USD',
+        paypalPaymentLink: validatedData.paymentLink,
+      };
+    }
+
     // Create the new bank account
     const { data: newBank, error } = await supabase
       .from('banks')
-      .insert({
-        organizationId: profile.organizationId,
-        createdBy: user.id,
-        accountName,
-        accountNumber,
-        routingNumber,
-        institutionNumber,
-        transitNumber,
-        iban,
-        swiftCode,
-        sortCode,
-        bankName,
-        bankAddress,
-        country,
-        currency,
-        isDefault: isDefault || false,
-        stripePaymentLink,
-        paypalPaymentLink,
-        updatedAt: new Date().toISOString()
-      })
+      .insert(bankData)
       .select()
       .single();
 
     if (error) {
       console.error('Error creating bank:', error);
       return NextResponse.json({ error: 'Failed to create bank account' }, { status: 500 });
+    }
+
+    // If this bank is default, update the organization's defaultBankId
+    if (shouldBeDefault) {
+      await supabase
+        .from('organization')
+        .update({ defaultBankId: newBank.id })
+        .eq('id', profile.organizationId);
     }
 
     return NextResponse.json({ 

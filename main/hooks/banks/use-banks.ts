@@ -16,6 +16,7 @@ export interface Bank {
   country: string | null
   currency: string | null
   isDefault: boolean | null
+  type: string | null
   stripePaymentLink: string | null
   paypalPaymentLink: string | null
   organizationId: string | null
@@ -25,6 +26,7 @@ export interface Bank {
 }
 
 export interface BankInput {
+  accountType: 'bank' | 'crypto' | 'stripe' | 'paypal'
   accountName?: string
   accountNumber?: string
   routingNumber?: string
@@ -40,6 +42,13 @@ export interface BankInput {
   isDefault?: boolean
   stripePaymentLink?: string
   paypalPaymentLink?: string
+  // Crypto specific fields
+  walletName?: string
+  cryptoType?: string
+  network?: string
+  walletAddress?: string
+  // Payment link for stripe/paypal
+  paymentLink?: string
 }
 
 export async function fetchBanks(): Promise<Bank[]> {

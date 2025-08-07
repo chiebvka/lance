@@ -52,12 +52,12 @@ export default function ComboBox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0  overflow-y-auto"
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 overflow-y-auto"
         onWheel={e => e.stopPropagation()}
       >
         <Command >
           <CommandInput placeholder={searchPlaceholder} />
-            <CommandList className="overflow-y-auto max-h-64">
+            <CommandList className="overflow-y-auto max-h-60">
               <CommandEmpty>{emptyMessage}</CommandEmpty>
               <CommandGroup>
                 {items.map((item) => (
@@ -68,7 +68,10 @@ export default function ComboBox({
                       onValueChange(item.value === value ? null : item.value)
                       setOpen(false)
                     }}
-                    className={cn("cursor-pointer hover:bg-purple-100", value === item.value && "bg-purple-100")}
+                    className={cn(
+                      "cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/30", 
+                      value === item.value && "bg-purple-100 dark:bg-purple-900/50"
+                    )}
                   >
                     <Check
                       className={cn("mr-2 h-4 w-4 text-primary", value === item.value ? "opacity-100" : "opacity-0")}
@@ -80,14 +83,14 @@ export default function ComboBox({
             </CommandList>
           {onCreate && (
             <>
-              <div className="border-t border-gray-200" />
+              <div className="border-t border-gray-200 dark:border-gray-700" />
               <CommandGroup>
                 <CommandItem
                   onSelect={() => {
                     onCreate.action()
                     setOpen(false)
                   }}
-                  className="cursor-pointer text-primary font-medium"
+                  className="cursor-pointer text-primary font-medium hover:bg-purple-100 dark:hover:bg-purple-900/30"
                   >
                   <div className="flex items-center w-full p-1">
                     <Plus className="mr-2 h-4 w-4" />

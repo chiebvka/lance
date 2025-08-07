@@ -23,11 +23,11 @@ export async function GET(request: NextRequest) {
       .select('*');
 
     if (userProfile?.organizationId) {
-      // User has organization - get both personal and org notifications
-      query = query.or(`userId.eq.${user.id},organizationId.eq.${userProfile.organizationId}`);
+      // User has organization - get notifications for their organization
+      query = query.eq('organizationId', userProfile.organizationId);
     } else {
       // User doesn't have organization yet - only get personal notifications
-      query = query.eq('userId', user.id);
+      query = query.eq('createdBy', user.id);
     }
 
     const { data: notifications, error } = await query
@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
       return new Date(notification.expiresAt) > now;
     });
 
-    const active = validNotifications.filter(n => n.status === 'active');
-    const archived = validNotifications.filter(n => n.status === 'archived');
+    const active = validNotifications.filter(n => n.state === 'active');
+    const archived = validNotifications.filter(n => n.state === 'archived');
 
     return NextResponse.json({ 
       notifications: active,
@@ -124,8 +124,8 @@ export async function PATCH(request: NextRequest) {
         .update({ "isRead": true });
 
       if (userProfile?.organizationId) {
-        // User has organization - mark both personal and org notifications as read
-        updateQuery = updateQuery.or(`userId.eq.${user.id},organizationId.eq.${userProfile.organizationId}`);
+        // User has organization - mark org notifications as read
+        updateQuery = updateQuery.eq('organizationId', userProfile.organizationId);
       } else {
         // User doesn't have organization yet - only mark personal notifications as read
         updateQuery = updateQuery.eq('userId', user.id);
@@ -140,10 +140,10 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ success: true });
 
     } else if (action === 'archive' && notificationId) {
-      // Archive notification (change status to archived)
+      // Archive notification (change state to archived)
       const { error } = await supabase
         .from('notifications')
-        .update({ status: 'archived' })
+        .update({ state: 'archived' })
         .eq('id', notificationId);
 
       if (error) {
@@ -248,12 +248,12 @@ export async function DELETE(request: NextRequest) {
 
     let archiveQuery = supabase
       .from('notifications')
-      .update({ status: 'archived' })
+      .update({ state: 'archived' })
       .eq('id', notificationId);
 
     if (userProfile?.organizationId) {
-      // User has organization - allow archiving both personal and org notifications
-      archiveQuery = archiveQuery.or(`userId.eq.${user.id},organizationId.eq.${userProfile.organizationId}`);
+      // User has organization - allow archiving org notifications
+      archiveQuery = archiveQuery.eq('organizationId', userProfile.organizationId);
     } else {
       // User doesn't have organization yet - only allow archiving personal notifications
       archiveQuery = archiveQuery.eq('userId', user.id);

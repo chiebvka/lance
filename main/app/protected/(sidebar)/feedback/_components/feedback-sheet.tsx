@@ -15,6 +15,7 @@ import { baseUrl } from '@/utils/universal';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { downloadFeedbackAsCSV } from '@/utils/exportCsv';
+import { Input } from '@/components/ui/input';
 
 type Feedback = {
   id: string
@@ -221,57 +222,57 @@ const canRemind = state === "sent" || state === "overdue"
 
   
 
-<div className="space-y-2">
-  <h3 className="font-semibold text-base">Form Link</h3>
-  {showFormLink ? (
-    <div className="flex items-center gap-2 p-3 border">
-      <input
-        type="text"
-        value={formLink}
-        readOnly
-        className="flex-1 bg-transparent text-sm border-none outline-none"
-      />
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-7 w-7 p-0 border-r-2 rounded-none"
-        onClick={() => {
-          navigator.clipboard.writeText(formLink);
-          toast.success("Link copied to clipboard!");
-        }}
-      >
-        <Copy className="w-3 h-3" />
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-7 w-7 p-0"
-        onClick={() => {
-          // Map feedback to the expected Feedback type for CSV export
-          const mappedFeedback = {
-            name: feedback.name || `Feedback ${feedback.id}`,
-            recepientName: feedback.recepientName || '',
-            recepientEmail: feedback.recepientEmail || '',
-            state: feedback.state || '',
-            created_at: feedback.created_at || '',
-            dueDate: feedback.dueDate || '',
-            filledOn: feedback.filledOn || '',
-            questions: feedback.questions || [],
-            answers: feedback.answers || [],
-          };
-          downloadFeedbackAsCSV(mappedFeedback, `feedback-${feedback.id}.csv`)
-        }}
-        title="Download CSV"
-      >
-        <HardDriveDownload className="w-3 h-3" />
-      </Button>
-    </div>
-  ) : (
-    <div className="p-3 border text-sm text-muted-foreground">
-      Form link will be available once the feedback is sent.
-    </div>
-  )}
-</div>
+      <div className="space-y-2">
+        <h3 className="font-semibold text-base">Form Link</h3>
+        {showFormLink ? (
+          <div className="flex items-center gap-2 p-3 border">
+            <Input
+              type="text"
+              value={formLink}
+              readOnly
+              className="flex-1 bg-transparent text-sm border-none outline-none"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 border-r-2 rounded-none"
+              onClick={() => {
+                navigator.clipboard.writeText(formLink);
+                toast.success("Link copied to clipboard!");
+              }}
+            >
+              <Copy className="w-3 h-3" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0"
+              onClick={() => {
+                // Map feedback to the expected Feedback type for CSV export
+                const mappedFeedback = {
+                  name: feedback.name || `Feedback ${feedback.id}`,
+                  recepientName: feedback.recepientName || '',
+                  recepientEmail: feedback.recepientEmail || '',
+                  state: feedback.state || '',
+                  created_at: feedback.created_at || '',
+                  dueDate: feedback.dueDate || '',
+                  filledOn: feedback.filledOn || '',
+                  questions: feedback.questions || [],
+                  answers: feedback.answers || [],
+                };
+                downloadFeedbackAsCSV(mappedFeedback, `feedback-${feedback.id}.csv`)
+              }}
+              title="Download CSV"
+            >
+              <HardDriveDownload className="w-3 h-3" />
+            </Button>
+          </div>
+        ) : (
+          <div className="p-3 border text-sm text-muted-foreground">
+            Form link will be available once the feedback is sent.
+          </div>
+        )}
+      </div>
 
         {/* Action Buttons */}
         <div className="space-y-3">

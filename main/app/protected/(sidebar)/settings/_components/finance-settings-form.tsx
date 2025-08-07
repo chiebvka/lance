@@ -29,6 +29,9 @@ export default function FinanceSettingsForm() {
       queryClient.setQueryData(['banks'], (old: Bank[] | undefined) => {
         if (!old) return old;
         
+        // Check if this is the first bank
+        const isFirstBank = old.length === 0;
+        
         const optimisticBank: Bank = {
           id: crypto.randomUUID(), // Proper UUID for optimistic update
           accountName: newBank.accountName || null,
@@ -43,7 +46,8 @@ export default function FinanceSettingsForm() {
           bankAddress: newBank.bankAddress || null,
           country: newBank.country || null,
           currency: newBank.currency || null,
-          isDefault: newBank.isDefault || false,
+          isDefault: isFirstBank, // First bank is default
+          type: 'bankOther', // Default type for optimistic update
           stripePaymentLink: newBank.stripePaymentLink || null,
           paypalPaymentLink: newBank.paypalPaymentLink || null,
           organizationId: null,
@@ -138,6 +142,112 @@ export default function FinanceSettingsForm() {
     },
   });
 
+  // Mutation for simple bank updates (like default status)
+  const updateBankSimpleMutation = useMutation({
+    mutationFn: async ({ id, ...updateData }: { id: string; isDefault?: boolean }) => {
+      const response = await axios.patch(`/api/banks/${id}`, updateData);
+      return response.data;
+    },
+    onMutate: async ({ id, ...updateData }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['banks'] });
+
+      // Snapshot the previous value
+      const previousBanks = queryClient.getQueryData(['banks']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['banks'], (old: Bank[] | undefined) => {
+        if (!old) return old;
+        return old.map(bank => 
+          bank.id === id 
+            ? { ...bank, ...updateData, updatedAt: new Date().toISOString() }
+            : bank
+        );
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousBanks };
+    },
+    onSuccess: (data) => {
+      toast.success("Default status updated successfully!", {
+        description: "Your default payment method has been updated.",
+      });
+    },
+    onError: (error: any, variables, context) => {
+      // Rollback to the previous value
+      if (context?.previousBanks) {
+        queryClient.setQueryData(['banks'], context.previousBanks);
+      }
+      
+      console.error("Error updating bank:", error);
+      let errorMessage = "Failed to update default status. Please try again.";
+      if (error.response?.status === 429) {
+        errorMessage = "Too many requests. Please wait a moment and try again.";
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data.message || "Cannot remove default status. At least one payment method must remain as default.";
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      toast.error("Update failed", { description: errorMessage });
+    },
+    onSettled: () => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ['banks'] });
+    },
+  });
+
+  // Mutation for simple bank edits (like name, account number, etc.)
+  const editBankSimpleMutation = useMutation({
+    mutationFn: async ({ id, ...editData }: { id: string; accountName?: string; accountNumber?: string; routingNumber?: string; institutionNumber?: string; transitNumber?: string; iban?: string; swiftCode?: string; sortCode?: string; bankName?: string; bankAddress?: string; country?: string; currency?: string; stripePaymentLink?: string; paypalPaymentLink?: string; walletName?: string; cryptoType?: string; network?: string; walletAddress?: string; paymentLink?: string }) => {
+      const response = await axios.patch(`/api/banks/${id}`, editData);
+      return response.data;
+    },
+    onMutate: async ({ id, ...editData }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['banks'] });
+
+      // Snapshot the previous value
+      const previousBanks = queryClient.getQueryData(['banks']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['banks'], (old: Bank[] | undefined) => {
+        if (!old) return old;
+        return old.map(bank => 
+          bank.id === id 
+            ? { ...bank, ...editData, updatedAt: new Date().toISOString() }
+            : bank
+        );
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousBanks };
+    },
+    onSuccess: (data) => {
+      toast.success("Bank account updated successfully!", {
+        description: "Your payment method has been updated.",
+      });
+    },
+    onError: (error: any, variables, context) => {
+      // Rollback to the previous value
+      if (context?.previousBanks) {
+        queryClient.setQueryData(['banks'], context.previousBanks);
+      }
+      
+      console.error("Error updating bank:", error);
+      let errorMessage = "Failed to update bank account. Please try again.";
+      if (error.response?.status === 429) {
+        errorMessage = "Too many requests. Please wait a moment and try again.";
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      toast.error("Update failed", { description: errorMessage });
+    },
+    onSettled: () => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ['banks'] });
+    },
+  });
+
   // Mutation for deleting a bank account
   const deleteBankMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -187,45 +297,102 @@ export default function FinanceSettingsForm() {
   });
 
   // Convert banks to the format expected by SettingsList
-  const accounts = banks?.map(bank => ({
-    id: bank.id.toString(),
-    type: 'bank' as const,
-    accountName: bank.accountName || '',
-    accountNumber: bank.accountNumber || undefined,
-    routingNumber: bank.routingNumber || undefined,
-    institutionNumber: bank.institutionNumber || undefined,
-    transitNumber: bank.transitNumber || undefined,
-    iban: bank.iban || undefined,
-    swiftCode: bank.swiftCode || undefined,
-    sortCode: bank.sortCode || undefined,
-    bankName: bank.bankName || '',
-    bankAddress: bank.bankAddress || undefined,
-    country: bank.country || '',
-    currency: bank.currency || '',
-    isDefault: bank.isDefault || false,
-    lastUpdated: bank.updatedAt ? new Date(bank.updatedAt).toLocaleDateString() : 'Never'
-  })) || [];
+  const accounts = banks?.map(bank => {
+    // Determine the account type based on the database type
+    let accountType: 'bank' | 'crypto' | 'stripe' | 'paypal';
+    let accountData: any = {
+      id: bank.id.toString(),
+      isDefault: bank.isDefault || false,
+      lastUpdated: bank.updatedAt ? new Date(bank.updatedAt).toLocaleDateString() : 'Never'
+    };
+
+    if (bank.type === 'crypto') {
+      accountType = 'crypto';
+      accountData = {
+        ...accountData,
+        type: accountType,
+        walletName: bank.accountName || '',
+        cryptoType: bank.routingNumber || '', // crypto type is stored in routingNumber
+        network: bank.institutionNumber || '', // network is stored in institutionNumber
+        walletAddress: bank.accountNumber || '', // wallet address is stored in accountNumber
+      };
+    } else if (bank.type === 'stripe') {
+      accountType = 'stripe';
+      accountData = {
+        ...accountData,
+        type: accountType,
+        accountName: bank.accountName || '',
+        paymentLink: bank.stripePaymentLink || '',
+        currency: 'USD',
+      };
+    } else if (bank.type === 'paypal') {
+      accountType = 'paypal';
+      accountData = {
+        ...accountData,
+        type: accountType,
+        accountName: bank.accountName || '',
+        paymentLink: bank.paypalPaymentLink || '',
+        currency: 'USD',
+      };
+    } else {
+      // All bank types (bankUs, bankCanada, bankUk, bankEurope, bankOther)
+      accountType = 'bank';
+      accountData = {
+        ...accountData,
+        type: accountType,
+        accountName: bank.accountName || '',
+        accountNumber: bank.accountNumber || undefined,
+        routingNumber: bank.routingNumber || undefined,
+        institutionNumber: bank.institutionNumber || undefined,
+        transitNumber: bank.transitNumber || undefined,
+        iban: bank.iban || undefined,
+        swiftCode: bank.swiftCode || undefined,
+        sortCode: bank.sortCode || undefined,
+        bankName: bank.bankName || '',
+        bankAddress: bank.bankAddress || undefined,
+        country: bank.country || '',
+        currency: bank.currency || '',
+      };
+    }
+
+    return accountData;
+  }) || [];
 
   const handleAddAccount = async (accountInput: any) => {
     // For crypto wallets, use walletName as accountName
     if (accountInput.type === 'crypto') {
       const bankData: BankInput = {
-        accountName: accountInput.walletName, // Use walletName as accountName
-        bankName: `${accountInput.cryptoType} Wallet`, // Create a bank name from crypto type
-        country: 'CRYPTO',
-        currency: 'USD',
-        isDefault: false, // Always start as false
-        // Store crypto-specific data in other fields
-        accountNumber: accountInput.walletAddress,
-        routingNumber: accountInput.cryptoType,
-        institutionNumber: accountInput.network,
-        // You could also store additional crypto data in other fields if needed
+        accountType: 'crypto',
+        walletName: accountInput.walletName, // Use walletName as accountName
+        cryptoType: accountInput.cryptoType,
+        network: accountInput.network,
+        walletAddress: accountInput.walletAddress,
+        // Let the API handle default logic
+      };
+
+      createBankMutation.mutate(bankData);
+    } else if (accountInput.type === 'stripe') {
+      const bankData: BankInput = {
+        accountType: 'stripe',
+        accountName: accountInput.accountName,
+        paymentLink: accountInput.paymentLink,
+        // Let the API handle default logic
+      };
+
+      createBankMutation.mutate(bankData);
+    } else if (accountInput.type === 'paypal') {
+      const bankData: BankInput = {
+        accountType: 'paypal',
+        accountName: accountInput.accountName,
+        paymentLink: accountInput.paymentLink,
+        // Let the API handle default logic
       };
 
       createBankMutation.mutate(bankData);
     } else {
-      // For other account types, ensure isDefault is false by default
+      // For bank accounts, let the API handle default logic
       const bankData: BankInput = {
+        accountType: 'bank',
         accountName: accountInput.accountName,
         accountNumber: accountInput.accountNumber,
         routingNumber: accountInput.routingNumber,
@@ -238,7 +405,6 @@ export default function FinanceSettingsForm() {
         bankAddress: accountInput.bankAddress,
         country: accountInput.country,
         currency: accountInput.currency,
-        isDefault: false, // Always start as false
         stripePaymentLink: accountInput.stripePaymentLink,
         paypalPaymentLink: accountInput.paypalPaymentLink
       };
@@ -259,10 +425,10 @@ export default function FinanceSettingsForm() {
     
     if (currentBank?.isDefault) {
       // If it's already default, try to turn it off
-      updateBankMutation.mutate({ id: bankId, isDefault: false });
+      updateBankSimpleMutation.mutate({ id: bankId, isDefault: false });
     } else {
       // If it's not default, set it as default
-      updateBankMutation.mutate({ id: bankId, isDefault: true });
+      updateBankSimpleMutation.mutate({ id: bankId, isDefault: true });
     }
   };
 
@@ -270,46 +436,42 @@ export default function FinanceSettingsForm() {
     // This could be used to refresh account data from external services
     // For now, we'll just update the timestamp
     const bankId = id;
-    updateBankMutation.mutate({ id: bankId });
+    updateBankMutation.mutate({ id: bankId, accountType: 'bank' });
   };
 
   const handleEditAccount = async (id: string, accountInput: any) => {
-    // For crypto wallets, use walletName as accountName
+    // For simple edits, use the simple mutation
+    const editData: any = {};
+    
+    // Map the form data to the correct fields based on account type
     if (accountInput.type === 'crypto') {
-      const bankData: BankInput = {
-        accountName: accountInput.walletName, // Use walletName as accountName
-        bankName: `${accountInput.cryptoType} Wallet`, // Create a bank name from crypto type
-        country: 'CRYPTO',
-        currency: 'USD',
-        // Store crypto-specific data in other fields
-        accountNumber: accountInput.walletAddress,
-        routingNumber: accountInput.cryptoType,
-        institutionNumber: accountInput.network,
-        // You could also store additional crypto data in other fields if needed
-      };
-
-      updateBankMutation.mutate({ id, ...bankData });
+      editData.accountName = accountInput.walletName;
+      editData.routingNumber = accountInput.cryptoType; // crypto type
+      editData.institutionNumber = accountInput.network; // network
+      editData.accountNumber = accountInput.walletAddress; // wallet address
+    } else if (accountInput.type === 'stripe') {
+      editData.accountName = accountInput.accountName;
+      editData.stripePaymentLink = accountInput.paymentLink;
+    } else if (accountInput.type === 'paypal') {
+      editData.accountName = accountInput.accountName;
+      editData.paypalPaymentLink = accountInput.paymentLink;
     } else {
-      // For other account types, ensure isDefault is false by default
-      const bankData: BankInput = {
-        accountName: accountInput.accountName,
-        accountNumber: accountInput.accountNumber,
-        routingNumber: accountInput.routingNumber,
-        institutionNumber: accountInput.institutionNumber,
-        transitNumber: accountInput.transitNumber,
-        iban: accountInput.iban,
-        swiftCode: accountInput.swiftCode,
-        sortCode: accountInput.sortCode,
-        bankName: accountInput.bankName,
-        bankAddress: accountInput.bankAddress,
-        country: accountInput.country,
-        currency: accountInput.currency,
-        stripePaymentLink: accountInput.stripePaymentLink,
-        paypalPaymentLink: accountInput.paypalPaymentLink
-      };
-
-      updateBankMutation.mutate({ id, ...bankData });
+      // Bank accounts
+      editData.accountName = accountInput.accountName;
+      editData.accountNumber = accountInput.accountNumber;
+      editData.routingNumber = accountInput.routingNumber;
+      editData.institutionNumber = accountInput.institutionNumber;
+      editData.transitNumber = accountInput.transitNumber;
+      editData.iban = accountInput.iban;
+      editData.swiftCode = accountInput.swiftCode;
+      editData.sortCode = accountInput.sortCode;
+      editData.bankName = accountInput.bankName;
+      editData.bankAddress = accountInput.bankAddress;
+      editData.country = accountInput.country;
+      editData.currency = accountInput.currency;
     }
+
+    editBankSimpleMutation.mutate({ id, ...editData });
   };
 
 
@@ -331,7 +493,7 @@ export default function FinanceSettingsForm() {
       onSetDefault={handleSetDefault}
       onRefreshAccount={handleRefreshAccount}
       onEditAccount={handleEditAccount}
-      loading={createBankMutation.isPending || updateBankMutation.isPending || deleteBankMutation.isPending}
+      loading={createBankMutation.isPending || updateBankMutation.isPending || updateBankSimpleMutation.isPending || editBankSimpleMutation.isPending || deleteBankMutation.isPending}
     />
   );
 }

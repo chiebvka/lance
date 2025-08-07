@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const customerSchema = z.object({
     name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-    email: z.string().email({ message: "Invalid email address" }),
+    email: z.string().email({ message: "Valid email address is required" }),
     // Optional fields
     website: z.string().optional(),
     taxId: z.string().optional(),

@@ -5,20 +5,24 @@ import { cn } from '@/lib/utils'
 import CommandFilter from '../filtering/command-filter'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Bell, StickyNote, Search, Command, Settings, ScanSearch } from 'lucide-react'
+import { Bell, StickyNote, Search, Command, Settings, ScanSearch, Archive, ArchiveX } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tabs, TabsContent, HorizontalTabsList, HorizontalTabsTrigger } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 import { useTrialCountdown } from '@/hooks/use-trial-countdown'
 import { useNotifications } from '@/hooks/use-notifications'
+import { formatDistanceToNow } from 'date-fns'
 
 type Props = {}
 
 export default function SpotlightCommand({}: Props) {
   const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('active');
   const trialStatus = useTrialCountdown();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, archivedNotifications, unreadCount, markAsRead, markAllAsRead, archiveNotification } = useNotifications();
 
   useEffect(() => {
     // Add keyboard shortcut
@@ -33,17 +37,13 @@ export default function SpotlightCommand({}: Props) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Format notification time
+  // Format notification time using date-fns
   const getTimeAgo = (dateString: string) => {
-    const now = new Date();
-    const notificationDate = new Date(dateString);
-    const diffInHours = Math.floor((now.getTime() - notificationDate.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return "Now";
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    return `${diffInDays}d ago`;
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch (error) {
+      return 'Unknown time';
+    }
   };
 
   // Get notification type badge color
@@ -74,6 +74,81 @@ export default function SpotlightCommand({}: Props) {
     }
     return "outline";
   };
+
+  const handleNotificationClick = (notification: any) => {
+    if (!notification.isRead) {
+      markAsRead(notification.id);
+    }
+    if (notification.actionUrl) {
+      window.location.href = notification.actionUrl;
+    }
+  };
+
+  const handleArchiveClick = (e: React.MouseEvent, notificationId: string) => {
+    e.stopPropagation();
+    archiveNotification(notificationId);
+  };
+
+  const renderNotificationItem = (notification: any, isArchived: boolean = false) => (
+    <DropdownMenuItem 
+      key={notification.id} 
+      className="flex flex-col items-start p-3 space-y-1 cursor-pointer"
+      onClick={() => handleNotificationClick(notification)}
+    >
+      <div className="flex items-center justify-between w-full">
+        <span className={cn(
+          "text-sm",
+          !notification.isRead ? "font-medium" : "font-normal"
+        )}>
+          {notification.title}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {getTimeAgo(notification.created_at)}
+          </span>
+          {!isArchived && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-4 w-4 p-0 hover:bg-bexoni/10 bg-bexoni/5 rounded transition-colors"
+                    onClick={(e) => handleArchiveClick(e, notification.id)}
+                  >
+                    <Archive className="h-3 w-3 text-bexoni" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Archive notification</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      </div>
+      {notification.message && (
+        <p className="text-xs text-muted-foreground line-clamp-2 w-full">
+          {notification.message}
+        </p>
+      )}
+      <div className="flex items-center justify-between w-full">
+        <Badge 
+          variant="secondary" 
+          className={cn(
+            "text-xs",
+            getNotificationTypeColor(notification.type),
+            "text-white"
+          )}
+        >
+          {notification.type.replace('_', ' ')}
+        </Badge>
+        {!notification.isRead && !isArchived && (
+          <div className="w-2 h-2 rounded-full bg-blue-500" />
+        )}
+      </div>
+    </DropdownMenuItem>
+  );
 
   return (
     <>
@@ -123,70 +198,45 @@ export default function SpotlightCommand({}: Props) {
                 </Link>
               </div>
             </div>
-            <div className="max-h-80 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  No notifications
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <HorizontalTabsList className="w-full">
+                <HorizontalTabsTrigger value="active" className="flex-1">
+                  Inbox
+                </HorizontalTabsTrigger>
+                <HorizontalTabsTrigger value="archived" className="flex-1">
+                  Archive
+                </HorizontalTabsTrigger>
+              </HorizontalTabsList>
+              
+              <TabsContent value="active" className="mt-2">
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      No active notifications
+                    </div>
+                  ) : (
+                    notifications.slice(0, 15).map((notification) => 
+                      renderNotificationItem(notification, false)
+                    )
+                  )}
                 </div>
-              ) : (
-                notifications.slice(0, 5).map((notification) => (
-                  <DropdownMenuItem 
-                    key={notification.id} 
-                    className="flex flex-col items-start p-3 space-y-1 cursor-pointer"
-                    onClick={() => {
-                      if (!notification.isRead) {
-                        markAsRead(notification.id);
-                      }
-                      if (notification.actionUrl) {
-                        window.location.href = notification.actionUrl;
-                      }
-                    }}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className={cn(
-                        "text-sm",
-                        !notification.isRead ? "font-medium" : "font-normal"
-                      )}>
-                        {notification.title}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {getTimeAgo(notification.created_at)}
-                      </span>
+              </TabsContent>
+              
+              <TabsContent value="archived" className="mt-2">
+                <div className="max-h-80 overflow-y-auto">
+                  {archivedNotifications.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      No archived notifications
                     </div>
-                    {notification.message && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 w-full">
-                        {notification.message}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between w-full">
-                      <Badge 
-                        variant="secondary" 
-                        className={cn(
-                          "text-xs",
-                          getNotificationTypeColor(notification.type),
-                          "text-white"
-                        )}
-                      >
-                        {notification.type.replace('_', ' ')}
-                      </Badge>
-                      {!notification.isRead && (
-                        <div className="w-2 h-2 rounded-full bg-blue-500" />
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                ))
-              )}
-            </div>
-            {notifications.length > 0 && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-center text-sm text-muted-foreground">
-                  <Link href="/protected/notifications" className="w-full">
-                    View all notifications
-                  </Link>
-                </DropdownMenuItem>
-              </>
-            )}
+                  ) : (
+                    archivedNotifications.slice(0, 15).map((notification) => 
+                      renderNotificationItem(notification, true)
+                    )
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           </DropdownMenuContent>
         </DropdownMenu>
 

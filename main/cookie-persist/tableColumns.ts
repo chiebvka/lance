@@ -9,6 +9,7 @@ const DEFAULT_COLUMNS: Record<string, string[]> = {
   projects: ['name', 'description', 'type', 'budget', 'state', 'status', 'paymentType'],
   customers: ['name', 'email', 'company', 'phone', 'status'], // Example for future use
   feedbacks: ['name', 'recepientName', 'recipientEmail', 'state', 'dueDate', 'filledOn'],
+  invoices: ['invoiceNumber', 'recepientName', 'totalAmount', 'state', 'issueDate', 'dueDate'],
   // Add more tables as needed
 };
 

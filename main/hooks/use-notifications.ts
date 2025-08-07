@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 export interface Notification {
   id: string;
   organizationId: string;
-  createdBy: string;
+  userId: string | null;
   title: string;
   message: string | null;
   type: 'info' | 'warning' | 'success' | 'error' | 'trial_reminder';
@@ -19,7 +19,7 @@ export interface Notification {
   created_at: string;
   updated_at: string;
   expiresAt: string | null;
-  status: 'active' | 'archived';
+  state: 'active' | 'archived';
 }
 
 export interface OrganizationNotificationSettings {
@@ -73,11 +73,11 @@ export function useNotifications(): UseNotificationsReturn {
         .select('*');
 
       if (userProfile?.organizationId) {
-        // User has organization - get both personal and org notifications
-        query = query.or(`createdBy.eq.${user.id},organizationId.eq.${userProfile.organizationId}`);
+        // User has organization - get notifications for their organization
+        query = query.eq('organizationId', userProfile.organizationId);
       } else {
         // User doesn't have organization yet - only get personal notifications
-        query = query.eq('createdBy', user.id);
+        query = query.eq('userId', user.id);
       }
 
       const { data, error: fetchError } = await query
@@ -95,8 +95,8 @@ export function useNotifications(): UseNotificationsReturn {
         return new Date(notification.expiresAt) > now;
       });
 
-      const active = validNotifications.filter(n => n.status === 'active');
-      const archived = validNotifications.filter(n => n.status === 'archived');
+      const active = validNotifications.filter(n => n.state === 'active');
+      const archived = validNotifications.filter(n => n.state === 'archived');
 
       setNotifications(active);
       setArchivedNotifications(archived);
@@ -147,11 +147,11 @@ export function useNotifications(): UseNotificationsReturn {
         .update({ "isRead": true });
 
       if (userProfile?.organizationId) {
-        // User has organization - mark both personal and org notifications as read
-        updateQuery = updateQuery.or(`createdBy.eq.${user.id},organizationId.eq.${userProfile.organizationId}`);
+        // User has organization - mark org notifications as read
+        updateQuery = updateQuery.eq('organizationId', userProfile.organizationId);
       } else {
         // User doesn't have organization yet - only mark personal notifications as read
-        updateQuery = updateQuery.eq('createdBy', user.id);
+        updateQuery = updateQuery.eq('userId', user.id);
       }
 
       const { error } = await updateQuery.eq('"isRead"', false);
@@ -171,7 +171,7 @@ export function useNotifications(): UseNotificationsReturn {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ status: 'archived' })
+        .update({ state: 'archived' })
         .eq('id', notificationId);
 
       if (error) throw error;
