@@ -405,9 +405,9 @@ export async function DELETE(
     }
 
     // Only allow deletion of draft and unassigned invoices
-    if (!["draft", "unassigned"].includes(existingInvoice.state)) {
-      return NextResponse.json({ error: "Only draft and unassigned invoices can be deleted" }, { status: 400 });
-    }
+    // if (!["draft", "unassigned"].includes(existingInvoice.state)) {
+    //   return NextResponse.json({ error: "Only draft and unassigned invoices can be deleted" }, { status: 400 });
+    // }
 
     const { error: invoiceDeleteError } = await supabase
       .from("invoices")

@@ -192,16 +192,16 @@ export default function FeedbackBuilder({}: Props) {
         setEditingQuestion(newQuestion.id)
       }
     
-      const updateQuestion = (id: string, updates: Partial<Question>) => {
-        setCurrentForm(currentForm.map((q) => (q.id === id ? { ...q, ...updates } : q)))
-      }
+    const updateQuestion = (id: string, updates: Partial<Question>) => {
+      setCurrentForm(currentForm.map((q) => (q.id === id ? { ...q, ...updates } : q)))
+    }
     
-      const deleteQuestion = (id: string) => {
-        setCurrentForm(currentForm.filter((q) => q.id !== id))
-        if (editingQuestion === id) {
-          setEditingQuestion("")
-        }
+    const deleteQuestion = (id: string) => {
+      setCurrentForm(currentForm.filter((q) => q.id !== id))
+      if (editingQuestion === id) {
+        setEditingQuestion("")
       }
+    }
 
     // Helper function to transform question data structure from DB
     const transformQuestionFromDB = (dbQuestion: any): Question => {
@@ -215,7 +215,7 @@ export default function FeedbackBuilder({}: Props) {
         }
     }
     
-      const loadTemplate = (templateId: string) => {
+    const loadTemplate = (templateId: string) => {
         const template = templates.find((t) => t.id === templateId)
         if (template) {
             // Transform questions from DB structure to frontend structure
@@ -266,9 +266,9 @@ export default function FeedbackBuilder({}: Props) {
                 setDueDate("");
             }
         }
-      }
+    }
     
-      const resetForm = () => {
+    const resetForm = () => {
         setCurrentForm([])
         setFormName("")
         setSelectedTemplate("")
@@ -587,34 +587,34 @@ export default function FeedbackBuilder({}: Props) {
     }
 
     // Template delete functions
-      const handleDeleteTemplate = (templateId: string) => {
-        setTemplateToDelete(templateId)
-        setShowDeleteTemplateModal(true)
+    const handleDeleteTemplate = (templateId: string) => {
+      setTemplateToDelete(templateId)
+      setShowDeleteTemplateModal(true)
     }
 
     const confirmDeleteTemplate = async () => {
-        try {
-            setDeletingTemplate(true)
-            const response = await axios.delete(`/api/feedback?templateId=${templateToDelete}`)
-            
-            if (response.data.success) {
-                toast.success('Template deleted successfully!')
-                
-                // Remove from local state and reload templates
-                setTemplates(templates.filter((t) => t.id !== templateToDelete))
-        if (selectedTemplate === templateToDelete) {
-          resetForm()
-        }
-                console.log('Template deleted successfully')
-            }
-        } catch (error) {
-            console.error('Error deleting template:', error)
-            toast.error('Failed to delete template. Please try again.')
-        } finally {
-            setDeletingTemplate(false)
-            setShowDeleteTemplateModal(false)
-        setTemplateToDelete("")
-        }
+      try {
+          setDeletingTemplate(true)
+          const response = await axios.delete(`/api/feedback?templateId=${templateToDelete}`)
+          
+          if (response.data.success) {
+              toast.success('Template deleted successfully!')
+              
+              // Remove from local state and reload templates
+              setTemplates(templates.filter((t) => t.id !== templateToDelete))
+      if (selectedTemplate === templateToDelete) {
+        resetForm()
+      }
+              console.log('Template deleted successfully')
+          }
+      } catch (error) {
+          console.error('Error deleting template:', error)
+          toast.error('Failed to delete template. Please try again.')
+      } finally {
+          setDeletingTemplate(false)
+          setShowDeleteTemplateModal(false)
+      setTemplateToDelete("")
+      }
     }
 
     // Draft delete functions
@@ -624,34 +624,34 @@ export default function FeedbackBuilder({}: Props) {
     }
 
     const confirmDeleteDraft = async () => {
-        try {
-            setDeletingDraft(true)
-            const response = await axios.post('/api/feedback/create', {
-                action: 'delete_draft',
-                draftId: draftToDelete
-            })
-            
-            if (response.data.success) {
-                toast.success('Draft deleted successfully!')
-                
-                // Remove from local state and reload drafts
-                setDrafts(drafts.filter((d) => d.id !== draftToDelete))
-                if (selectedDraft === draftToDelete) {
-                    resetForm()
-                }
-                console.log('Draft deleted successfully')
-            }
-        } catch (error) {
-            console.error('Error deleting draft:', error)
-            toast.error('Failed to delete draft. Please try again.')
-        } finally {
-            setDeletingDraft(false)
-            setShowDeleteDraftModal(false)
-            setDraftToDelete("")
-        }
+      try {
+          setDeletingDraft(true)
+          const response = await axios.post('/api/feedback/create', {
+              action: 'delete_draft',
+              draftId: draftToDelete
+          })
+          
+          if (response.data.success) {
+              toast.success('Draft deleted successfully!')
+              
+              // Remove from local state and reload drafts
+              setDrafts(drafts.filter((d) => d.id !== draftToDelete))
+              if (selectedDraft === draftToDelete) {
+                  resetForm()
+              }
+              console.log('Draft deleted successfully')
+          }
+      } catch (error) {
+          console.error('Error deleting draft:', error)
+          toast.error('Failed to delete draft. Please try again.')
+      } finally {
+          setDeletingDraft(false)
+          setShowDeleteDraftModal(false)
+          setDraftToDelete("")
       }
+    }
     
-      const editingQuestionData = currentForm.find((q) => q.id === editingQuestion)
+    const editingQuestionData = currentForm.find((q) => q.id === editingQuestion)
 
     // Prepare dropdown data
     const customerOptions = customers.map(customer => ({
@@ -668,88 +668,88 @@ export default function FeedbackBuilder({}: Props) {
         searchValue: `${project.name} ${project.customerName || ''}`
     }))
     
-      const renderPreviewQuestion = (question: Question, index: number) => {
-        return (
-          <div key={question.id} className="space-y-3">
-            <div className="flex items-start gap-2">
-              <Label className="text-lg font-medium  flex-1">
-                {index + 1}. {question.text}
-              </Label>
-              {question.required && (
-                <div className="flex items-center gap-1">
-                  <span className="text-red-400 text-lg font-bold">*</span>
-                  <span className="text-xs text-red-300 px-2 py-1 rounded">Required</span>
-                </div>
-              )}
-            </div>
-    
-            {question.type === "yes_no" && (
-              <div className="flex gap-4">
-                <label className="flex items-center space-x-2">
-                  <input type="radio" name={`question-${question.id}`} className="text-primary" />
-                  <span>Yes</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="radio" name={`question-${question.id}`} className="text-primary" />
-                  <span>No</span>
-                </label>
+    const renderPreviewQuestion = (question: Question, index: number) => {
+      return (
+        <div key={question.id} className="space-y-3">
+          <div className="flex items-start gap-2">
+            <Label className="text-lg font-medium  flex-1">
+              {index + 1}. {question.text}
+            </Label>
+            {question.required && (
+              <div className="flex items-center gap-1">
+                <span className="text-red-400 text-lg font-bold">*</span>
+                <span className="text-xs text-red-300 px-2 py-1 rounded">Required</span>
               </div>
-            )}
-    
-            {question.type === "multiple_choice" && (
-              <div className="space-y-3">
-                {question.options?.map((option, optIndex) => (
-                  <div key={optIndex} className="flex items-center space-x-3">
-                    <Checkbox 
-                      id={`question-${question.id}-option-${optIndex}`}
-                      className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                    />
-                    <Label 
-                      htmlFor={`question-${question.id}-option-${optIndex}`}
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      {option}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            )}
-    
-            {question.type === "text" && (
-              <Textarea placeholder="Your answer..." className="" />
-            )}
-    
-            {question.type === "rating" && (
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((rating) => (
-                  <button key={rating} className="p-2 rounded">
-                    <Star className="h-6 w-6 hover:text-yellow-400" />
-                  </button>
-                ))}
-              </div>
-            )}
-    
-            {question.type === "dropdown" && (
-              <Select>
-                <SelectTrigger className="text-white">
-                  <SelectValue placeholder="Select an option" />
-                </SelectTrigger>
-                <SelectContent>
-                  {question.options?.map((option, optIndex) => (
-                    <SelectItem key={optIndex} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-    
-            {question.type === "number" && (
-              <Input type="number" placeholder="Enter a number" className="text-white" />
             )}
           </div>
-        )
-      }
+  
+          {question.type === "yes_no" && (
+            <div className="flex gap-4">
+              <label className="flex items-center space-x-2">
+                <input type="radio" name={`question-${question.id}`} className="text-primary" />
+                <span>Yes</span>
+              </label>
+              <label className="flex items-center space-x-2">
+                <input type="radio" name={`question-${question.id}`} className="text-primary" />
+                <span>No</span>
+              </label>
+            </div>
+          )}
+  
+          {question.type === "multiple_choice" && (
+            <div className="space-y-3">
+              {question.options?.map((option, optIndex) => (
+                <div key={optIndex} className="flex items-center space-x-3">
+                  <Checkbox 
+                    id={`question-${question.id}-option-${optIndex}`}
+                    className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  />
+                  <Label 
+                    htmlFor={`question-${question.id}-option-${optIndex}`}
+                    className="text-sm font-normal cursor-pointer"
+                  >
+                    {option}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          )}
+  
+          {question.type === "text" && (
+            <Textarea placeholder="Your answer..." className="" />
+          )}
+  
+          {question.type === "rating" && (
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((rating) => (
+                <button key={rating} className="p-2 rounded">
+                  <Star className="h-6 w-6 hover:text-yellow-400" />
+                </button>
+              ))}
+            </div>
+          )}
+  
+          {question.type === "dropdown" && (
+            <Select>
+              <SelectTrigger className="text-white">
+                <SelectValue placeholder="Select an option" />
+              </SelectTrigger>
+              <SelectContent>
+                {question.options?.map((option, optIndex) => (
+                  <SelectItem key={optIndex} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+  
+          {question.type === "number" && (
+            <Input type="number" placeholder="Enter a number" className="text-white" />
+          )}
+        </div>
+      )
+    }
     
     if (loading) {
         return (

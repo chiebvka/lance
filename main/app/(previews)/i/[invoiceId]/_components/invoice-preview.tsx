@@ -49,7 +49,6 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     fetchInvoiceData();
@@ -68,20 +67,7 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
     }
   };
 
-  const handleDownload = async () => {
-    if (!invoiceData) return;
-    
-    try {
-      setDownloading(true);
-      // Here you would implement the PDF download logic
-      // For now, we'll just show a toast
-      toast.success("Download functionality coming soon!");
-    } catch (error) {
-      toast.error("Failed to download invoice");
-    } finally {
-      setDownloading(false);
-    }
-  };
+
 
   const handleCopyPaymentDetails = async () => {
     if (!invoiceData?.paymentDetails) return;
@@ -232,7 +218,7 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <h3 className="font-semibold  mb-2">From:</h3>
-                <div className="bg-purple-50 p-4 rounded-none border border-gray-200">
+                <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-none border border-gray-200">
                   <p className="font-medium">{invoiceData.organizationName}</p>
                   {/* {invoiceData.organizationEmail && (
                     <p className="text-gray-600 text-sm">{invoiceData.organizationEmail}</p>
@@ -241,7 +227,7 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
               </div>
               <div>
                 <h3 className="font-semibold  mb-2">To:</h3>
-                <div className="bg-purple-50 p-4 rounded-none border border-gray-200">
+                <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-none border border-gray-200">
                   <p className="font-medium">{invoiceData.customerName}</p>
                 </div>
               </div>
@@ -250,15 +236,15 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
             {/* Invoice Items */}
             {invoiceData.invoiceDetails && invoiceData.invoiceDetails.length > 0 && (
               <div>
-                <h3 className="font-semibold text-gray-700 mb-4">Invoice Items</h3>
+                <h3 className="font-semibold  mb-4">Invoice Items</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-medium text-gray-700">Description</th>
-                        <th className="text-right py-3 px-4 font-medium text-gray-700">Quantity</th>
-                        <th className="text-right py-3 px-4 font-medium text-gray-700">Price</th>
-                        <th className="text-right py-3 px-4 font-medium text-gray-700">Total</th>
+                        <th className="text-left py-3 px-4 font-medium ">Description</th>
+                        <th className="text-right py-3 px-4 font-medium ">Quantity</th>
+                        <th className="text-right py-3 px-4 font-medium ">Price</th>
+                        <th className="text-right py-3 px-4 font-medium ">Total</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -280,27 +266,27 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
             <div className="flex justify-end">
               <div className="w-full md:w-80 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="">Subtotal:</span>
                   <span className="font-medium">{formatCurrency(invoiceData.subTotalAmount, invoiceData.currency)}</span>
                 </div>
                 
                 {invoiceData.hasDiscount && invoiceData.discount > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Discount ({invoiceData.discount}%):</span>
+                    <span className="">Discount ({invoiceData.discount}%):</span>
                     <span className="font-medium text-green-600">-{formatCurrency((invoiceData.subTotalAmount * invoiceData.discount) / 100, invoiceData.currency)}</span>
                   </div>
                 )}
                 
                 {invoiceData.hasVat && invoiceData.vatRate > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">VAT ({invoiceData.vatRate}%):</span>
+                    <span className="">VAT ({invoiceData.vatRate}%):</span>
                     <span className="font-medium">{formatCurrency((invoiceData.subTotalAmount * invoiceData.vatRate) / 100, invoiceData.currency)}</span>
                   </div>
                 )}
                 
                 {invoiceData.hasTax && invoiceData.taxRate > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Tax ({invoiceData.taxRate}%):</span>
+                    <span className="">Tax ({invoiceData.taxRate}%):</span>
                     <span className="font-medium">{formatCurrency((invoiceData.subTotalAmount * invoiceData.taxRate) / 100, invoiceData.currency)}</span>
                   </div>
                 )}
@@ -316,7 +302,7 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
 
                         {/* Payment Details */}
             {invoiceData.paymentDetails && (
-              <div className="bg-purple-50 p-4 rounded-none relative">
+              <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-none relative">
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
                   <DollarSign className="w-4 h-4" />
                   Payment Details
@@ -337,7 +323,7 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
 
             {/* Notes */}
             {invoiceData.notes && (
-              <div className="bg-purple-50 p-4 rounded-lg">
+              <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-lg">
                 <h3 className="font-semibold  mb-2">Notes</h3>
                 <pre className="whitespace-pre-wrap text-xs bg-background p-2 rounded-none border">{invoiceData.notes}</pre>
               </div>
@@ -346,22 +332,54 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
             {/* Download Button */}
             <div className="flex justify-center pt-4">
               <Button
-                // onClick={handleDownload}
-                // disabled={downloading}
                 onClick={async () => {
+                  if (!invoiceData) return;
+                  
                   try {
                     console.log('Invoice data for PDF:', invoiceData);
                     console.log('Invoice details:', invoiceData.invoiceDetails);
                     
-                    const invoiceData: InvoicePDFData = {
-                      ...invoice,
+                    const pdfData: InvoicePDFData = {
+                      id: invoiceData.id,
+                      invoiceNumber: invoiceData.invoiceNumber,
+                      recepientEmail: null,
+                      recepientName: invoiceData.customerName,
+                      created_at: null,
+                      paidOn: null,
+                      dueDate: invoiceData.dueDate,
+                      issueDate: invoiceData.issueDate,
+                      state: invoiceData.state,
+                      status: null,
+                      totalAmount: invoiceData.totalAmount,
+                      subTotalAmount: invoiceData.subTotalAmount,
+                      currency: invoiceData.currency,
+                      taxRate: invoiceData.taxRate,
+                      vatRate: invoiceData.vatRate,
+                      discount: invoiceData.discount,
+                      hasDiscount: invoiceData.hasDiscount,
+                      hasTax: invoiceData.hasTax,
+                      hasVat: invoiceData.hasVat,
+                      notes: invoiceData.notes,
+                      organizationName: invoiceData.organizationName,
+                      organizationLogo: null,
+                      organizationLogoUrl: invoiceData.organizationLogoUrl,
+                      organizationNameFromOrg: null,
+                      organizationEmailFromOrg: null,
+                      organizationEmail: invoiceData.organizationEmail,
+                      invoiceDetails: invoiceData.invoiceDetails.map((detail, index) => ({
+                        position: index + 1,
+                        description: detail.description,
+                        quantity: detail.quantity,
+                        unitPrice: detail.unitPrice,
+                        total: detail.total
+                      }))
                     };
                     
                     const filename = invoiceData.invoiceNumber 
                       ? `${invoiceData.invoiceNumber}.pdf`
                       : `invoice-${invoiceData.id}.pdf`;
                     
-                    await downloadInvoiceAsPDF(invoiceData, filename);
+                    await downloadInvoiceAsPDF(pdfData, filename);
                     toast.success("Invoice PDF downloaded successfully!");
                   } catch (error) {
                     console.error('Error downloading invoice PDF:', error);
@@ -372,7 +390,7 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
                 className=" space-x-3 flex items-center "
               >
                 <Download className="w-4 h-4" />
-                {downloading ? "Preparing..." : "Download Invoice"}
+                Download Invoice
               </Button>
             </div>
           </CardContent>

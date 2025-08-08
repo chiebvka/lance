@@ -98,4 +98,14 @@ const projectEditSchema = z.object({
   emailToCustomer: z.boolean().optional(),
 });
 
-export { projectCreateSchema, projectEditSchema };
+const projectAnswerSchema = z.object({
+  projectId: z.string().uuid(),
+  answers: z.array(z.object({
+    questionId: z.string().uuid(),
+    answer: z.string(),
+  })),
+  serviceAgreement: z.string().optional(),
+  token: z.string().uuid({ message: "Invalid token" }),
+});
+
+export { projectCreateSchema, projectEditSchema, projectAnswerSchema };

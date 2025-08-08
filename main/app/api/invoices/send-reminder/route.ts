@@ -94,14 +94,14 @@ async function sendReminderEmail(invoice: any) {
     const emailHtml = await render(InvoiceReminder({
       invoiceId: invoice.id,
       clientName: recipientName,
-      invoiceName: invoice.invoceNumber,
+      invoiceName: invoice.invoiceNumber,
       invoiceLink,
     }));
 
     await sendgrid.send({
       to: invoice.recepientEmail,
       from:  `${fromName} <${fromEmail}>`,
-      subject: `Reminder: Pending Invoice - ${invoice.invoceNumber}`,
+      subject: `Reminder: Pending Invoice - ${invoice.invoiceNumber}`,
       html: emailHtml,
       customArgs: {
         invoiceId: invoice.id,

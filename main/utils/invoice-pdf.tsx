@@ -279,13 +279,13 @@ export function generateInvoicePDF(invoice: InvoicePDFData) {
                  {/* From Section */}
          <View style={styles.fromSection}>
            <Text style={styles.fromLabel}>From</Text>
-           <Text style={styles.fromEmail}>{orgEmail}</Text>
+           <Text style={styles.fromEmail}>{orgName}</Text>
          </View>
 
         {/* To Section */}
         <View style={styles.toSection}>
           <Text style={styles.toLabel}>To</Text>
-          <Text style={styles.toEmail}>{invoice.recepientEmail || 'N/A'}</Text>
+          <Text style={styles.toEmail}>{invoice.recepientName || 'N/A'}</Text>
         </View>
 
         {/* Separator */}

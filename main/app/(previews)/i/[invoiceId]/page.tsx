@@ -9,7 +9,7 @@ export default async function InvoicePage({ params }: PageProps) {
   const { invoiceId } = await params;
 
   return (
-    <div>
+    <div className='h-full w-full'>
       <InvoicePreview invoiceId={invoiceId} />
     </div>
   )

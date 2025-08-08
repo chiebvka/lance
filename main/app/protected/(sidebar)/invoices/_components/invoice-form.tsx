@@ -207,7 +207,7 @@ const InvoiceForm = forwardRef<InvoiceFormRef, Props>(({
     const invoiceData = {
       ...getInvoiceData(),
       emailToCustomer,
-      state: (emailToCustomer ? "sent" : (selectedCustomer ? "draft" : "unassigned")) as "draft" | "unassigned" | "sent" | "completed" | "overdue" | "cancelled"
+      state: (emailToCustomer ? "sent" : (selectedCustomer ? "draft" : "unassigned")) as "draft" | "unassigned" | "sent" | "settled" | "overdue" | "cancelled"
     }
 
     try {

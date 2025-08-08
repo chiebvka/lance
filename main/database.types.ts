@@ -1260,20 +1260,28 @@ export type Database = {
           hasPaymentTerms: boolean | null
           hasServiceAgreement: boolean | null
           id: string
+          invoiceId: string | null
           isArchived: boolean | null
           isPublished: boolean | null
           name: string | null
           notes: string | null
+          organizationEmail: string | null
           organizationId: string | null
+          organizationLogo: string | null
+          organizationName: string | null
           paymentMilestones: Json | null
           paymentStructure: string | null
           projectTypeId: string | null
+          recepientEmail: string | null
+          recepientName: string | null
           serviceAgreement: Json | null
+          signatureDetails: Json | null
           signedOn: string | null
           signedStatus: string | null
           startDate: string | null
           state: string | null
           status: string | null
+          token: string | null
           type: string | null
           updatedOn: string | null
         }
@@ -1299,20 +1307,28 @@ export type Database = {
           hasPaymentTerms?: boolean | null
           hasServiceAgreement?: boolean | null
           id?: string
+          invoiceId?: string | null
           isArchived?: boolean | null
           isPublished?: boolean | null
           name?: string | null
           notes?: string | null
+          organizationEmail?: string | null
           organizationId?: string | null
+          organizationLogo?: string | null
+          organizationName?: string | null
           paymentMilestones?: Json | null
           paymentStructure?: string | null
           projectTypeId?: string | null
+          recepientEmail?: string | null
+          recepientName?: string | null
           serviceAgreement?: Json | null
+          signatureDetails?: Json | null
           signedOn?: string | null
           signedStatus?: string | null
           startDate?: string | null
           state?: string | null
           status?: string | null
+          token?: string | null
           type?: string | null
           updatedOn?: string | null
         }
@@ -1338,20 +1354,28 @@ export type Database = {
           hasPaymentTerms?: boolean | null
           hasServiceAgreement?: boolean | null
           id?: string
+          invoiceId?: string | null
           isArchived?: boolean | null
           isPublished?: boolean | null
           name?: string | null
           notes?: string | null
+          organizationEmail?: string | null
           organizationId?: string | null
+          organizationLogo?: string | null
+          organizationName?: string | null
           paymentMilestones?: Json | null
           paymentStructure?: string | null
           projectTypeId?: string | null
+          recepientEmail?: string | null
+          recepientName?: string | null
           serviceAgreement?: Json | null
+          signatureDetails?: Json | null
           signedOn?: string | null
           signedStatus?: string | null
           startDate?: string | null
           state?: string | null
           status?: string | null
+          token?: string | null
           type?: string | null
           updatedOn?: string | null
         }
@@ -1400,8 +1424,9 @@ export type Database = {
           notes: string | null
           organizationEmail: string | null
           organizationId: string | null
+          organizationLogo: string | null
           organizationName: string | null
-          paymentConfirmedat: string | null
+          paymentConfirmedAt: string | null
           paymentDetails: Json | null
           paymentLink: string | null
           paymentType: string | null
@@ -1411,10 +1436,11 @@ export type Database = {
           recepientEmail: string | null
           recepientName: string | null
           sentViaEmail: boolean | null
-          status: string | null
+          state: string | null
           subTotalAmount: number | null
           taxAmount: number | null
-          totalamount: number | null
+          taxRate: number | null
+          totalAmount: number | null
           updatedAt: string | null
           vatRate: number | null
         }
@@ -1438,8 +1464,9 @@ export type Database = {
           notes?: string | null
           organizationEmail?: string | null
           organizationId?: string | null
+          organizationLogo?: string | null
           organizationName?: string | null
-          paymentConfirmedat?: string | null
+          paymentConfirmedAt?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
           paymentType?: string | null
@@ -1449,10 +1476,11 @@ export type Database = {
           recepientEmail?: string | null
           recepientName?: string | null
           sentViaEmail?: boolean | null
-          status?: string | null
+          state?: string | null
           subTotalAmount?: number | null
           taxAmount?: number | null
-          totalamount?: number | null
+          taxRate?: number | null
+          totalAmount?: number | null
           updatedAt?: string | null
           vatRate?: number | null
         }
@@ -1476,8 +1504,9 @@ export type Database = {
           notes?: string | null
           organizationEmail?: string | null
           organizationId?: string | null
+          organizationLogo?: string | null
           organizationName?: string | null
-          paymentConfirmedat?: string | null
+          paymentConfirmedAt?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
           paymentType?: string | null
@@ -1487,10 +1516,11 @@ export type Database = {
           recepientEmail?: string | null
           recepientName?: string | null
           sentViaEmail?: boolean | null
-          status?: string | null
+          state?: string | null
           subTotalAmount?: number | null
           taxAmount?: number | null
-          totalamount?: number | null
+          taxRate?: number | null
+          totalAmount?: number | null
           updatedAt?: string | null
           vatRate?: number | null
         }

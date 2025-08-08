@@ -46,7 +46,7 @@ export default function Breadcrumbs({}: {}) {
 
   return (
     <div className="flex items-center justify-between w-full">
-      <Breadcrumb className="">
+      <Breadcrumb className="hidden md:block">
         <BreadcrumbList>
           {segments.map((segment, index) => {
             const isLast = index === segments.length - 1

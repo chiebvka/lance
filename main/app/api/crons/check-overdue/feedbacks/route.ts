@@ -66,7 +66,8 @@ export async function GET(request: NextRequest) {
         }
 
         // Only send emails and create notifications if organization has feedbackNotifications enabled
-        if (organization?.feedbackNotifications) {
+        // Note: null values default to true (enabled), only false explicitly disables
+        if (organization?.feedbackNotifications !== false) {
           // Create notification for the organization
           const { error: notificationError } = await supabase
             .from("notifications")
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
           await sendReminderEmail(supabase, feedback, "feedback");
           console.log(`Feedback reminder email sent for feedback ${feedback.id}`);
         } else {
-          console.log(`Skipping email and notification for feedback ${feedback.id} - organization has feedbackNotifications disabled`);
+          console.log(`Skipping email and notification for feedback ${feedback.id} - organization has feedbackNotifications explicitly disabled (value: ${organization?.feedbackNotifications})`);
         }
 
         processedCount++;

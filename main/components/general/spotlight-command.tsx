@@ -271,7 +271,7 @@ export default function SpotlightCommand({}: Props) {
 
         {/* Search Command - Made to look like an actual search input */}
         <div 
-          className="relative min-w-[200px] cursor-pointer"
+          className="relative min-w-[200px] cursor-pointer hidden md:block"
           onClick={() => setIsCommandOpen(true)}
         >
           <div className="flex items-center w-full h-9 px-3 py-2 border border-input bg-background/95 backdrop-blur-sm rounded-md text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent/50 transition-colors">

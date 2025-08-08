@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { Invoice } from "./columns"
-import { MoreHorizontal, Loader2, CheckCircle, Clock, HardDriveDownload } from "lucide-react"
+import { MoreHorizontal, Loader2, CheckCircle, Clock, HardDriveDownload, Receipt } from "lucide-react"
 import ConfirmModal from "@/components/modal/confirm-modal"
 import { downloadInvoiceAsPDF, type InvoicePDFData } from '@/utils/invoice-pdf'
 
@@ -67,6 +67,22 @@ export function DataTableRowActions<TData>({
     },
   })
 
+  // Receipt creation mutation
+  const createReceiptMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      return axios.post(`/api/invoices/${invoiceId}/receipt`);
+    },
+    onSuccess: (response) => {
+      toast.success("Receipt created successfully!");
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+    },
+    onError: (error: any) => {
+      console.error("Create receipt error:", error.response?.data);
+      const errorMessage = error.response?.data?.error || "Failed to create receipt";
+      toast.error(errorMessage);
+    },
+  });
+
   const handleDelete = () => {
     setIsDeleteModalOpen(true)
   }
@@ -76,85 +92,58 @@ export function DataTableRowActions<TData>({
     setIsDeleteModalOpen(false)
   }
 
-  // Duplicate project mutation
+  const handleCreateReceipt = () => {
+    createReceiptMutation.mutate(invoice.id)
+  }
+
+  // Duplicate invoice mutation
   const duplicateInvoiceMutation = useMutation({
     mutationFn: async (originalInvoice: Invoice) => {
-      // First, get the full project details
+      // First, get the full invoice details
       const { data: fullInvoiceResponse } = await axios.get(`/api/invoices/${originalInvoice.id}`)
       const fullInvoice = fullInvoiceResponse.invoice
       
-      // Create a copy with modified name and reset certain fields
-      const duplicatedProject = {
-        // Basic project info
-        name: `${fullInvoice.name} (Copy)`,
-        description: fullInvoice.description || "",
-        type: fullInvoice.type || "customer",
+      // Create a copy with modified invoice number and reset certain fields
+      const duplicatedInvoice = {
+        // Basic invoice info
         customerId: fullInvoice.customerId || null,
-        currency: fullInvoice.currency || "USD",
-        currencyEnabled: fullInvoice.currencyEnabled || false,
-        budget: fullInvoice.budget || 0,
-        startDate: fullInvoice.startDate || null,
-        endDate: fullInvoice.endDate || null,
-        effectiveDate: fullInvoice.effectiveDate || null,
+        projectId: fullInvoice.projectId || null,
+        organizationName: fullInvoice.organizationName || null,
+        organizationLogoUrl: fullInvoice.organizationLogo || null,
+        organizationEmail: fullInvoice.organizationEmail || null,
+        recepientName: fullInvoice.recepientName || null,
+        recepientEmail: fullInvoice.recepientEmail || null,
+        issueDate: new Date(), // Set to current date for duplicate
+        dueDate: fullInvoice.dueDate ? new Date(new Date().getTime() + (3 * 24 * 60 * 60 * 1000)) : null, // 3 days from now
+        currency: fullInvoice.currency || "CAD",
+        hasVat: fullInvoice.hasVat || false,
+        hasTax: fullInvoice.hasTax || false,
+        hasDiscount: fullInvoice.hasDiscount || false,
+        vatRate: fullInvoice.vatRate || 0,
+        taxRate: fullInvoice.taxRate || 0,
+        discount: fullInvoice.discount || 0,
         notes: fullInvoice.notes || "",
+        paymentInfo: fullInvoice.paymentInfo || null,
+        paymentDetails: fullInvoice.paymentDetails || null,
+        invoiceDetails: fullInvoice.invoiceDetails || [],
         
-        // Deliverables
-        deliverablesEnabled: fullInvoice.deliverablesEnabled || false,
-        deliverables: (fullInvoice.deliverables || []).map((d: any) => ({
-          // DO NOT include id - let Supabase auto-generate it
-          name: d.name || "",
-          description: d.description || null,
-          dueDate: d.dueDate || null,
-          status: d.status || "pending",
-          position: d.position || 1,
-          isPublished: d.isPublished || false,
-          // DO NOT include: id, projectId, createdBy, lastSaved
-        })),
-        
-        // Payment structure
-        paymentStructure: fullInvoice.paymentStructure || "noPayment",
-        paymentMilestones: (fullInvoice.paymentMilestones || []).map((m: any) => ({
-          // DO NOT include id - let Supabase auto-generate it
-          name: m.name || null,
-          description: m.description || null,
-          amount: m.amount || null,
-          percentage: m.percentage || null,
-          dueDate: m.dueDate || null,
-          status: m.status || null,
-          type: m.type || "milestone",
-          hasPaymentTerms: m.hasPaymentTerms || false,
-          // DO NOT include: id, projectId, deliverableId, createdBy
-        })),
-        hasPaymentTerms: fullInvoice.hasPaymentTerms || false,
-        
-        // Service agreement
-        hasServiceAgreement: fullInvoice.hasServiceAgreement || false,
-        serviceAgreement: fullInvoice.serviceAgreement || "",
-        agreementTemplate: fullInvoice.agreementTemplate || "standard",
-        hasAgreedToTerms: false, // Reset for new project
-        
-        // Status and state - reset for new project
-        isPublished: false,
-        status: "pending",
-        signedStatus: "not_signed",
+        // Reset state and status for new invoice
         state: "draft",
-        
-        // Other fields
-        documents: fullInvoice.documents || "",
-        customFields: fullInvoice.customFields || { name: "", value: "" },
+        sentViaEmail: false,
+        emailSentAt: null,
         emailToCustomer: false,
       }
       
-      console.log("Sending duplicate project data:", duplicatedProject)
-      return axios.post('/api/projects/create', duplicatedProject)
+      console.log("Sending duplicate invoice data:", duplicatedInvoice)
+      return axios.post('/api/invoices/create', duplicatedInvoice)
     },
     onSuccess: () => {
-      toast.success("Project duplicated successfully!")
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      toast.success("Invoice duplicated successfully!")
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
     },
     onError: (error: any) => {
-      console.error("Duplicate project error:", error.response?.data)
-      const errorMessage = error.response?.data?.error || "Failed to duplicate project"
+      console.error("Duplicate invoice error:", error.response?.data)
+      const errorMessage = error.response?.data?.error || "Failed to duplicate invoice"
       toast.error(errorMessage)
     },
   })
@@ -162,43 +151,21 @@ export function DataTableRowActions<TData>({
   // Status update mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ invoiceId, newStatus }: { invoiceId: string, newStatus: string }) => {
-      // Get the current project first to ensure we have all required fields
+      // Get the current invoice first to ensure we have all required fields
       const { data: currentInvoiceResponse } = await axios.get(`/api/invoices/${invoiceId}`)
       const currentInvoice = currentInvoiceResponse.invoice
       
-      // Send a minimal update with only the status change
+      // Send a minimal update with only the state change
       const updateData = {
-        id: invoiceId,
-        status: newStatus,
-        // Include required fields to pass validation
-        name: currentInvoice.name,
-        description: currentInvoice.description,
-        type: currentInvoice.type,
-        customerId: currentInvoice.customerId,
-        currency: currentInvoice.currency || "USD",
-        currencyEnabled: currentInvoice.currencyEnabled || false,
-        budget: currentInvoice.budget || 0,
-        deliverablesEnabled: currentInvoice.deliverablesEnabled || false,
-        deliverables: currentInvoice.deliverables || [],
-        paymentStructure: currentInvoice.paymentStructure || "noPayment",
-        paymentMilestones: currentInvoice.paymentMilestones || [],
-        hasPaymentTerms: currentInvoice.hasPaymentTerms || false,
-        hasServiceAgreement: currentInvoice.hasServiceAgreement || false,
-        serviceAgreement: currentInvoice.serviceAgreement || "",
-        agreementTemplate: currentInvoice.agreementTemplate || "standard",
-        hasAgreedToTerms: currentInvoice.hasAgreedToTerms || false,
-        isPublished: currentInvoice.isPublished || false,
-        signedStatus: currentInvoice.signedStatus || "not_signed",
-        state: currentInvoice.state || "draft",
-        documents: currentInvoice.documents || "",
-        customFields: currentInvoice.customFields || { name: "", value: "" },
+        ...currentInvoice,
+        state: newStatus,
         emailToCustomer: false,
       }
       
       return axios.put(`/api/invoices/${invoiceId}`, updateData)
     },
     onSuccess: (_, variables) => {
-      const statusText = variables.newStatus === 'completed' ? 'completed' : 'in progress'
+      const statusText = variables.newStatus === 'settled' ? 'settled' : 'in progress'
       toast.success(`Invoice marked as ${statusText}!`)
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
     },
@@ -215,7 +182,7 @@ export function DataTableRowActions<TData>({
 
   const handleStatusToggle = () => {
     setIsUpdating(true)
-    const newStatus = invoice.status === 'completed' ? 'pending' : 'completed'
+    const newStatus = invoice.state === 'settled' ? 'draft' : 'settled'
     updateStatusMutation.mutate(
       { invoiceId: invoice.id, newStatus },
       {
@@ -225,17 +192,17 @@ export function DataTableRowActions<TData>({
   }
 
   const getStatusToggleText = () => {
-    if (invoice.status === 'completed') {
-      return 'Mark as In Progress'
+    if (invoice.state === 'settled') {
+      return 'Mark as Draft'
     }
-    return 'Mark as Completed'
+    return 'Mark as Settled'
   }
 
   const getStatusToggleIcon = () => {
     if (isUpdating) {
       return <Loader2 className="h-4 w-4 animate-spin" />
     }
-    if (invoice.status === 'completed') {
+    if (invoice.state === 'settled') {
       return <Clock className="h-4 w-4" />
     }
     return <CheckCircle className="h-4 w-4" />
@@ -265,21 +232,31 @@ export function DataTableRowActions<TData>({
                   invoiceNumber: invoice.invoiceNumber,
                   recepientEmail: invoice.recepientEmail,
                   recepientName: invoice.recepientName,
-                  created_at: invoice.created_at,
-                  paidOn: invoice.paidOn,
+                  created_at: null,
+                  paidOn: null,
                   dueDate: invoice.dueDate,
                   issueDate: invoice.issueDate,
                   state: invoice.state,
                   status: invoice.status,
                   totalAmount: invoice.totalAmount,
+                  subTotalAmount: invoice.subTotalAmount,
                   currency: invoice.currency,
                   taxRate: invoice.taxRate,
+                  invoiceDetails: invoice.invoiceDetails?.map((detail: { description: any; quantity: any; unitPrice: any; total: any }, index: number) => ({
+                    position: index + 1,
+                    description: detail.description,
+                    quantity: detail.quantity,
+                    unitPrice: detail.unitPrice,
+                    total: detail.total
+                  })),
                   vatRate: invoice.vatRate,
+                  discount: invoice.discount,
+                  hasDiscount: invoice.hasDiscount,
+                  hasTax: invoice.hasTax,
+                  hasVat: invoice.hasVat,
                   notes: invoice.notes,
-                  organizationName: 'Your Company',
-                  organizationAddress: '123 Business Street\nCity, State 12345',
-                  organizationEmail: 'contact@company.com',
-                  organizationPhone: '+1 (555) 123-4567',
+                  organizationName: invoice.organizationName,
+                  organizationEmail: invoice.organizationEmail,
                 };
                 
                 const filename = invoice.invoiceNumber 
@@ -294,7 +271,6 @@ export function DataTableRowActions<TData>({
               }
             }}
           >
-            <HardDriveDownload className="h-4 w-4 mr-2" />
             Download PDF
           </DropdownMenuItem>
           <DropdownMenuItem 
@@ -303,13 +279,25 @@ export function DataTableRowActions<TData>({
           >
             {duplicateInvoiceMutation.isPending ? 'Duplicating...' : 'Duplicate Invoice'}
           </DropdownMenuItem>
+          
+          {/* Create Receipt - Only for settled and unassigned invoices */}
+          {(invoice.state?.toLowerCase() === 'settled' || invoice.state?.toLowerCase() === 'unassigned') && (
+            <DropdownMenuItem 
+              onClick={handleCreateReceipt}
+              disabled={createReceiptMutation.isPending}
+            >
+
+              {createReceiptMutation.isPending ? 'Creating Receipt...' : 'Create Receipt'}
+            </DropdownMenuItem>
+          )}
+          
           <DropdownMenuSeparator />
-          <DropdownMenuItem 
+          {/* <DropdownMenuItem 
             onClick={handleStatusToggle}
             disabled={updateStatusMutation.isPending}
           >
             {getStatusToggleText()}
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
           <DropdownMenuSeparator />
           <DropdownMenuItem 
             onClick={handleDelete} 
@@ -339,6 +327,8 @@ export function DataTableRowActions<TData>({
         itemType="Invoice"
         isLoading={deleteInvoiceMutation.isPending}
       />
+
+
     </>
   )
 }

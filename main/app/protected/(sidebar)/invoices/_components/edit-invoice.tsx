@@ -363,7 +363,7 @@ const EditInvoice = forwardRef<EditInvoiceRef, Props>(({
   }
 
   // Check if invoice can be edited based on state
-  const canEdit = invoice?.state && ["draft", "unassigned", "sent", "overdue"].includes(invoice.state)
+  const canEdit = invoice?.state && ["draft", "unassigned", "sent", "settled", "overdue"].includes(invoice.state)
   const canDelete = invoice?.state && ["draft", "unassigned"].includes(invoice.state)
   const canSendEmail = invoice?.state && ["draft", "unassigned", "sent", "overdue"].includes(invoice.state)
 

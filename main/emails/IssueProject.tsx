@@ -18,9 +18,9 @@ import {
     senderName?: string
     clientName?: string
     projectName?: string
-
     projectId?: string
     logoUrl?: string
+    projectLink?: string
   }
   
   export default function IssueProject({
@@ -28,11 +28,11 @@ import {
     clientName = "Client",
     projectName = "Your Project",
     projectId = "123",
-
     logoUrl = "https://www.bexoni.com/favicon.ico",
+    projectLink,
   }: IssueProjectEmailProps) {
     const previewText = ` ${projectName} has been initiated.`
-    const projectLink = `${baseUrl}/p/${projectId}`;
+    const finalProjectLink = projectLink || `${baseUrl}/p/${projectId}`;
   
     const logoStyle = {
       width: "48px",
@@ -86,7 +86,7 @@ import {
                 </Text>
               </Section>
   
-              <Button href={projectLink} style={buttonStyle}>
+              <Button href={finalProjectLink} style={buttonStyle}>
                 View Project
               </Button>
   

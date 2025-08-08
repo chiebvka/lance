@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import sendgrid from "@sendgrid/mail";
 import { render } from "@react-email/components";
 import { baseUrl } from "@/utils/universal";
+import InvoiceReminder from "@/emails/InvoiceReminder";
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
@@ -22,12 +23,13 @@ export async function GET(request: NextRequest) {
       .from("invoices")
       .select(`
         *,
-        customers!inner(name, email),
-        projects!inner(name)
+        customers(id, name, email),
+        organization!inner(id, name, email, logoUrl)
       `)
       .lt("dueDate", now.toISOString())
-      .neq("status", "paid")
-      .neq("status", "overdue")
+      .neq("state", "settled")
+      .neq("state", "overdue")
+      .eq("state", "sent")
       .eq("allowReminders", true);
 
     if (queryError) {
@@ -43,22 +45,18 @@ export async function GET(request: NextRequest) {
     let processedCount = 0;
     for (const invoice of overdueInvoices) {
       try {
-        // Check organization's invoice notification preference
-        const { data: organization, error: orgError } = await supabase
-          .from("organization")
-          .select("invoiceNotifications")
-          .eq("id", invoice.organizationId)
-          .single();
+        // Organization data is already included in the query
+        const organization = invoice.organization;
 
-        if (orgError) {
-          console.error(`Error fetching organization settings for invoice ${invoice.id}:`, orgError);
+        if (!organization) {
+          console.error(`No organization found for invoice ${invoice.id}`);
           continue;
         }
 
-        // Update invoice status to overdue (always do this)
+        // Update invoice state to overdue (always do this)
         const { error: updateError } = await supabase
           .from("invoices")
-          .update({ status: "overdue" })
+          .update({ state: "overdue" })
           .eq("id", invoice.id);
 
         if (updateError) {
@@ -67,19 +65,21 @@ export async function GET(request: NextRequest) {
         }
 
         // Only send emails and create notifications if organization has invoiceNotifications enabled
-        if (organization?.invoiceNotifications) {
+        // Note: null values default to true (enabled), only false explicitly disables
+        if (organization?.invoiceNotifications !== false) {
           // Create notification for the organization
           const { error: notificationError } = await supabase
             .from("notifications")
             .insert({
               organizationId: invoice.organizationId,
               title: "Invoice Overdue",
-              message: `Invoice #${invoice.invoiceNumber} for ${invoice.customers?.name || 'Unknown Customer'} is overdue. Amount: ${invoice.currency} ${invoice.totalAmount}`,
+              message: `Invoice #${invoice.invoiceNumber} for ${invoice.customers?.name || invoice.recepientName || 'Unknown Customer'} is overdue. Amount: ${invoice.currency} ${invoice.totalAmount}`,
               type: "warning",
-              actionUrl: `${baseUrl}/protected/invoices/${invoice.id}`,
+              actionUrl: `${baseUrl}/protected/invoices?invoiceId=${invoice.id}&type=details`,
               metadata: {
                 invoiceNumber: invoice.invoiceNumber,
-                customerName: invoice.customers?.name,
+                customerName: invoice.customers?.name || invoice.recepientName,
+                customerEmail: invoice.customers?.email || invoice.recepientEmail,
                 amount: invoice.totalAmount,
                 currency: invoice.currency,
                 dueDate: invoice.dueDate
@@ -94,15 +94,18 @@ export async function GET(request: NextRequest) {
             continue;
           }
 
-          // Send email reminder if customer email exists
-          if (invoice.customers?.email) {
-            await sendInvoiceReminderEmail(invoice);
-            console.log(`Invoice reminder email sent for invoice ${invoice.id}`);
+          // Send email reminder - use customer email if available, otherwise use recipient email
+          const recipientEmail = invoice.customers?.email || invoice.recepientEmail;
+          const recipientName = invoice.customers?.name || invoice.recepientName;
+          
+          if (recipientEmail) {
+            await sendInvoiceReminderEmail(supabase, invoice, organization, recipientEmail, recipientName);
+            console.log(`Invoice reminder email sent for invoice ${invoice.id} to ${recipientEmail}`);
           } else {
-            console.log(`Skipping email for invoice ${invoice.id} - no customer email available`);
+            console.log(`Skipping email for invoice ${invoice.id} - no recipient email available`);
           }
         } else {
-          console.log(`Skipping email and notification for invoice ${invoice.id} - organization has invoiceNotifications disabled`);
+          console.log(`Skipping email and notification for invoice ${invoice.id} - organization has invoiceNotifications explicitly disabled (value: ${organization?.invoiceNotifications})`);
         }
 
         processedCount++;
@@ -121,28 +124,36 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function sendInvoiceReminderEmail(invoice: any) {
+async function sendInvoiceReminderEmail(supabase: any, invoice: any, organization: any, recipientEmail: string, recipientName: string) {
   try {
     const fromEmail = 'no_reply@bexforte.com';
-    const fromName = 'Bexforte';
+    const fromName = organization?.name || 'Bexforte';
     
-    const emailHtml = `
-      <h2>Invoice Overdue Reminder</h2>
-      <p>Dear ${invoice.customers?.name},</p>
-      <p>This is a reminder that invoice #${invoice.invoiceNumber} is overdue.</p>
-      <p><strong>Amount:</strong> ${invoice.currency} ${invoice.totalAmount}</p>
-      <p><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
-      <p>Please process this payment as soon as possible.</p>
-    `;
+    // Use organization logo if available, otherwise fallback
+    const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
+    
+    // Final recipient name fallback
+    const finalRecipientName = recipientName || recipientEmail.split('@')[0];
+    
+    const invoiceLink = `${baseUrl}/i/${invoice.id}`;
+
+    const emailHtml = await render(InvoiceReminder({
+      invoiceId: invoice.id,
+      clientName: finalRecipientName,
+      invoiceName: invoice.invoiceNumber || `INV-${invoice.id.slice(-6)}`,
+      logoUrl: logoUrl,
+      invoiceLink: invoiceLink,
+      senderName: organization?.name || 'Bexforte'
+    }));
 
     await sendgrid.send({
-      to: invoice.customers.email,
+      to: recipientEmail,
       from: `${fromName} <${fromEmail}>`,
-      subject: `Invoice Overdue - #${invoice.invoiceNumber}`,
+      subject: `Reminder: Overdue Invoice - ${invoice.invoiceNumber || `INV-${invoice.id.slice(-6)}`}`,
       html: emailHtml,
     });
 
-    console.log("Invoice reminder email sent to:", invoice.customers.email);
+    console.log("Invoice reminder email sent to:", recipientEmail);
   } catch (emailError: any) {
     console.error("SendGrid Invoice Reminder Error:", emailError);
   }

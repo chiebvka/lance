@@ -15,6 +15,7 @@ import { downloadInvoiceAsPDF, type InvoicePDFData } from '@/utils/invoice-pdf';
 import { useUpdateInvoice, useDeleteInvoice } from '@/hooks/invoices/use-invoices';
 import { useCustomers, type Customer } from '@/hooks/customers/use-customers';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -29,6 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import ComboBox from '@/components/combobox';
 import ConfirmModal from '@/components/modal/confirm-modal';
+import InvoiceConfirmModal from './invoice-confirm-modal';
 import {
   Command,
   CommandEmpty,
@@ -107,8 +109,26 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
   const updateInvoiceMutation = useUpdateInvoice();
   const deleteInvoiceMutation = useDeleteInvoice();
   
+  // Receipt creation mutation
+  const createReceiptMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      return axios.post(`/api/invoices/${invoiceId}/receipt`);
+    },
+    onSuccess: (response) => {
+      toast.success("Receipt created successfully!");
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      // Optionally redirect to receipts page or show receipt details
+    },
+    onError: (error: any) => {
+      console.error("Create receipt error:", error.response?.data);
+      const errorMessage = error.response?.data?.error || "Failed to create receipt";
+      toast.error(errorMessage);
+    },
+  });
+  
   // State for UI interactions
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   
   // State management functions
   const handleDeleteInvoice = async () => {
@@ -215,6 +235,15 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
     }
   };
 
+  const handleCreateReceipt = async () => {
+    try {
+      await createReceiptMutation.mutateAsync(invoice.id);
+    } catch (error) {
+      // Error handling is done in the mutation
+      console.error('Error creating receipt:', error);
+    }
+  };
+
   // Helper function to get available actions based on state
   const getAvailableActions = (state: string) => {
     switch (state.toLowerCase()) {
@@ -223,11 +252,11 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       case 'sent':
         return ['settle', 'unassign', 'cancel', 'delete'];
       case 'unassigned':
-        return ['cancel', 'settle', 'delete', 'assign'];
+        return ['cancel', 'settle', 'delete', 'assign', 'create_receipt'];
       case 'cancelled':
         return ['unassigned', 'delete'];
       case 'settled':
-        return ['unassigned', 'delete'];
+        return ['unassigned', 'delete', 'create_receipt'];
       default:
         return ['delete'];
     }
@@ -257,7 +286,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
 
   const formLink = `${baseUrl}/i/${invoice.id}`;
   {/* Form Link */}
-  const showFormLink =  state !== "draft";
+  const showFormLink =  state !== "";
 
   if (state === 'draft') {
     progress = 25
@@ -401,6 +430,17 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
                 <DropdownMenuItem onClick={handleSetToUnassigned}>
                   <User className="w-4 h-4 mr-2" />
                   Mark as unassigned
+                </DropdownMenuItem>
+              )}
+              
+              {/* Create Receipt */}
+              {getAvailableActions(state).includes('create_receipt') && (
+                <DropdownMenuItem 
+                  onClick={handleCreateReceipt}
+                  disabled={createReceiptMutation.isPending}
+                >
+                  <Receipt className="w-4 h-4 mr-2" />
+                  {createReceiptMutation.isPending ? 'Creating Receipt...' : 'Create Receipt'}
                 </DropdownMenuItem>
               )}
               
@@ -569,15 +609,11 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
             <Button
               variant="outline"
               className="h-10 bg-transparent"
-              onClick={() => {
-                // Copy invoice details to clipboard
-                const invoiceDetails = `Invoice: ${invoice.invoiceNumber}\nCustomer: ${invoice.recepientName}\nAmount: ${formattedAmount}\nDue Date: ${due}`;
-                navigator.clipboard.writeText(invoiceDetails);
-                toast.success("Invoice details copied to clipboard!");
-              }}
+              disabled={!showFormLink}
+              onClick={() => window.open(formLink, "_blank")}
             >
-              <Copy className="w-4 h-4 mr-2" />
-              Copy Details
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Preview
             </Button>
             <TooltipProvider>
               <Tooltip>
@@ -587,6 +623,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
                       variant="outline"
                       className="h-10 bg-transparent w-full"
                       disabled={state !== "sent" && state !== "overdue"}
+                      onClick={() => setIsReminderModalOpen(true)}
                     >
                       <Bell className="w-4 h-4 mr-2" />
                       Send Reminder
@@ -617,6 +654,17 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
         description="This action cannot be undone."
         isLoading={deleteInvoiceMutation.isPending}
       />
+
+      {/* Reminder Confirmation Modal */}
+      <InvoiceConfirmModal
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+        invoiceId={invoice.id}
+        invoiceState={state}
+        recipientEmail={invoice.recepientEmail ?? ''}
+      />
+
+
     </div>
   )
 } 

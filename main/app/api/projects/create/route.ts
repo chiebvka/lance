@@ -5,6 +5,8 @@ import { render } from "@react-email/components";
 import sendgrid from "@sendgrid/mail";
 import IssueProject from '../../../../emails/IssueProject';
 import { projectCreateSchema } from "@/validation/projects";
+import crypto from "crypto";
+import { baseUrl } from "@/utils/universal";
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
@@ -50,6 +52,9 @@ export async function POST(request: Request) {
             emailToCustomer = false,
           } = validatedFields.data;
 
+          // Generate token for project access
+          const token = crypto.randomUUID();
+
           console.log("Attempting to insert into 'projects' table...");
           const { data: project, error: projectError } = await supabase
           .from("projects")
@@ -79,6 +84,7 @@ export async function POST(request: Request) {
               createdBy: user.id,
               updatedOn: new Date().toISOString(),
               isArchived: false,
+              token: token,
             })
             .select()
             .single();
@@ -221,7 +227,7 @@ export async function POST(request: Request) {
 
             const fromEmail =  'no_reply@projects.bexforte.com';
             
-            let fromName = 'Bexforte Projects';
+            let fromName = 'Bexforte';
 
             let sendName = organization?.name ?? profile?.email.split('@')[0];
        
@@ -234,9 +240,11 @@ export async function POST(request: Request) {
                 projectName: project.name,
                 senderName: fromName,
                 logoUrl: logoUrl,
+                projectLink: `${baseUrl}/p/${project.id}?token=${token}`,
             }));
 
             console.log(`Attempting to send project email from: ${fromEmail} to: ${customer.email}`);
+            console.log(`Project link: ${baseUrl}/p/${project.id}?token=${token}`);
 
             const fromField = `${fromName} <${fromEmail}>`;
 
@@ -251,6 +259,7 @@ export async function POST(request: Request) {
                       customerId: customerId,
                       userId: user.id,
                       type: "project_sent",
+                      token: token,
                   },
               });
   
