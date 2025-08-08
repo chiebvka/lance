@@ -158,7 +158,7 @@ export function TipTapEditor({
 
   return (
     <div className={`border  ${className}`}>
-      <div className="flex flex-wrap gap-1 p-2 border-b" style={{ backgroundColor: "#e9d5ff" }}>
+      <div className="flex flex-wrap gap-1 p-2 border-b bg-purple-100 dark:bg-purple-900/30">
       <Button
           variant="ghost"
           size="sm"
@@ -181,7 +181,7 @@ export function TipTapEditor({
           variant="ghost"
           size="sm"
           onClick={() => editor.chain().focus().toggleBold().run()}
-          className={editor.isActive("bold") ? "bg-purple-100 text-purple-700" : "text-primary"}
+          className={editor.isActive("bold") ? "bg-purple-100  text-purple-700" : "text-primary"}
           type="button"
         >
           <Bold className="h-4 w-4" />
@@ -300,7 +300,7 @@ export function TipTapEditor({
       <EditorContent editor={editor} className="p-1 min-h-[200px] prose prose-sm max-w-none cursor-text" />
       {isLinkModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6  shadow-lg w-96">
+          <div className="bg-background p-6  shadow-lg w-96">
             <h2 className="text-lg font-semibold mb-4 text-purple-700">Add Your Custom Link</h2>
             <Input
               type="text"
@@ -312,7 +312,7 @@ export function TipTapEditor({
             <div className="flex justify-end gap-2">
               <button
                 onClick={handleLinkCancel}
-                className="px-4 py-2 bg-gray-200  hover:bg-gray-300 text-gray-700"
+                className="px-4 py-2 hover:bg-gray-300 "
               >
                 Cancel
               </button>
@@ -337,7 +337,23 @@ export function TipTapEditor({
         .ProseMirror {
           min-height: 200px;
           outline: none;
-          background-color: #f9f5ff; /* Light purple background */
+          background-color: #f9f5ff; /* Light mode background */
+          color: hsl(var(--foreground));
+        }
+        /* Dark mode editor surface + typography */
+        .dark .ProseMirror {
+          background-color: hsl(var(--background));
+          color: hsl(var(--foreground));
+        }
+        .dark .ProseMirror p,
+        .dark .ProseMirror li,
+        .dark .ProseMirror h1,
+        .dark .ProseMirror h2,
+        .dark .ProseMirror h3,
+        .dark .ProseMirror h4,
+        .dark .ProseMirror h5,
+        .dark .ProseMirror h6 {
+          color: hsl(var(--foreground));
         }
         .ProseMirror p.is-editor-empty:first-child::before {
           color: #adb5bd;
@@ -345,6 +361,10 @@ export function TipTapEditor({
           float: left;
           height: 0;
           pointer-events: none;
+        }
+        .dark .ProseMirror p.is-editor-empty:first-child::before,
+        .dark .is-editor-empty:first-child::before {
+          color: #9ca3af; /* muted placeholder in dark */
         }
         .ProseMirror ul {
           list-style-type: disc;
@@ -364,10 +384,16 @@ export function TipTapEditor({
         .ProseMirror ::selection {
           background: #e9d5ff; /* Light purple selection */
         }
+        .dark .ProseMirror ::selection {
+          background: rgba(168, 85, 247, 0.35); /* primary/35 */
+        }
         .ProseMirror a {
           color: #6b21a8; /* Purple for links */
           text-decoration: underline;
           cursor: pointer;
+        }
+        .dark .ProseMirror a {
+          color: hsl(var(--primary));
         }
         .ProseMirror table {
           border-collapse: collapse;
@@ -379,15 +405,26 @@ export function TipTapEditor({
           border: 1px solid #e9d5ff;
           padding: 0.5rem;
         }
+        .dark .ProseMirror td,
+        .dark .ProseMirror th {
+          border-color: rgba(168, 85, 247, 0.25);
+        }
         .ProseMirror th {
           background-color: #e9d5ff;
           font-weight: bold;
+        }
+        .dark .ProseMirror th {
+          background-color: rgba(168, 85, 247, 0.2);
         }
         .ProseMirror blockquote {
           border-left: 4px solid #6b21a8;
           padding-left: 1rem;
           color: #4c1d95;
           margin: 0.5rem 0;
+        }
+        .dark .ProseMirror blockquote {
+          border-left-color: rgba(168, 85, 247, 0.7);
+          color: rgba(229, 231, 235, 0.9);
         }
       `}</style>
     </div>

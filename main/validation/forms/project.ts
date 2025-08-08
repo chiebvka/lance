@@ -1,6 +1,7 @@
 export interface Project {
     id: string
     name: string | null
+    token?: string | null
     description: string | null
     type: "personal" | "customer" | null
     customerName?: string | null

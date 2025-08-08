@@ -37,7 +37,7 @@ const projectCreateSchema = z.object({
 
   // Status and State
   isPublished: z.boolean().optional(),
-  status: z.string().optional(),
+  status: z.enum(["pending", "inProgress", "signed", "overdue", "completed", "cancelled"]).optional(),
   signedStatus: z.string().optional(),
   state: z.enum(["draft", "published"]).optional(),
 
@@ -48,6 +48,13 @@ const projectCreateSchema = z.object({
       value: z.string().optional(),
   }).optional(),
   emailToCustomer: z.boolean().optional(),
+  
+  // Organization and Recipient Information
+  organizationName: z.string().optional(),
+  organizationLogo: z.string().optional(),
+  organizationEmail: z.string().optional(),
+  recepientName: z.string().optional(),
+  recepientEmail: z.string().optional(),
 });
 
 const projectEditSchema = z.object({
@@ -85,7 +92,7 @@ const projectEditSchema = z.object({
 
   // Status and State
   isPublished: z.boolean().optional(),
-  status: z.string().optional(),
+  status: z.enum(["pending", "inProgress", "signed", "overdue", "completed", "cancelled"]).optional(),
   signedStatus: z.string().optional(),
   state: z.enum(["draft", "published"]).optional(),
 
@@ -96,6 +103,13 @@ const projectEditSchema = z.object({
       value: z.string().optional(),
   }).optional(),
   emailToCustomer: z.boolean().optional(),
+  
+  // Organization and Recipient Information
+  organizationName: z.string().optional(),
+  organizationLogo: z.string().optional(),
+  organizationEmail: z.string().optional(),
+  recepientName: z.string().optional(),
+  recepientEmail: z.string().optional(),
 });
 
 const projectAnswerSchema = z.object({

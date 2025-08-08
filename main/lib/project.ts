@@ -21,11 +21,17 @@ export async function getProjectsWithDetails(
         startDate,
         endDate,
         created_at,
-        customerId,
-        customers (
+        customerId(
           id,
           name,
           email
+        ),
+        token,
+        organizationId (
+          id,
+          name,
+          email,
+          logoUrl
         )
       `)
     .eq('createdBy', userId)
@@ -33,8 +39,12 @@ export async function getProjectsWithDetails(
 
   if (error) throw error
 
-    // Turn null into [] so the rest of the code can assume an array
-    const projects = data ?? []
+  // Temporary debug logging to inspect shape and ensure token presence
+  // eslint-disable-next-line no-console
+  // console.log('[getProjectsWithDetails] Raw data:', data)
+
+  // Turn null into [] so the rest of the code can assume an array
+  const projects = data ?? []
 
   const projectsWithDetails = projects.map((project) => {
     return {
@@ -42,7 +52,8 @@ export async function getProjectsWithDetails(
       name: project.name || 'Untitled Project',
       description: project.description || 'No description',
       type: project.type || 'General',
-      customerName: project.customers?.[0]?.name || 'No Customer Assigned',
+      // Supabase relation selected via customerId(...). It returns an array of related rows.
+      customerName: (project as any).customerId?.[0]?.name || 'No Customer Assigned',
       customerId: project.customerId,
       budget: project.budget || 0,
       currency: project.currency || 'USD',
@@ -53,6 +64,7 @@ export async function getProjectsWithDetails(
       startDate: project.startDate,
       endDate: project.endDate,
       created_at: project.created_at,
+      token: project.token ?? null,
       // Format dates for display
       startDateFormatted: project.startDate 
         ? new Date(project.startDate).toLocaleDateString()

@@ -43,14 +43,14 @@ export default function SettingsCombobox({
   };
 
   return (
-    <div className="bg-lightCard text-card-foreground dark:bg-darkCard border border-gray-200 p-6">
+    <div className="bg-lightCard text-card-foreground dark:bg-darkCard border p-6">
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-2">
           <Label className="text-sm font-bold text-primary">
             {label}
           </Label>
           {description && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm ">
               {description}
             </p>
           )}

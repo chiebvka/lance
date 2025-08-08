@@ -50,22 +50,79 @@ export async function POST(request: Request) {
             signedStatus,
             state,
             emailToCustomer = false,
+            organizationName,
+            organizationLogo,
+            organizationEmail,
+            recepientName,
+            recepientEmail,
           } = validatedFields.data;
+
+          // Get user's profile to find their organization
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('organizationId, email')
+            .eq('profile_id', user.id)
+            .single();
+
+          if (profileError || !profile?.organizationId) {
+            return NextResponse.json({ error: 'You must be part of an organization to create projects. Please contact your administrator.' }, { status: 403 });
+          }
+
+          // Get organization information for fallback data; ensure user belongs to same organization
+          const { data: organization, error: orgError } = await supabase
+            .from('organization')
+            .select('id, name, email, logoUrl, baseCurrency')
+            .eq('id', profile.organizationId)
+            .single();
+
+          if (orgError || !organization) {
+            return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+          }
+
+          // Set organization fields with fallbacks
+          const finalOrganizationName = organizationName || organization.name || (profile.email ? profile.email.split('@')[0] : null);
+          const finalOrganizationLogoUrl = organizationLogo || organization.logoUrl;
+          const finalOrganizationEmail = organizationEmail || organization.email || profile.email;
+          const finalCurrency = currency || organization.baseCurrency || 'CAD';
+
+          // Handle customer information if customerId is provided
+          let finalRecepientName = recepientName;
+          let finalRecepientEmail = recepientEmail;
+
+          if (customerId) {
+            const { data: customer, error: customerError } = await supabase
+              .from('customers')
+              .select('name, email')
+              .eq('id', customerId)
+              .single();
+
+            if (customerError) {
+              return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+            }
+
+            finalRecepientName = customer.name;
+            finalRecepientEmail = customer.email;
+          }
+
+          // Set default dates if not provided
+          const currentDate = new Date();
+          const finalStartDate = startDate || currentDate;
+          const finalEndDate = endDate || new Date(currentDate.getTime() + (21 * 24 * 60 * 60 * 1000)); // 3 weeks from current date
 
           // Generate token for project access
           const token = crypto.randomUUID();
 
           console.log("Attempting to insert into 'projects' table...");
-          const { data: project, error: projectError } = await supabase
+           const { data: project, error: projectError } = await supabase
           .from("projects")
           .insert({
               type,
               customerId,
-              currency,
+              currency: finalCurrency,
               name,
               description,
-              startDate,
-              endDate,
+              startDate: finalStartDate,
+              endDate: finalEndDate,
               budget,
               deliverablesEnabled,
               deliverables,
@@ -81,7 +138,13 @@ export async function POST(request: Request) {
               state,
               notes,
               emailToCustomer,
+              organizationName: finalOrganizationName,
+              organizationLogo: finalOrganizationLogoUrl,
+              organizationEmail: finalOrganizationEmail,
+              recepientName: finalRecepientName,
+              recepientEmail: finalRecepientEmail,
               createdBy: user.id,
+              organizationId: profile.organizationId,
               updatedOn: new Date().toISOString(),
               isArchived: false,
               token: token,
@@ -212,27 +275,10 @@ export async function POST(request: Request) {
           .eq("id", customerId)
           .single();
           if (customer?.email) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('profile_id', user.id)
-                .single();
-
-            // The 'organization' table is queried for branding details.
-            const { data: organization } = await supabase
-                .from('organization')
-                .select('name, email, logoUrl')
-                .eq('createdBy', user.id)
-                .maybeSingle();
-
-            const fromEmail =  'no_reply@projects.bexforte.com';
-            
-            let fromName = 'Bexforte';
-
-            let sendName = organization?.name ?? profile?.email.split('@')[0];
-       
-
-            const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
+            const fromEmail = 'no_reply@projects.bexforte.com';
+            const fromName = 'Bexforte';
+            const sendName = project.organizationName || 'Bexforte';
+            const logoUrl = project.organizationLogo || "https://www.bexoni.com/favicon.ico";
             
             const emailHtml = await render(IssueProject({
                 projectId: project.id,

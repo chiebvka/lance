@@ -603,7 +603,7 @@ export default function SettingsList({
       </div>
 
       {cryptoForm.cryptoType && (
-        <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+        <div className="text-sm  bg-purple-50 dark:bg-purple-900 p-3 rounded-none">
           Current rate: 1 {cryptoForm.cryptoType} = ${getCryptoRate(cryptoForm.cryptoType).toLocaleString()} USD
         </div>
       )}
@@ -731,7 +731,7 @@ export default function SettingsList({
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <p className="text-sm text-gray-600">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {accounts.map((account) => (
@@ -757,14 +757,7 @@ export default function SettingsList({
                 onCheckedChange={() => onSetDefault(account.id)}
                 disabled={loading}
               />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onRefreshAccount(account.id)}
-                disabled={loading}
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+
               <Button
                 variant="ghost"
                 size="sm"

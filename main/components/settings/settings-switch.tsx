@@ -46,11 +46,11 @@ export default function SettingsSwitch({
   return (
     <div className="flex items-center justify-between py-4">
       <div className="flex-1 space-y-1">
-        <Label className="text-sm font-medium text-gray-900">
+        <Label className="text-sm font-medium text-primary">
           {label}
         </Label>
         {description && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm ">
             {description}
           </p>
         )}

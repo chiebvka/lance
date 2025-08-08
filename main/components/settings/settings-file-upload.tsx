@@ -145,7 +145,7 @@ export default function SettingsFileUpload({
               disabled={disabled || loading}
             />
             
-            <p className="text-xs mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               An avatar is optional but strongly recommended.
             </p>
           </div>

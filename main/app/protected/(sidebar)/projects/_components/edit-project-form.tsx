@@ -1,6 +1,8 @@
 "use client"
 
-import React, { useEffect, useState, useCallback } from "react"
+import React, { useEffect, useState, useCallback, forwardRef, useImperativeHandle } from "react"
+import { useCustomers } from '@/hooks/customers/use-customers'
+import { useOrganization } from '@/hooks/organizations/use-organization'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -81,7 +83,7 @@ import type paymentTermSchema from "@/validation/payment"
 import axios from "axios"
 import { toast } from "sonner"
 import { v4 as uuidv4 } from "uuid"
-import { projectCustomerFetch } from "@/actions/customer/fetch"
+
 
 import { Tables } from "@/types/supabase"
 import { projectEditSchema } from "@/validation/projects"
@@ -89,6 +91,7 @@ import { projectEditSchema } from "@/validation/projects"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import ProjectFormSkeleton from "./project-form-skeleton"
 import CustomerForm from "../../customers/_components/customer-form"
+import Link from "next/link"
 
 type ProjectFormValues = z.infer<typeof projectEditSchema>
 type DeliverableFormValues = z.infer<typeof deliverableSchema>
@@ -155,16 +158,7 @@ const fetchProject = async (projectId: string): Promise<ProjectWithRelations> =>
   throw new Error("Failed to fetch project");
 };
 
-const fetchCustomers = async (): Promise<Customer[]> => {
-  const result = await projectCustomerFetch();
-  if (result.customers) {
-    return result.customers as Customer[];
-  }
-  if (result.error) {
-    toast.error("Failed to load customers", { description: result.error });
-  }
-  return [];
-};
+
 
 const parseDate = (date: string | null | undefined): Date | undefined => {
   if (!date) return undefined;
@@ -184,7 +178,7 @@ function cleanProjectForForm(project: any): ProjectFormValues {
     type: project.type ?? "personal",
     budget: project.budget ?? 0,
     currency: project.currency ?? "USD",
-    currencyEnabled: project.currencyEnabled ?? false,
+    currencyEnabled: project.currencyEnabled ?? true, // Enable currency by default if project has a currency
     deliverablesEnabled: project.deliverablesEnabled ?? true,
     deliverables: (project.deliverables || []).map((d: any) => ({
       ...d,
@@ -231,16 +225,21 @@ function cleanProjectForForm(project: any): ProjectFormValues {
   }
 }
 
-export default function EditProjectForm({ 
-  projectId, 
-  onSuccess, 
-  onLoadingChange, 
+export interface EditProjectFormRef {
+  handleSubmit: (emailToCustomer: boolean) => Promise<void>
+  handleSaveDraft: () => Promise<void>
+}
+
+const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
+  projectId,
+  onSuccess,
+  onLoadingChange,
   onCancel,
   onFormValidChange,
   onCustomerChange,
   onProjectTypeChange,
   onSavingChange
-}: EditProjectFormProps) {
+}: EditProjectFormProps, ref) => {
   const queryClient = useQueryClient();
   const [isCreateCustomerSheetOpen, setCreateCustomerSheetOpen] = useState(false)
   const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false)
@@ -253,11 +252,8 @@ export default function EditProjectForm({
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: customers = [] } = useQuery({
-    queryKey: ['customers'],
-    queryFn: fetchCustomers,
-    staleTime: 1000 * 60 * 5,
-  });
+  const { data: customers = [], isLoading: customersLoading } = useCustomers();
+  const { data: organization } = useOrganization();
 
   const updateProjectMutation = useMutation({
     mutationFn: (values: ProjectFormValues) => axios.put(`/api/projects/${projectId}`, values),
@@ -305,9 +301,8 @@ export default function EditProjectForm({
     }
   });
 
-  const handleCustomerCreated = async () => {
+  const handleCustomerCreated = () => {
     setCreateCustomerSheetOpen(false);
-    await queryClient.invalidateQueries({ queryKey: ['customers'] });
     toast.success("Customer created and list updated!");
   };
 
@@ -321,7 +316,7 @@ export default function EditProjectForm({
       type: "personal",
       budget: 0,
       currency: "USD",
-      currencyEnabled: false,
+      currencyEnabled: true, // Enable by default for edit form
       deliverablesEnabled: true,
       deliverables: [],
       paymentStructure: "noPayment",
@@ -367,15 +362,22 @@ export default function EditProjectForm({
   useEffect(() => {
     console.log('[EditProjectForm] useEffect triggered. Project:', project);
     if (project) {
+      console.log('[EditProjectForm] Raw project data:', project);
+      console.log('[EditProjectForm] Project currency:', project.currency);
+      console.log('[EditProjectForm] Project currencyEnabled:', project.currencyEnabled);
       console.log('[EditProjectForm] Resetting form with project data');
       const cleanedData = cleanProjectForForm(project);
       console.log('[EditProjectForm] Cleaned form data:', cleanedData);
+      console.log('[EditProjectForm] Cleaned currency:', cleanedData.currency);
+      console.log('[EditProjectForm] Cleaned currencyEnabled:', cleanedData.currencyEnabled);
       form.reset(cleanedData);
       deliverableReplace(cleanedData.deliverables || []);
       milestoneReplace(cleanedData.paymentMilestones || []);
       setTimeout(() => {
         const formValues = form.getValues();
         console.log('[EditProjectForm] Form values after reset:', formValues);
+        console.log('[EditProjectForm] Form currency:', formValues.currency);
+        console.log('[EditProjectForm] Form currencyEnabled:', formValues.currencyEnabled);
         console.log('[EditProjectForm] Deliverables in form:', formValues.deliverables);
         console.log('[EditProjectForm] Payment milestones in form:', formValues.paymentMilestones);
       }, 100);
@@ -602,10 +604,14 @@ export default function EditProjectForm({
         })),
       };
       console.log('[EditProjectForm] cleanedValues to be sent to API:', cleanedValues);
-      updateProjectMutation.mutate(cleanedValues);
+      await updateProjectMutation.mutateAsync(cleanedValues);
+      toast.success('Project updated successfully!');
+      onSuccess?.();
     } catch (err) {
       console.error('[EditProjectForm] Error in handleUpdate:', err);
-      toast.error('Error in handleUpdate. Check console for details.');
+      toast.error('Error updating project. Check console for details.');
+    } finally {
+      onLoadingChange?.(false);
     }
   }
 
@@ -738,23 +744,25 @@ export default function EditProjectForm({
       const values = form.getValues()
 
       const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
-        ...d,
         id: d.id || "",
-        name: d.name,
-        description: d.description,
-        dueDate: d.dueDate, 
+        name: d.name || "",
+        description: d.description || "",
+        dueDate: d.dueDate,
         position: d.position || 0,
         isPublished: d.isPublished || false,
+        status: d.status || "pending",
       }));
       
       const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones) 
         ? values.paymentMilestones.map(m => ({
-            ...m,
             id: m.id,
-            name: m.name,
-            percentage: m.percentage,
-            amount: m.amount,
+            name: m.name || null,
+            percentage: m.percentage || null,
+            amount: m.amount || null,
             dueDate: m.dueDate,
+            description: m.description || null,
+            status: m.status || null,
+            type: m.type || null,
           }))
         : [];
 
@@ -770,18 +778,11 @@ export default function EditProjectForm({
         paymentMilestones: milestonesData,
         customFields: customFieldsData,
         isPublished: false,
-        state: "draft",
+        state: "draft" as const,
       }
 
-      const response = await axios.post("/api/projects/create", projectData)
-
-      if (response.data.success) {
-        toast.success("Draft saved successfully!")
-      } else {
-        toast.error("Failed to save draft.", {
-          description: response.data.error || "An unknown error occurred.",
-        })
-      }
+      updateProjectMutation.mutate(projectData)
+      toast.success("Draft saved successfully!")
     } catch (error) {
       console.error("Error saving draft:", error)
       const errorDescription =
@@ -803,23 +804,25 @@ export default function EditProjectForm({
       const values = form.getValues()
 
       const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
-        ...d,
         id: d.id || "",
-        name: d.name,
-        description: d.description,
+        name: d.name || "",
+        description: d.description || "",
         dueDate: d.dueDate,
         position: d.position || 0,
         isPublished: d.isPublished || false,
+        status: d.status || "pending",
       }));
 
       const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones)
         ? values.paymentMilestones.map(m => ({
-          ...m,
           id: m.id,
-          name: m.name,
-          percentage: m.percentage,
-          amount: m.amount,
+          name: m.name || null,
+          percentage: m.percentage || null,
+          amount: m.amount || null,
           dueDate: m.dueDate,
+          description: m.description || null,
+          status: m.status || null,
+          type: m.type || null,
         }))
         : [];
 
@@ -836,19 +839,12 @@ export default function EditProjectForm({
         paymentMilestones: milestonesData,
         customFields: customFieldsData,
         isPublished: true,
-        state: "published",
+        state: "published" as const,
         emailToCustomer,
       }
 
-      const response = await axios.post("/api/projects/create", projectData)
-
-      if (response.data.success) {
-        toast.success(emailToCustomer ? "Project published and sent to customer!" : "Project published successfully!")
-      } else {
-        toast.error("Failed to publish project.", {
-          description: response.data.error || "An unknown error occurred.",
-        })
-      }
+      updateProjectMutation.mutate(projectData)
+      toast.success(emailToCustomer ? "Project published and sent to customer!" : "Project published successfully!")
     } catch (error) {
       console.error("Error publishing project:", error)
       const errorDescription =
@@ -922,6 +918,21 @@ export default function EditProjectForm({
       formElement.removeEventListener('submit-publish-email', handleSubmitPublishEmail);
     };
   }, [handleSaveDraft, handlePublishProject]); // Add dependencies
+
+  // Expose imperative methods for parent controls (Update/Save Draft)
+  useImperativeHandle(ref, () => ({
+    handleSubmit: async (emailToCustomer: boolean) => {
+      const formElement = document.getElementById('edit-project-form')
+      if (!formElement) return
+      const eventName = emailToCustomer ? 'submit-publish-email' : 'submit-publish'
+      formElement.dispatchEvent(new Event(eventName))
+    },
+    handleSaveDraft: async () => {
+      const formElement = document.getElementById('edit-project-form')
+      if (!formElement) return
+      formElement.dispatchEvent(new Event('submit-draft'))
+    }
+  }))
 
   // Now handle the conditional returns AFTER all hooks
   if (isLoadingProject) {
@@ -2461,6 +2472,7 @@ export default function EditProjectForm({
                                                           <FormItem>
                                                             <FormLabel>Agreement Template</FormLabel>
                                                             <Select
+                                                              disabled={project?.status === 'signed'}
                                                               onValueChange={(value) => {
                                                                 field.onChange(value)
 
@@ -2583,7 +2595,7 @@ export default function EditProjectForm({
                                                               defaultValue={field.value}
                                                             >
                                       <FormControl>
-                                                                <SelectTrigger className="w-48">
+                                                              <SelectTrigger className="w-48" disabled={project?.status === 'signed'}>
                                                                   <SelectValue placeholder="Select a template" />
                                                                 </SelectTrigger>
                                       </FormControl>
@@ -2597,9 +2609,11 @@ export default function EditProjectForm({
                                     </FormItem>
                                   )}
                                 />
-                                <Button type="button" variant="outlinebrimary" onClick={() => setIsEditingAgreement(!isEditingAgreement)}>
-                                  {isEditingAgreement ? "Preview" : "Edit Agreement"}
-                                </Button>
+                                {(project?.status !== 'signed') && (
+                                  <Button type="button" variant="outlinebrimary" onClick={() => setIsEditingAgreement(!isEditingAgreement)}>
+                                    {isEditingAgreement ? "Preview" : "Edit Agreement"}
+                                  </Button>
+                                )}
                             </div>
 
                               {isEditingAgreement ? (
@@ -2626,12 +2640,15 @@ export default function EditProjectForm({
                                   />
                                 </div>
                               )}
-
+                              <div className="text-xs bg-purple-50 dark:bg-purple-900 p-2 rounded-none ">
+                                Note: This template is a framework to facilitate agreement. Both parties are solely responsible for reviewing and agreeing to the contents. <Link href="https://bexforte.com" target="_blank" className='text-primary underline'>Bexforte</Link> is only a communication medium and is not a party to the agreement.
+                              </div>
                               <FormField
                                 control={form.control}
                                 name="hasAgreedToTerms"
                                 render={({ field }) => (
                                   <FormItem className=" bg-bexoni/10 dark:bg-bexoni/20 p-4">
+
                                     <div className="flex items-center space-x-2">
                                       <FormControl>
                                         <Checkbox
@@ -2641,10 +2658,12 @@ export default function EditProjectForm({
                                           variant="agreement"
                                         />
                                       </FormControl>
+                                    
                                         <Label htmlFor="agreeTerms" className="text-sm text-primary">
                                           I agree to the service agreement terms and conditions
                                         </Label>
                                     </div>
+                                    
                                     <FormMessage />
                                   </FormItem>
                                 )}
@@ -2661,4 +2680,6 @@ export default function EditProjectForm({
             </Form>
     </div>
   )
-} 
+})
+
+export default EditProjectForm

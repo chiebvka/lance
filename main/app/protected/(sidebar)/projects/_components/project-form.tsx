@@ -1,8 +1,11 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
-import { useEffect, useState } from "react"
+import { useState, forwardRef, useImperativeHandle } from "react"
+import { useCustomers } from '@/hooks/customers/use-customers'
+import { useOrganization } from '@/hooks/organizations/use-organization'
+import { useCreateProject } from '@/hooks/projects/use-projects'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -87,6 +90,7 @@ import { projectCustomerFetch } from "@/actions/customer/fetch"
 import { projectCreateSchema } from "@/validation/projects"
 import { Badge } from "@/components/ui/badge"
 import CustomerForm from "../../customers/_components/customer-form"
+import Link from "next/link"
 
 type ProjectFormValues = z.infer<typeof projectCreateSchema>
 type DeliverableFormValues = z.infer<typeof deliverableSchema>
@@ -152,10 +156,14 @@ interface ProjectFormProps {
   onFormValidChange?: (valid: boolean) => void;
   onCustomerChange?: (customer: any) => void;
   onProjectTypeChange?: (type: string) => void;
-  onSavingChange?: (saving: boolean) => void;
+  onSavingChange?: (saving: boolean, action?: 'draft' | 'project') => void;
 }
 
-export default function ProjectForm({ 
+export interface ProjectFormRef {
+  handleSubmit: (emailToCustomer: boolean) => Promise<void>
+}
+
+const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({ 
   onSuccess, 
   onLoadingChange, 
   onCancel, 
@@ -164,31 +172,17 @@ export default function ProjectForm({
   onProjectTypeChange,
   onSavingChange,
   ...otherProps 
-}: ProjectFormProps) {
+}, ref) => {
   const router = useRouter()
-  const [customers, setCustomers] = useState<Customer[]>([])
+  const { data: customers = [], isLoading: customersLoading } = useCustomers()
+  const { data: organization } = useOrganization()
+  const createProjectMutation = useCreateProject()
   const [isCreateCustomerSheetOpen, setCreateCustomerSheetOpen] = useState(false)
   const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false)
 
-  useEffect(() => {
-    async function fetchCustomers() {
-      const result = await projectCustomerFetch()
-      if (result.customers) {
-        setCustomers(result.customers as Customer[])
-      } else if (result.error) {
-        toast.error("Failed to load customers", { description: result.error })
-      }
-    }
-    fetchCustomers()
-  }, [])
-
-  const handleCustomerCreated = async () => {
+  const handleCustomerCreated = () => {
     setCreateCustomerSheetOpen(false)
-    const result = await projectCustomerFetch()
-    if (result.customers) {
-      setCustomers(result.customers as Customer[])
-      toast.success("Customer created and list updated!")
-    }
+    toast.success("Customer created and list updated!")
   }
   const agreementTemplates = {
     standard: "<h2>Standard Service Agreement</h2><p>This document outlines the standard terms and conditions for our services, including scope, payment, and confidentiality.</p>",
@@ -200,14 +194,14 @@ export default function ProjectForm({
     resolver: zodResolver(projectCreateSchema),
     defaultValues: {
       customerId: null,
-      currency: "USD",
+      currency: "CAD", // Default to CAD, will be updated with organization currency
       currencyEnabled: false,
       type: "personal",
       budget: 0,
       name: "",
       description: "",
-      startDate: undefined,
-      endDate: undefined,
+      startDate: new Date(), // Default to current date
+      endDate: new Date(new Date().getTime() + (21 * 24 * 60 * 60 * 1000)), // 3 weeks from now
       deliverablesEnabled: true,
       deliverables: [
         {
@@ -275,6 +269,14 @@ export default function ProjectForm({
   const deliverables = form.watch("deliverables")
   const agreementTemplate = form.watch("agreementTemplate")
 
+  // Update form with organization currency when available
+  React.useEffect(() => {
+    if (organization?.baseCurrency) {
+      setOrganizationCurrency(organization.baseCurrency)
+      form.setValue('currency', organization.baseCurrency)
+    }
+  }, [organization, form])
+
   // UI State - Updated to open first 3 sections by default
   const [openSections, setOpenSections] = useState({
     customer: true,
@@ -284,8 +286,9 @@ export default function ProjectForm({
     payment: false,
     agreement: false,
   })
-  const [isSaving, setIsSaving] = useState(false)
+
   const [isEditingAgreement, setIsEditingAgreement] = useState(false)
+  const [organizationCurrency, setOrganizationCurrency] = useState("CAD")
 
   // Drag and drop state
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
@@ -471,28 +474,29 @@ export default function ProjectForm({
   }
 
   const handleSaveDraft = async () => {
-    setIsSaving(true)
     try {
       const values = form.getValues()
 
       const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
-        ...d,
         id: d.id || "",
-        name: d.name,
-        description: d.description,
-        dueDate: d.dueDate, 
+        name: d.name || "",
+        description: d.description || "",
+        dueDate: d.dueDate?.toISOString() || "",
         position: d.position || 0,
         isPublished: d.isPublished || false,
+        status: d.status || "pending",
       }));
       
       const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones) 
         ? values.paymentMilestones.map(m => ({
-            ...m,
             id: m.id,
-            name: m.name,
-            percentage: m.percentage,
-            amount: m.amount,
-            dueDate: m.dueDate,
+            name: m.name || null,
+            percentage: m.percentage || null,
+            amount: m.amount || null,
+            dueDate: m.dueDate?.toISOString() || "",
+            description: m.description || null,
+            status: m.status || null,
+            type: m.type || null,
           }))
         : [];
 
@@ -502,24 +506,17 @@ export default function ProjectForm({
 
       const projectData = {
         ...values,
-        startDate: values.startDate,
-        endDate: values.endDate,
+        startDate: values.startDate?.toISOString(),
+        endDate: values.endDate?.toISOString(),
         deliverables: deliverablesData,
         paymentMilestones: milestonesData,
         customFields: customFieldsData,
         isPublished: false,
-        state: "draft",
+        state: "draft" as const,
       }
 
-      const response = await axios.post("/api/projects/create", projectData)
-
-      if (response.data.success) {
-        toast.success("Draft saved successfully!")
-      } else {
-        toast.error("Failed to save draft.", {
-          description: response.data.error || "An unknown error occurred.",
-        })
-      }
+      await createProjectMutation.mutateAsync(projectData)
+      toast.success("Draft saved successfully!")
     } catch (error) {
       console.error("Error saving draft:", error)
       const errorDescription =
@@ -529,35 +526,34 @@ export default function ProjectForm({
       toast.error("Error saving draft.", {
         description: errorDescription,
       })
-    } finally {
-      setIsSaving(false)
+      throw error; // Re-throw to be handled by the parent
     }
   }
 
   const handlePublishProject = async (emailToCustomer = false) => {
-    setIsSaving(true)
-
     try {
       const values = form.getValues()
 
       const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
-        ...d,
         id: d.id || "",
-        name: d.name,
-        description: d.description,
-        dueDate: d.dueDate,
+        name: d.name || "",
+        description: d.description || "",
+        dueDate: d.dueDate?.toISOString() || "",
         position: d.position || 0,
         isPublished: d.isPublished || false,
+        status: d.status || "pending",
       }));
 
       const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones)
         ? values.paymentMilestones.map(m => ({
-          ...m,
           id: m.id,
-          name: m.name,
-          percentage: m.percentage,
-          amount: m.amount,
-          dueDate: m.dueDate,
+          name: m.name || null,
+          percentage: m.percentage || null,
+          amount: m.amount || null,
+          dueDate: m.dueDate?.toISOString() || "",
+          description: m.description || null,
+          status: m.status || null,
+          type: m.type || null,
         }))
         : [];
 
@@ -568,25 +564,18 @@ export default function ProjectForm({
       // Prepare project data with sorted deliverables
       const projectData = {
         ...values,
-        startDate: values.startDate,
-        endDate: values.endDate,
+        startDate: values.startDate?.toISOString(),
+        endDate: values.endDate?.toISOString(),
         deliverables: deliverablesData,
         paymentMilestones: milestonesData,
         customFields: customFieldsData,
         isPublished: true,
-        state: "published",
+        state: "published" as const,
         emailToCustomer,
       }
 
-      const response = await axios.post("/api/projects/create", projectData)
-
-      if (response.data.success) {
-        toast.success(emailToCustomer ? "Project published and sent to customer!" : "Project published successfully!")
-      } else {
-        toast.error("Failed to publish project.", {
-          description: response.data.error || "An unknown error occurred.",
-        })
-      }
+      await createProjectMutation.mutateAsync(projectData)
+      toast.success(emailToCustomer ? "Project published and sent to customer!" : "Project published successfully!")
     } catch (error) {
       console.error("Error publishing project:", error)
       const errorDescription =
@@ -596,8 +585,7 @@ export default function ProjectForm({
       toast.error("Error publishing project.", {
         description: errorDescription,
       })
-    } finally {
-      setIsSaving(false)
+      throw error; // Re-throw to be handled by the parent
     }
   }
 
@@ -716,7 +704,43 @@ export default function ProjectForm({
   }
 
   // Call onLoadingChange when form submission starts/ends
-  const handleSubmit = async (data: any) => {
+  // Handle form submission with separate loading states
+  const handleSubmitAction = async (emailToCustomer: boolean) => {
+    if (!isFormValid()) {
+      toast.error("Please fill in all required fields")
+      return
+    }
+
+    if (emailToCustomer && !selectedCustomer) {
+      toast.error("Please select a customer to send the project")
+      return
+    }
+
+    try {
+      onSavingChange?.(true, emailToCustomer ? 'project' : 'draft')
+      
+      if (emailToCustomer) {
+        await handlePublishProject(true)
+      } else {
+        await handleSaveDraft()
+      }
+      
+      toast.success(emailToCustomer ? "Project published and sent to customer!" : "Draft saved successfully!")
+      onSuccess?.()
+    } catch (error: any) {
+      console.error("Project submission error:", error)
+      toast.error(error.response?.data?.error || "Failed to save project")
+    } finally {
+      onSavingChange?.(false, emailToCustomer ? 'project' : 'draft')
+    }
+  }
+
+  // Expose handleSubmit method through ref
+  useImperativeHandle(ref, () => ({
+    handleSubmit: (emailToCustomer: boolean) => handleSubmitAction(emailToCustomer),
+  }));
+
+  const handleFormSubmit = async (data: ProjectFormValues) => {
     try {
       onLoadingChange?.(true);
       const values = form.getValues()
@@ -785,60 +809,25 @@ export default function ProjectForm({
   };
 
   // Add effect to notify parent of form validity
-  useEffect(() => {
+  React.useEffect(() => {
     if (onFormValidChange) {
       onFormValidChange(!!isFormValid());
     }
   }, [form.watch(), onFormValidChange]);
 
   // Add effect to notify parent of customer changes
-  useEffect(() => {
+  React.useEffect(() => {
     if (onCustomerChange) {
       onCustomerChange(selectedCustomer);
     }
   }, [selectedCustomer, onCustomerChange]);
 
   // Add effect to notify parent of project type changes
-  useEffect(() => {
+  React.useEffect(() => {
     if (onProjectTypeChange) {
       onProjectTypeChange(projectType);
     }
   }, [projectType, onProjectTypeChange]);
-
-  // Add effect to notify parent of saving state changes
-  useEffect(() => {
-    if (onSavingChange) {
-      onSavingChange(isSaving);
-    }
-  }, [isSaving, onSavingChange]);
-
-  // Add custom event listeners for form submission
-  useEffect(() => {
-    const form = document.getElementById('project-form');
-    if (!form) return;
-
-    const handleSubmitDraft = () => {
-      handleSaveDraft();
-    };
-
-    const handleSubmitPublish = () => {
-      handlePublishProject(false);
-    };
-
-    const handleSubmitPublishEmail = () => {
-      handlePublishProject(true);
-    };
-
-    form.addEventListener('submit-draft', handleSubmitDraft);
-    form.addEventListener('submit-publish', handleSubmitPublish);
-    form.addEventListener('submit-publish-email', handleSubmitPublishEmail);
-
-    return () => {
-      form.removeEventListener('submit-draft', handleSubmitDraft);
-      form.removeEventListener('submit-publish', handleSubmitPublish);
-      form.removeEventListener('submit-publish-email', handleSubmitPublishEmail);
-    };
-  }, []);
 
   return (
     <div className="min-h-screen">
@@ -947,7 +936,7 @@ export default function ProjectForm({
 
 
           <Form {...form}>
-            <form id="project-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            <form id="project-form" onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
               {/* Accordion Sections */}
               <div className="space-y-4" >
                 {/* Customer Selection */}
@@ -2397,7 +2386,7 @@ export default function ProjectForm({
                                                     <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
                                                   </td>
                                                   <td style="width: 50%; vertical-align: top; padding-left: 1rem;">
-                                                    <p><strong>The Provider:</strong> [Your Company Name]</p>
+                                                    <p><strong>The Provider:</strong> {organization?.name || '[Your Company Name]'}</p>
                                                     <p style="margin-top: 2rem;"><strong>Date:</strong> ${currentDate}</p>
                                                     <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
                                                   </td>
@@ -2409,7 +2398,7 @@ export default function ProjectForm({
                                             case "standard":
                                               newContent = `
                                                 <h2>Standard Service Agreement</h2>
-                                                <p>This Service Agreement ("Agreement") is made and entered into as of ${currentDate} ("Effective Date"), by and between <strong>[Your Company Name]</strong> ("Provider") and <strong>${customerName}</strong> ("Client").</p>
+                                                <p>This Service Agreement ("Agreement") is made and entered into as of ${currentDate} ("Effective Date"), by and between <strong>${organization?.name || '[Your Company Name]'}</strong> ("Provider") and <strong>${customerName}</strong> ("Client").</p>
                                                 <h3>1. Services</h3><p>Provider agrees to perform services ("Services") for the project known as <strong>${projectName}</strong>, described as: ${projectDescription}.</p>
                                                 <h3>2. Project Deliverables</h3><p>The Provider will deliver the following items:</p><ul>${deliverablesList}</ul>
                                                 <h3>3. Term of Agreement</h3><p>This Agreement will begin on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} and will continue until ${endDate ? format(new Date(endDate), "PPP") : 'the completion of the Services'}, unless terminated earlier.</p>
@@ -2424,7 +2413,7 @@ export default function ProjectForm({
                                             case "consulting":
                                               newContent = `
                                                 <h2>Consulting Agreement</h2>
-                                                <p>This Consulting Agreement ("Agreement") is effective ${currentDate} ("Effective Date"), between <strong>[Your Company Name]</strong> ("Consultant") and <strong>${customerName}</strong> ("Client").</p>
+                                                <p>This Consulting Agreement ("Agreement") is effective ${currentDate} ("Effective Date"), between <strong>${organization?.name || '[Your Company Name]'}</strong> ("Consultant") and <strong>${customerName}</strong> ("Client").</p>
                                                 <h3>1. Consulting Services</h3><p>Consultant will provide strategic advice and expertise for the project: <strong>${projectName}</strong>. The objective is: ${projectDescription}.</p>
                                                 <h3>2. Key Activities & Reports</h3><p>Consulting activities will include:</p><ul>${deliverablesList}</ul>
                                                 <h3>3. Term</h3><p>The consulting period shall commence on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} ${endDate ? `and conclude on ${format(new Date(endDate), "PPP")}` : 'and continue until terminated'}.</p>
@@ -2439,7 +2428,7 @@ export default function ProjectForm({
                                             case "development":
                                               newContent = `
                                                 <h2>Software Development Agreement</h2>
-                                                <p>This Software Development Agreement ("Agreement") is entered into on ${currentDate} ("Effective Date") by <strong>[Your Company Name]</strong> ("Developer") and <strong>${customerName}</strong> ("Client").</p>
+                                                <p>This Software Development Agreement ("Agreement") is entered into on ${currentDate} ("Effective Date") by <strong>${organization?.name || '[Your Company Name]'}</strong> ("Developer") and <strong>${customerName}</strong> ("Client").</p>
                                                 <h3>1. Development Services</h3><p>Developer will design, develop, and test the software for the project <strong>${projectName}</strong>, with the goal of: ${projectDescription}.</p>
                                                 <h3>2. Technical Specifications & Deliverables</h3><p>The software will be developed according to the following specifications:</p><ul>${deliverablesList}</ul>
                                                 <h3>3. Project Timeline</h3><p>The project will commence on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'}. ${endDate ? `The target completion date is ${format(new Date(endDate), "PPP")}.` : 'A completion date has not been set.'}</p>
@@ -2454,7 +2443,7 @@ export default function ProjectForm({
                                             case "custom":
                                               newContent = `
                                                 <h2>Custom Agreement</h2>
-                                                <p>This Agreement is made on ${currentDate} between <strong>[Your Company Name]</strong> and <strong>${customerName}</strong>.</p>
+                                                <p>This Agreement is made on ${currentDate} between <strong>${organization?.name || '[Your Company Name]'}</strong> and <strong>${customerName}</strong>.</p>
                                                 <p><em>Please use this space to create a custom agreement tailored to your project's unique needs.</em></p>
                                                 ${signatureBlock}`;
                                               break;
@@ -2508,6 +2497,10 @@ export default function ProjectForm({
                                 </div>
                               )}
 
+                              <div className="text-xs bg-purple-50 dark:bg-purple-900 p-2 rounded-none ">
+                                Note: This template is a framework to facilitate agreement. Both parties are solely responsible for reviewing and agreeing to the contents. <Link href="https://bexforte.com" target="_blank" className='text-primary underline'>Bexforte</Link> is only a communication medium and is not a party to the agreement.
+                              </div>
+
                               <FormField
                                 control={form.control}
                                 name="hasAgreedToTerms"
@@ -2543,4 +2536,6 @@ export default function ProjectForm({
       </div>
     </div>
   )
-}
+})
+
+export default ProjectForm

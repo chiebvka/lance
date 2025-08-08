@@ -1276,6 +1276,7 @@ export type Database = {
           recepientName: string | null
           serviceAgreement: Json | null
           signatureDetails: Json | null
+          signatureType: string | null
           signedOn: string | null
           signedStatus: string | null
           startDate: string | null
@@ -1323,6 +1324,7 @@ export type Database = {
           recepientName?: string | null
           serviceAgreement?: Json | null
           signatureDetails?: Json | null
+          signatureType?: string | null
           signedOn?: string | null
           signedStatus?: string | null
           startDate?: string | null
@@ -1370,6 +1372,7 @@ export type Database = {
           recepientName?: string | null
           serviceAgreement?: Json | null
           signatureDetails?: Json | null
+          signatureType?: string | null
           signedOn?: string | null
           signedStatus?: string | null
           startDate?: string | null

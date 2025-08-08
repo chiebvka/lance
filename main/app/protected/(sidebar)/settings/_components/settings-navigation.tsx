@@ -28,7 +28,7 @@ export default function SettingsNavigation({}: Props) {
             "px-4 py-3 font-medium text-sm border-b-2 transition-colors",
             pathname === tab.href
               ? "border-primary text-primary"
-              : "border-transparent text-gray-500 hover:text-gray-700"
+              : "border-transparent  hover:text-gray-700"
           )}
         >
           {tab.label}

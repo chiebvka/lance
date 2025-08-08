@@ -23,8 +23,9 @@ import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { DataTable } from "./data-table"
 import { columns } from "./columns"
-import ProjectForm from './project-form'
-import EditProjectForm from './edit-project-form'
+import ProjectForm, { ProjectFormRef } from './project-form'
+import EditProjectForm, { EditProjectFormRef } from './edit-project-form'
+import ProjectDetailsSheet from './project-details-sheet'
 import { Bubbles, Trash2, Save, ChevronDown } from "lucide-react"
 import { FilterTag } from '@/components/filtering/search-filter'
 import { 
@@ -187,7 +188,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
     const stateFilters = searchParams.getAll('state');
     const paymentTypeFilters = searchParams.getAll('paymentType');
     const agreementFilters = searchParams.getAll('hasServiceAgreement');
-    const typeFilters = searchParams.getAll('type');
+    const typeFilters = searchParams.getAll('projectType');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
 
@@ -405,7 +406,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
 
     // Clear existing filter params
     params.delete('state');
-    params.delete('type');
+    params.delete('projectType');
     params.delete('paymentType');
     params.delete('hasServiceAgreement');
     params.delete('dateFrom');
@@ -419,7 +420,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
       }
     }
     newFilters.state.forEach(value => params.append('state', value));
-    newFilters.type.forEach(value => params.append('type', value));
+    newFilters.type.forEach(value => params.append('projectType', value));
     newFilters.paymentType.forEach(value => params.append('paymentType', value));
     newFilters.hasServiceAgreement.forEach(value => params.append('hasServiceAgreement', value));
 
@@ -538,34 +539,26 @@ export default function ProjectsClient({ initialProjects }: Props) {
 
   // Add these new handlers for project form actions
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [projectFormValid, setProjectFormValid] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [projectType, setProjectType] = useState<string>('customer');
 
-  // Update the event handlers to be more robust
+  // Create a ref to the form component to call its methods
+  const formRef = useRef<ProjectFormRef>(null);
+  const editFormRef = useRef<EditProjectFormRef>(null);
+
+  // Update the event handlers to use the form ref
   const handleSaveDraft = () => {
-    const formElement = document.getElementById('edit-project-form') || document.getElementById('project-form');
-    if (formElement) {
-      // Create a custom event with more specific details
-      const event = new CustomEvent('submit-draft', { 
-        bubbles: true, 
-        cancelable: true,
-        detail: { action: 'save-draft' }
-      });
-      formElement.dispatchEvent(event);
+    if (formRef.current) {
+      formRef.current.handleSubmit(false);
     }
   };
 
   const handlePublishProject = (emailToCustomer = false) => {
-    const formElement = document.getElementById('edit-project-form') || document.getElementById('project-form');
-    if (formElement) {
-      const eventName = emailToCustomer ? 'submit-publish-email' : 'submit-publish';
-      const event = new CustomEvent(eventName, { 
-        bubbles: true, 
-        cancelable: true,
-        detail: { action: eventName, emailToCustomer }
-      });
-      formElement.dispatchEvent(event);
+    if (formRef.current) {
+      formRef.current.handleSubmit(emailToCustomer);
     }
   };
 
@@ -592,14 +585,28 @@ export default function ProjectsClient({ initialProjects }: Props) {
     setDeleteModalOpen(false)
   }
 
+  const handleSavingChange = (saving: boolean, action: 'draft' | 'project' = 'draft') => {
+    if (action === 'draft') {
+      setIsSavingDraft(saving);
+    } else {
+      setIsCreatingProject(saving);
+    }
+    setIsSaving(saving); // Keep the general state for backward compatibility
+  };
+
   const footer = (
     <>
       <SheetClose asChild>
         <Button variant="ghost" ref={closeRef}>Cancel</Button>
       </SheetClose>
-      <Button variant="outlinebrimary" onClick={handleSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
+      <Button 
+        variant="outlinebrimary" 
+        onClick={handleSaveDraft} 
+        disabled={isSavingDraft || isCreatingProject} 
+        className="px-3 sm:px-4"
+      >
         <Save className="h-4 w-4 mr-2" />
-        {isSaving ?  (
+        {isSavingDraft ?  (
               <>
                 <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
                 Saving...
@@ -610,10 +617,10 @@ export default function ProjectsClient({ initialProjects }: Props) {
       <div className="inline-flex rounded-md shadow-sm">
         <Button
           onClick={() => handlePublishProject(false)}
-          disabled={!projectFormValid || isSaving}
+          disabled={!projectFormValid || isSavingDraft || isCreatingProject}
           className="rounded-r-none px-3 sm:px-4"
         >
-          {isSaving ? (
+          {isCreatingProject ? (
               <>
                 <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
                 Publishing...
@@ -623,7 +630,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              disabled={!projectFormValid || isSaving}
+              disabled={!projectFormValid || isSavingDraft || isCreatingProject}
               className="rounded-l-none border-l border-purple-700 px-3"
             >
               <span className="sr-only">Open options</span>
@@ -644,12 +651,24 @@ export default function ProjectsClient({ initialProjects }: Props) {
     </>
   );
 
+  const handleEditSaveDraft = () => {
+    if (editFormRef.current) {
+      editFormRef.current.handleSaveDraft();
+    }
+  };
+
+  const handleEditPublishProject = (emailToCustomer = false) => {
+    if (editFormRef.current) {
+      editFormRef.current.handleSubmit(emailToCustomer);
+    }
+  };
+
   const editFooter = (
     <>
       <SheetClose asChild>
         <Button variant="ghost" onClick={handleCloseSheet}>Cancel</Button>
       </SheetClose>
-      <Button variant="outlinebrimary" onClick={handleSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
+      <Button variant="outlinebrimary" onClick={handleEditSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
         <Save className="h-4 w-4 mr-2" />
         {isSaving ?  (
               <>
@@ -661,7 +680,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
 
       <div className="inline-flex rounded-md shadow-sm">
         <Button
-          onClick={() => handlePublishProject(false)}
+          onClick={() => handleEditPublishProject(false)}
           disabled={!projectFormValid || isSaving}
           className="rounded-r-none px-3 sm:px-4"
         >
@@ -683,9 +702,9 @@ export default function ProjectsClient({ initialProjects }: Props) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handlePublishProject(false)}>Update Project</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleEditPublishProject(false)}>Update Project</DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => handlePublishProject(true)}
+              onClick={() => handleEditPublishProject(true)}
               disabled={projectType !== "customer" || !selectedCustomer}
             >
               Update & Email to Customer
@@ -807,6 +826,9 @@ export default function ProjectsClient({ initialProjects }: Props) {
     return <div className="p-8">Error fetching projects: {(error as Error).message}</div>;
   }
 
+  // Get the sheet type from URL
+  const sheetType = searchParams.get('type') || 'details';
+
   return (
     <>
       <CreateSearchFilter 
@@ -820,13 +842,14 @@ export default function ProjectsClient({ initialProjects }: Props) {
         sheetTitle="New Project"
         sheetContent={
           <ProjectForm 
+            ref={formRef}
             onSuccess={handleCreateSuccess} 
             onLoadingChange={setIsSubmitting}
             onCancel={handleCreateCancel}
             onFormValidChange={setProjectFormValid}
             onCustomerChange={setSelectedCustomer}
             onProjectTypeChange={setProjectType}
-            onSavingChange={setIsSaving}
+            onSavingChange={handleSavingChange}
           />
         }
         sheetContentClassName='w-full sm:w-3/4 md:w-1/2 lg:w-[55%]'
@@ -843,18 +866,24 @@ export default function ProjectsClient({ initialProjects }: Props) {
         isLoading={deleteProjectMutation.isPending}
       />
 
-      {/* Edit Project Sheet */}
+      {/* Project Sheets */}
       <Sheet open={!!selectedProjectId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
         <SheetContent 
           side="right" 
           bounce="right" 
           withGap={true} 
-          className="w-full flex flex-col p-0 sm:w-3/4 md:w-1/2 lg:w-[40%]"
+          className={`w-full flex flex-col p-0 ${
+            sheetType === 'details' 
+              ? 'sm:w-3/4 md:w-1/2 lg:w-[40%]'
+              : 'sm:w-3/4 md:w-1/2 lg:w-[55%]'
+          }`}
         >
           <SheetHeader className="p-4 border-b">
             <div className="flex justify-between items-center">
-              <SheetTitle>Edit Project</SheetTitle>
-              {selectedProjectId && (
+              <SheetTitle>
+                {sheetType === 'details' ? 'Project Details' : 'Edit Project'}
+              </SheetTitle>
+              {selectedProjectId && sheetType === 'details' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -869,24 +898,31 @@ export default function ProjectsClient({ initialProjects }: Props) {
             </div>
           </SheetHeader>
           <ScrollArea className="flex-grow">
-            <div className="p-4">
-              {selectedProjectId && (
-                <EditProjectForm 
-                  projectId={selectedProjectId} 
-                  onSuccess={handleEditSuccess} 
-                  onLoadingChange={setIsSubmitting} 
-                  onCancel={handleCloseSheet}
-                  onFormValidChange={setProjectFormValid}
-                  onCustomerChange={setSelectedCustomer}
-                  onProjectTypeChange={setProjectType}
-                  onSavingChange={setIsSaving}
-                />
-              )}
-            </div>
+            {selectedProjectId && projectBeingEdited && (
+              sheetType === 'details' ? (
+                <ProjectDetailsSheet project={projectBeingEdited} />
+              ) : (
+                <div className="p-4">
+                  <EditProjectForm 
+                    ref={editFormRef}
+                    projectId={selectedProjectId} 
+                    onSuccess={handleEditSuccess} 
+                    onLoadingChange={setIsSubmitting} 
+                    onCancel={handleCloseSheet}
+                    onFormValidChange={setProjectFormValid}
+                    onCustomerChange={setSelectedCustomer}
+                    onProjectTypeChange={setProjectType}
+                    onSavingChange={setIsSaving}
+                  />
+                </div>
+              )
+            )}
           </ScrollArea>
-          <SheetFooter className="p-4 border-t">
-            {editFooter}
-          </SheetFooter>
+          {sheetType === 'edit' && (
+            <SheetFooter className="p-4 border-t">
+              {editFooter}
+            </SheetFooter>
+          )}
         </SheetContent>
       </Sheet>
 
@@ -898,7 +934,12 @@ export default function ProjectsClient({ initialProjects }: Props) {
         <Suspense fallback={<ProjectClientSkeleton />}>
           <DataTable 
             table={table} 
-            onProjectSelect={handleProjectSelect} 
+            onProjectSelect={(projectId: string) => {
+              const params = new URLSearchParams(searchParams);
+              params.set('projectId', projectId);
+              params.set('type', 'details');
+              router.push(`${pathname}?${params.toString()}`);
+            }} 
             searchQuery={searchQuery}
           />
           <Pagination

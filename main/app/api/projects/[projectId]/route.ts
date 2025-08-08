@@ -5,6 +5,8 @@ import { z } from "zod"
 import { render } from "@react-email/components";
 import sendgrid from "@sendgrid/mail";
 import IssueProject from '../../../../emails/IssueProject';
+import crypto from "crypto";
+import { baseUrl } from "@/utils/universal";
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
@@ -104,6 +106,32 @@ export async function PUT(
 
   console.log('[API][PUT] Incoming body:', body);
 
+  // Ensure user is tied to an organization
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('organizationId, email')
+    .eq('profile_id', user.id)
+    .single();
+
+  if (profileError || !profile?.organizationId) {
+    return NextResponse.json({ error: 'You must be part of an organization to update projects.' }, { status: 403 });
+  }
+
+  // Load existing project to validate ownership/org and to compare fields
+  const { data: existingProject, error: existingError } = await supabase
+    .from('projects')
+    .select('id, createdBy, organizationId, state, customerId, token, status')
+    .eq('id', projectId)
+    .single();
+
+  if (existingError || !existingProject) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  }
+
+  if (existingProject.createdBy !== user.id || existingProject.organizationId !== profile.organizationId) {
+    return NextResponse.json({ error: 'Unauthorized to update this project' }, { status: 403 });
+  }
+
   try {
     const validation = projectEditSchema.safeParse(body)
     if (!validation.success) {
@@ -124,15 +152,47 @@ export async function PUT(
       ...projectData
     } = validation.data
 
+    // Decide on token rotation/deletion rules
+    const prevState = existingProject.state as 'draft' | 'published'
+    const prevCustomerId = existingProject.customerId as string | null
+    const prevToken = existingProject.token as string | null
+    const prevStatus = existingProject.status as string | null
+
+    const nextState = (projectData.state ?? prevState) as 'draft' | 'published'
+    const nextCustomerId = projectData.customerId !== undefined ? projectData.customerId : prevCustomerId
+    const nextStatus = (projectData.status ?? prevStatus) as string | null
+
+    const firstPublishWithCustomer = prevState === 'draft' && nextState === 'published' && !!nextCustomerId
+    const customerChanged = (projectData.customerId !== undefined) && projectData.customerId !== prevCustomerId && !!nextCustomerId
+    const cancelling = nextStatus === 'cancelled'
+
+    let shouldRotateToken = false
+    let newToken: string | null = null
+    if (cancelling) {
+      newToken = null
+    } else if (firstPublishWithCustomer || customerChanged) {
+      shouldRotateToken = true
+      newToken = crypto.randomUUID()
+    }
+
     // --- Update the project ---
+    const updatePayload: any = {
+      ...projectData,
+      updatedOn: new Date().toISOString(),
+    }
+
+    if (cancelling) {
+      updatePayload.token = null
+    } else if (shouldRotateToken && newToken) {
+      updatePayload.token = newToken
+    }
+
     const { error: projectError, data: updatedProject } = await supabase
       .from("projects")
-      .update({
-        ...projectData,
-        updatedOn: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", projectId)
       .eq("createdBy", user.id)
+      .eq('organizationId', profile.organizationId)
       .select()
       .single();
 
@@ -209,7 +269,12 @@ export async function PUT(
     }
 
     // --- Email to customer if required ---
-    if (projectData.isPublished && emailToCustomer && updatedProject?.customerId) {
+    if (
+      updatedProject?.state === 'published' &&
+      updatedProject?.customerId &&
+      !cancelling &&
+      (emailToCustomer || firstPublishWithCustomer || customerChanged)
+    ) {
       const { data: customer } = await supabase
         .from("customers")
         .select("name, email")
@@ -237,12 +302,16 @@ export async function PUT(
         }
         const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
 
+        const tokenForEmail = updatedProject.token as string | null;
+        const projectLink = tokenForEmail ? `${baseUrl}/p/${updatedProject.id}?token=${tokenForEmail}` : undefined;
+
         const emailHtml = await render(IssueProject({
           projectId: updatedProject.id,
           clientName: customer.name || "",
           projectName: updatedProject.name,
           senderName: fromName,
           logoUrl: logoUrl,
+          projectLink,
         }));
 
         try {
@@ -290,15 +359,30 @@ export async function DELETE(
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 401 })
+  }
+
   const { params } = context;
   const { projectId } = params
 
   try {
+    // Ensure user is tied to an organization
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organizationId')
+      .eq('profile_id', user.id)
+      .single();
+    if (profileError || !profile?.organizationId) {
+      return NextResponse.json({ error: 'You must be part of an organization to delete projects.' }, { status: 403 });
+    }
+
     const { error: projectDeleteError } = await supabase
       .from("projects")
       .delete()
       .eq("id", projectId)
       .eq("createdBy", user?.id)
+      .eq('organizationId', profile.organizationId)
 
     if (projectDeleteError) throw projectDeleteError
 
