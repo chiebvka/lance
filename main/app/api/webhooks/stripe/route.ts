@@ -102,25 +102,49 @@ export async function POST(request: NextRequest) {
           console.log(`📊 Stripe status: ${stripeSubscription.status}`);
 
           // Update organization with subscription details
+          const mappedStatus = mapStripeStatusToDbStatus(stripeSubscription.status, hasPaymentMethod);
+          const subscriptionEndDate = (stripeSubscription as any).current_period_end 
+            ? new Date((stripeSubscription as any).current_period_end * 1000).toISOString()
+            : null;
+
+          // Prepare the update object based on the subscription status
+          const updateData: any = {
+            subscriptionStartDate: new Date((stripeSubscription as any).start_date * 1000).toISOString(),
+            subscriptionId: stripeSubscription.id,
+            planType: planType,
+            billingCycle: billingCycle,
+            stripeMetadata: {
+              sessionId: session.id,
+              customerId: session.customer as string,
+              subscriptionId: session.subscription as string,
+              eventId: event.id,
+              eventType: event.type,
+            },
+          };
+
+          // Handle status-specific requirements
+          if (mappedStatus === 'active' && subscriptionEndDate) {
+            updateData.subscriptionstatus = mappedStatus;
+            updateData.subscriptionEndDate = subscriptionEndDate; // This is the next billing date
+            // Clear trial end date when becoming active
+            updateData.trialEndsAt = null;
+          } else if (mappedStatus === 'trial') {
+            updateData.subscriptionstatus = mappedStatus;
+            // Keep existing trialEndsAt or set subscription end as trial end
+            if (subscriptionEndDate) {
+              updateData.trialEndsAt = subscriptionEndDate;
+            }
+          } else {
+            // For other statuses, set the status and end date if available
+            updateData.subscriptionstatus = mappedStatus;
+            if (subscriptionEndDate) {
+              updateData.subscriptionEndDate = subscriptionEndDate;
+            }
+          }
+
           const { error: orgError } = await supabase
             .from("organization")
-            .update({
-              subscriptionStatus: mapStripeStatusToDbStatus(stripeSubscription.status, hasPaymentMethod),
-              subscriptionStartDate: new Date((stripeSubscription as any).start_date * 1000).toISOString(),
-              subscriptionEndDate: (stripeSubscription as any).current_period_end 
-                ? new Date((stripeSubscription as any).current_period_end * 1000).toISOString()
-                : null,
-              subscriptionId: stripeSubscription.id,
-              planType: planType,
-              billingCycle: billingCycle,
-              stripeMetadata: {
-                sessionId: session.id,
-                customerId: session.customer as string,
-                subscriptionId: session.subscription as string,
-                eventId: event.id,
-                eventType: event.type,
-              },
-            })
+            .update(updateData)
             .eq("id", session.metadata.organizationId);
 
           if (orgError) {
@@ -266,24 +290,48 @@ export async function POST(request: NextRequest) {
         // Also update organization subscription status
         const organizationMetadata = subscription.metadata;
         if (organizationMetadata?.organizationId) {
+          const mappedOrgStatus = mapStripeStatusToDbStatus(subscription.status, updatedHasPaymentMethod);
+          const orgSubscriptionEndDate = subscription.current_period_end 
+            ? new Date(subscription.current_period_end * 1000).toISOString()
+            : null;
+
+          // Prepare the update object based on the subscription status
+          const orgUpdateData: any = {
+            planType: updatedPlanType,
+            billingCycle: updatedBillingCycle,
+            subscriptionMetadata: {
+              status: subscription.status,
+              currentPeriodEnd: subscription.current_period_end,
+              cancelAtPeriodEnd: subscription.cancel_at_period_end,
+              priceId: updatedPriceId,
+              eventId: event.id,
+              eventType: event.type,
+            },
+          };
+
+          // Handle status-specific requirements
+          if (mappedOrgStatus === 'active' && orgSubscriptionEndDate) {
+            orgUpdateData.subscriptionstatus = mappedOrgStatus;
+            orgUpdateData.subscriptionEndDate = orgSubscriptionEndDate;
+            // Clear trial end date when becoming active
+            orgUpdateData.trialEndsAt = null;
+          } else if (mappedOrgStatus === 'trial') {
+            orgUpdateData.subscriptionstatus = mappedOrgStatus;
+            // Keep existing trialEndsAt or set subscription end as trial end
+            if (orgSubscriptionEndDate) {
+              orgUpdateData.trialEndsAt = orgSubscriptionEndDate;
+            }
+          } else {
+            // For other statuses, set the status and end date if available
+            orgUpdateData.subscriptionstatus = mappedOrgStatus;
+            if (orgSubscriptionEndDate) {
+              orgUpdateData.subscriptionEndDate = orgSubscriptionEndDate;
+            }
+          }
+
           const { error: orgUpdateError } = await supabase
             .from("organization")
-            .update({
-              subscriptionStatus: mapStripeStatusToDbStatus(subscription.status, updatedHasPaymentMethod),
-              planType: updatedPlanType,
-              billingCycle: updatedBillingCycle,
-              subscriptionEndDate: subscription.current_period_end 
-                ? new Date(subscription.current_period_end * 1000).toISOString()
-                : null,
-              subscriptionMetadata: {
-                status: subscription.status,
-                currentPeriodEnd: subscription.current_period_end,
-                cancelAtPeriodEnd: subscription.cancel_at_period_end,
-                priceId: updatedPriceId,
-                eventId: event.id,
-                eventType: event.type,
-              },
-            })
+            .update(orgUpdateData)
             .eq("id", organizationMetadata.organizationId);
 
           if (orgUpdateError) {
@@ -298,6 +346,13 @@ export async function POST(request: NextRequest) {
         const deletedSubscription = event.data.object as any;
         console.log(`Processing customer.subscription.deleted: ${deletedSubscription.id}`);
         
+        // Extract cancellation reason if available
+        const cancellationDetails = deletedSubscription.cancellation_details || {};
+        const cancellationReason = cancellationDetails.reason;
+        const cancellationComment = cancellationDetails.comment;
+        
+        console.log(`Cancellation reason: ${cancellationReason}, Comment: ${cancellationComment}`);
+        
         // Mark subscription as cancelled
         const { error: subDeleteError } = await supabase
           .from("subscriptions")
@@ -309,6 +364,8 @@ export async function POST(request: NextRequest) {
             stripeMetadata: {
               eventId: event.id,
               eventType: event.type,
+              cancellationReason: cancellationReason,
+              cancellationComment: cancellationComment,
             },
           })
           .eq("stripeSubscriptionId", deletedSubscription.id);
@@ -325,13 +382,15 @@ export async function POST(request: NextRequest) {
           const { error: orgDeleteError } = await supabase
             .from("organization")
             .update({
-              subscriptionStatus: "cancelled",
+              subscriptionstatus: "cancelled",
               subscriptionEndDate: deletedSubscription.current_period_end 
                 ? new Date(deletedSubscription.current_period_end * 1000).toISOString()
                 : new Date().toISOString(),
               subscriptionMetadata: {
                 eventId: event.id,
                 eventType: event.type,
+                cancellationReason: cancellationReason,
+                cancellationComment: cancellationComment,
               },
             })
             .eq("id", deletedOrgMetadata.organizationId);
@@ -573,46 +632,84 @@ export async function POST(request: NextRequest) {
             const price = event.data.object as Stripe.Price;
             console.log(`Processing price.created: ${price.id} for product ${price.product}`);
         
-            // Check if price.product is a string or object
-            const productId = typeof price.product === "string" ? price.product : (price.product as Stripe.Product).id;
-            const { data: productData, error: productLookupError } = await supabase
-            .from("products")
-            .select("id")
-            .eq("stripeProductId", productId)
-            .single();
-        
-            if (productLookupError) {
-            console.error("❌ Error finding product for price:", productLookupError);
-            break;
-            }
+        // Resolve the Stripe product ID
+        const productId = typeof price.product === "string" ? price.product : (price.product as Stripe.Product).id;
 
-            if (productData) {
-                const { error: priceError } = await supabase
-                  .from("pricing")
-                  .upsert({
-                    stripePriceId: price.id,
-                    productId: productData.id,
-                    stripeProductId: productId,
-                    currency: price.currency,
-                    unitAmount: price.unit_amount || 0,
-                    billingCycle: price.recurring?.interval === "month" ? "monthly" : 
-                                 price.recurring?.interval === "year" ? "yearly" : "monthly",
-                    metadata: {
-                      eventId: event.id,
-                      eventType: event.type,
-                      created_at: new Date().toISOString(),
-                    },
-                    isActive: price.active,
-                  }, {
-                    onConflict: "stripePriceId"
-                  });
-            
-                if (priceError) {
-                  console.error("❌ Error creating price:", priceError);
-                } else {
-                  console.log(`✅ Price created successfully: ${price.id}`);
-                }
-              }
+        // Try to find local product row; if missing, create it from Stripe product
+        let productRowId: string | null = null;
+        const { data: productData, error: productLookupError } = await supabase
+          .from("products")
+          .select("id")
+          .eq("stripeProductId", productId)
+          .maybeSingle?.() as any || await supabase
+          .from("products")
+          .select("id")
+          .eq("stripeProductId", productId)
+          .single();
+
+        if (!productLookupError && productData) {
+          productRowId = (productData as any).id;
+        } else {
+          try {
+            // Fetch product from Stripe and upsert into local products table
+            const sp = await stripe.products.retrieve(productId);
+            const { data: upsertedProduct, error: upsertErr } = await supabase
+              .from("products")
+              .upsert({
+                stripeProductId: sp.id,
+                name: sp.name,
+                description: sp.description || null,
+                metadata: {
+                  ...sp.metadata,
+                  eventId: event.id,
+                  eventType: event.type,
+                  created_at: new Date().toISOString(),
+                },
+                isActive: sp.active,
+              }, { onConflict: "stripeProductId" })
+              .select("id")
+              .single();
+
+            if (upsertErr) {
+              console.error("❌ Error upserting product for price:", upsertErr);
+              break;
+            }
+            productRowId = upsertedProduct?.id || null;
+          } catch (fetchErr) {
+            console.error("❌ Unable to fetch Stripe product for price:", fetchErr);
+            break;
+          }
+        }
+
+        if (!productRowId) {
+          console.error("❌ No product row ID resolved for price", price.id);
+          break;
+        }
+
+        // Upsert price now that we have a product row
+        const { error: priceError } = await supabase
+          .from("pricing")
+          .upsert({
+            stripePriceId: price.id,
+            productId: productRowId,
+            stripeProductId: productId,
+            currency: price.currency,
+            unitAmount: price.unit_amount || 0,
+            billingCycle: price.recurring?.interval === "month" ? "monthly" : 
+                         price.recurring?.interval === "year" ? "yearly" : "monthly",
+            metadata: {
+              eventId: event.id,
+              eventType: event.type,
+              created_at: new Date().toISOString(),
+            },
+            isActive: price.active,
+          }, { onConflict: "stripePriceId" });
+
+        if (priceError) {
+          console.error("❌ Error creating price:", priceError);
+        } else {
+          console.log(`✅ Price created successfully: ${price.id}`);
+        }
         break;
 
       case "price.updated":

@@ -1,7 +1,8 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient, createServiceRoleClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteFileFromR2 } from '@/lib/r2';
 import { ratelimit } from '@/utils/rateLimit';
+import Stripe from 'stripe';
 
 export async function PATCH(
   request: NextRequest,
@@ -132,6 +133,9 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createClient();
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-06-30.basil',
+    });
     
     // Check authentication
     const {
@@ -211,6 +215,24 @@ export async function DELETE(
       }
     }
 
+    // If there is a Stripe subscription, cancel it first (at period end)
+    const { data: orgForCancel } = await supabase
+      .from('organization')
+      .select('subscriptionId')
+      .eq('id', profile.organizationId)
+      .single();
+
+    if (orgForCancel?.subscriptionId) {
+      try {
+        await stripe.subscriptions.update(orgForCancel.subscriptionId, {
+          cancel_at_period_end: true,
+        });
+      } catch (e) {
+        console.error('Error scheduling subscription cancellation:', e);
+        // proceed with deletion; webhook will reconcile state if needed
+      }
+    }
+
     // Delete the organization
     const { error: deleteError } = await supabase
       .from('organization')
@@ -236,9 +258,18 @@ export async function DELETE(
       // Don't fail the deletion if profile update fails
     }
 
+    // Also delete the user from the authentication table (auth.users)
+    try {
+      const serviceClient = createServiceRoleClient();
+      await serviceClient.auth.admin.deleteUser(user.id);
+    } catch (e) {
+      console.error('Error deleting user from auth.users:', e);
+      // Do not fail the request if auth deletion fails
+    }
+
     return NextResponse.json({ 
       success: true,
-      message: 'Organization deleted successfully'
+      message: 'Organization and user account deleted successfully'
     });
   } catch (error) {
     console.error('Organization deletion error:', error);

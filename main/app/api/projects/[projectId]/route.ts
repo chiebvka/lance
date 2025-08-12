@@ -350,6 +350,205 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  context: any
+) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "Not authorized" }, { status: 401 })
+  }
+
+  const { params } = context
+  const { projectId } = params
+
+  // Action payload schema
+  const actionSchema = z.discriminatedUnion('action', [
+    z.object({ action: z.literal('cancel') }),
+    z.object({ action: z.literal('unassign') }),
+    z.object({ action: z.literal('assign'), customerId: z.string().uuid(), emailToCustomer: z.boolean().optional() }),
+    z.object({ action: z.literal('mark_completed'), completedDate: z.string() }),
+  ])
+
+  try {
+    const body = await request.json()
+    const parsed = actionSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+    }
+
+    // Ensure user tied to org
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organizationId, email')
+      .eq('profile_id', user.id)
+      .single()
+
+    if (profileError || !profile?.organizationId) {
+      return NextResponse.json({ error: 'You must be part of an organization.' }, { status: 403 })
+    }
+
+    // Load existing project
+    const { data: existingProject, error: existingError } = await supabase
+      .from('projects')
+      .select('id, createdBy, organizationId, type, status, customerId, token, name, organizationName')
+      .eq('id', projectId)
+      .single()
+
+    if (existingError || !existingProject) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+    }
+
+    if (existingProject.createdBy !== user.id || existingProject.organizationId !== profile.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized to update this project' }, { status: 403 })
+    }
+
+    const action = parsed.data.action
+
+    if (action === 'cancel') {
+      // Cancel the project: set status cancelled and delete token
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ status: 'cancelled', token: null, updatedOn: new Date().toISOString() })
+        .eq('id', projectId)
+        .eq('createdBy', user.id)
+        .eq('organizationId', profile.organizationId)
+      if (updateError) throw updateError
+      return NextResponse.json({ success: true, message: 'Project cancelled' })
+    }
+
+    if (action === 'unassign') {
+      // Only meaningful if currently customer-type
+      const updatePayload: any = {
+        updatedOn: new Date().toISOString(),
+      }
+      if ((existingProject.type || '').toLowerCase() === 'customer') {
+        updatePayload.type = 'personal'
+        updatePayload.customerId = null
+        updatePayload.recepientName = null
+        updatePayload.recepientEmail = null
+        updatePayload.token = null
+      }
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update(updatePayload)
+        .eq('id', projectId)
+        .eq('createdBy', user.id)
+        .eq('organizationId', profile.organizationId)
+      if (updateError) throw updateError
+      return NextResponse.json({ success: true, message: 'Project unassigned' })
+    }
+
+    if (action === 'assign') {
+      const { customerId, emailToCustomer } = parsed.data
+
+      // Fetch customer
+      const { data: customer, error: customerError } = await supabase
+        .from('customers')
+        .select('name, email')
+        .eq('id', customerId)
+        .single()
+      if (customerError || !customer) {
+        return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+      }
+
+      const newToken = crypto.randomUUID()
+
+      const { error: updateError, data: updatedProject } = await supabase
+        .from('projects')
+        .update({
+          type: 'customer',
+          customerId,
+          recepientName: customer.name,
+          recepientEmail: customer.email,
+          token: newToken,
+          updatedOn: new Date().toISOString(),
+        })
+        .eq('id', projectId)
+        .eq('createdBy', user.id)
+        .eq('organizationId', profile.organizationId)
+        .select()
+        .single()
+      if (updateError) throw updateError
+
+      // Email the customer immediately if requested
+      if (emailToCustomer && updatedProject && customer.email) {
+        const { data: organization } = await supabase
+          .from('organization')
+          .select('name, email, logoUrl')
+          .eq('createdBy', user.id)
+          .maybeSingle()
+
+        const fromEmail = 'no_reply@projects.bexforte.com'
+        let fromName = 'Bexforte Projects'
+        if (organization?.name) {
+          fromName = organization.name
+        } else if (profile?.email) {
+          fromName = profile.email.split('@')[0]
+        }
+        const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico"
+        const projectLink = `${baseUrl}/p/${updatedProject.id}?token=${newToken}`
+
+        const emailHtml = await render(IssueProject({
+          projectId: updatedProject.id,
+          clientName: customer.name || '',
+          projectName: updatedProject.name,
+          senderName: fromName,
+          logoUrl: logoUrl,
+          projectLink,
+        }))
+
+        try {
+          await sendgrid.send({
+            to: customer.email,
+            from: { email: fromEmail, name: fromName },
+            subject: `Project ${updatedProject.name} Updated`,
+            html: emailHtml,
+            customArgs: {
+              projectId: updatedProject.id,
+              customerId: updatedProject.customerId,
+              userId: user.id,
+              type: 'project_sent',
+            },
+          })
+        } catch (emailError: any) {
+          console.error('SendGrid Error:', emailError)
+        }
+      }
+
+      return NextResponse.json({ success: true, message: 'Project assigned to customer' })
+    }
+
+    if (action === 'mark_completed') {
+      const parsedDate = new Date(parsed.data.completedDate)
+      if (Number.isNaN(parsedDate.getTime())) {
+        return NextResponse.json({ error: 'Invalid date supplied' }, { status: 400 })
+      }
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ status: 'completed', updatedOn: parsedDate.toISOString() })
+        .eq('id', projectId)
+        .eq('createdBy', user.id)
+        .eq('organizationId', profile.organizationId)
+      if (updateError) throw updateError
+      return NextResponse.json({ success: true, message: 'Project marked as completed' })
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+  } catch (e) {
+    const error = e as Error
+    console.error(`[API][PATCH] Error updating project ${projectId}:`, error.message, error)
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   context: any

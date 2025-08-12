@@ -17,65 +17,91 @@ import { DataTableColumnHeader } from "./data-table-column-header"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTableRowActions } from "./data-table-row-actions"
 
-import { labels, priorities, statuses } from "../data/data"
 
-const paymentTypeOptions = [
-  { value: 'milestonePayment', label: 'Milestone' },
-  { value: 'deliverablePayment', label: 'Deliverable' },
-  { value: 'fullDownPayment', label: 'Full Payment Upfront' },
-  { value: 'paymentOnCompletion', label: 'Payment on Completion' },
-  { value: 'noPaymentRequired', label: 'No Payment' }
-];
 
-export interface Project {
+
+export interface Receipt {
   id: string
-  name: string | null
-  description: string | null
-  type: "personal" | "customer" | null
-  customerName?: string | null
-  budget: number | null
+  customerId: string | null
+  projectId: string | null
+  organizationName: string | null
+  organizationLogo: string | null
+  organizationLogoUrl: string | null // From organization table
+  organizationNameFromOrg: string | null // From organization table
+  organizationEmailFromOrg: string | null // From organization table
+  organizationEmail: string | null
+  recepientName: string | null
+  recepientEmail: string | null
+  issueDate: string | null
+  // dueDate: string | null
   currency: string | null
-  hasServiceAgreement: boolean | null
-  paymentType: string | null
-  endDate: string | null
-  state: "draft" | "published" | null
-  status: string | null
+  hasVat: boolean | null
+  hasTax: boolean | null
+  hasDiscount: boolean | null
+  vatRate: number | null
+  taxRate: number | null
+  discount: number | null
+  notes: string | null
+  creationMethod: string | null
+  paymentInfo: string | null
+  paymentDetails: string | null
+  receiptDetails: any | null
+  subTotalAmount: number | null
+  totalAmount: number | null
+  state: string | null
+  sentViaEmail: boolean | null
+  emailSentAt: string | null
+  createdBy: string | null
+  organizationId: string | null
   created_at: string | null
+  updatedAt: string | null
+  paymentConfirmedAt: string | null
+  receiptNumber: string | null
+  paymentLink: string | null
+  paymentType: string | null
+  projectName: string | null
+  allowReminders: boolean | null
+  fts: any | null
+  // Additional formatted fields for display
+  customerName?: string
+  issueDateFormatted?: string
+  dueDateFormatted?: string
+  totalAmountFormatted?: string
 }
 
-const getStatusColor = (status: string) => {
-  switch (status?.toLowerCase()) {
-    case 'active':
-    case 'in progress':
+const getStateColor = (state: string) => {
+  switch (state?.toLowerCase()) {
+    case 'draft':
       return 'bg-blue-100 text-blue-800'
-    case 'completed':
-    case 'done':
-      return 'bg-green-100 text-green-800'
-    case 'on hold':
-    case 'paused':
+    case 'sent':
       return 'bg-yellow-100 text-yellow-800'
-    case 'cancelled':
-    case 'canceled':
+    case 'settled':
+      return 'bg-green-100 text-green-800'
+    case 'overdue':
       return 'bg-red-100 text-red-800'
-    default:
-      return 'bg-gray-100 text-gray-800'
-  }
-}
-
-const getPaymentTypeColor = (paymentType: string) => {
-  switch (paymentType?.toLowerCase()) {
-    case 'milestone':
+    case 'unassigned':
       return 'bg-purple-100 text-purple-800'
-    case 'hourly':
-      return 'bg-orange-100 text-orange-800'
-    case 'fixed':
-      return 'bg-indigo-100 text-indigo-800'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-stone-300 text-stone-800 line-through'
   }
 }
 
-export const columns: ColumnDef<Project>[] = [
+const getCreationMethodColor = (creationMethod: string) => {
+  switch (creationMethod?.toLowerCase()) {
+    case 'manual':
+      return 'bg-sky-100 text-sky-800'
+    case 'auto':
+      return 'bg-orange-100 text-orange-800'
+    case 'invoice':
+      return 'bg-purple-100 text-purple-800'
+    default:
+      return 'bg-stone-300 text-stone-800 line-through'
+  }
+}
+
+
+
+export const columns: ColumnDef<Receipt>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -105,49 +131,32 @@ export const columns: ColumnDef<Project>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "name",
+    accessorKey: "receiptNumber",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Project Name" />
+      <DataTableColumnHeader column={column} title="Receipt Number" />
     ),
     cell: ({ row }) => {
       return (
         <div className="flex space-x-2">
           <span className="max-w-[500px] truncate font-medium">
-            {row.getValue("name")}
+            {row.getValue("receiptNumber") || 'No Receipt Number'}
           </span>
         </div>
       )
     },
   },
   {
-    accessorKey: "description",
+    accessorKey: "creationMethod",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Description" />
+      <DataTableColumnHeader column={column} title="Creation Method" />
     ),
     cell: ({ row }) => {
-      const description = row.getValue("description") as string;
-      return (
-        <div className="max-w-[200px]">
-          <span className="truncate block">{description || "No description"}</span>
-        </div>
-      )
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
-    },
-  },
-  {
-    accessorKey: "type",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Type" />
-    ),
-    cell: ({ row }) => {
-      const type = row.original.type
-      if (!type) return null
+      const creationMethod = row.original.creationMethod
+      if (!creationMethod) return null
 
       return (
-        <Badge variant="outline" className="capitalize">
-          {type}
+        <Badge variant="outline" className={`capitalize ${getCreationMethodColor(creationMethod)}`}>
+          {creationMethod}
         </Badge>
       )
     },
@@ -155,65 +164,25 @@ export const columns: ColumnDef<Project>[] = [
       return value.includes(row.getValue(id))
     },
   },
-  // {
-  //   accessorKey: "customerName",
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="Customer" />
-  //   ),
-  //   cell: ({ row }) => {
-  //     const type = row.original.type
-  //     const customerName = row.original.customerName
-
-  //     if (type === "personal") {
-  //       return <div className="font-medium">Personal</div>
-  //     }
-
-  //     if (customerName) {
-  //       return <div className="font-medium">{customerName}</div>
-  //     }
-      
-  //     return <div className="text-muted-foreground">No Customer Assigned</div>
-  //   },
-  // },
   {
-    accessorKey: "budget",
+    accessorKey: "totalAmount",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Budget" />
+      <DataTableColumnHeader column={column} title="Total Amount" />
     ),
     cell: ({ row }) => {
-      const budget = row.original.budget;
-      const currency = row.original.currency;
+      const totalAmount = row.original.totalAmount
+      const currency = row.original.currency
 
-      if (budget === null || budget === undefined) {
+      if (totalAmount === null || totalAmount === undefined) {
         return <div>Not set</div>;
       }
       
-      const formattedBudget = new Intl.NumberFormat('en-US', {
+      const formattedAmount = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: currency || 'USD',
-      }).format(budget);
+      }).format(totalAmount);
 
-      return <div className="font-medium">{formattedBudget}</div>;
-    },
-  },
-  {
-    accessorKey: "hasServiceAgreement",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Service Agreement" />
-    ),
-    cell: ({ row }) => {
-      const hasAgreement = row.original.hasServiceAgreement
-      const variant = hasAgreement ? "default" : "secondary"
-      const text = hasAgreement ? "Yes" : "No"
-
-      return (
-        <Badge variant={variant} className={hasAgreement ? "bg-purple-600 text-white" : ""}>
-          {text}
-        </Badge>
-      )
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
+      return <div className="font-medium">{formattedAmount}</div>;
     },
   },
   {
@@ -226,7 +195,7 @@ export const columns: ColumnDef<Project>[] = [
       if (!state) return null
 
       return (
-        <Badge variant={state === 'published' ? 'default' : 'secondary'} className="capitalize">
+        <Badge variant="outline" className={`capitalize ${getStateColor(state)}`}>
           {state}
         </Badge>
       )
@@ -235,54 +204,61 @@ export const columns: ColumnDef<Project>[] = [
       return value.includes(row.getValue(id))
     },
   },
+
   {
-    accessorKey: "status",
+    accessorKey: "issueDate",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
+      <DataTableColumnHeader column={column} title="Issue Date" />
     ),
     cell: ({ row }) => {
-      const status = row.original.status
-      if (!status) return <div className="text-muted-foreground">Not set</div>
+      const issueDate = row.original.issueDate
+      if (!issueDate) return <div>Not set</div>
 
       return (
-        <Badge variant="outline" className={`capitalize ${getStatusColor(status)}`}>
-          {status}
-        </Badge>
+        <div className="font-medium">{format(new Date(issueDate), "P")}</div>
       )
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
     },
   },
   {
-    accessorKey: "paymentType",
+    accessorKey: "paymentConfirmedAt",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Payment Type" />
+      <DataTableColumnHeader column={column} title="Payment Date" />
     ),
     cell: ({ row }) => {
-      const paymentType = row.original.paymentType
-      if (!paymentType) return null
+      const paymentConfirmedAt = row.original.paymentConfirmedAt
+      if (!paymentConfirmedAt) return <div>Not set</div>
 
-      const option = paymentTypeOptions.find(p => p.value === paymentType)
-
-      return <div className="font-medium">{option ? option.label : paymentType}</div>
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id))
+      return (
+        <div className="font-medium">{format(new Date(paymentConfirmedAt), "P")}</div>
+      )
     },
   },
   {
-    accessorKey: "endDate",
+    accessorKey: "taxRate",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="End Date" />
+      <DataTableColumnHeader column={column} title="Tax Rate" />
     ),
     cell: ({ row }) => {
-      const endDate = row.original.endDate
-      if (!endDate) return <div>Not set</div>
-
-      return (
-        <div className="font-medium">{format(new Date(endDate), "P")}</div>
-      )
+      const taxRate = row.original.taxRate
+      if (taxRate === null || taxRate === undefined) {
+        return <div>Not set</div>;
+      }
+      
+      return <div className="font-medium">{taxRate}%</div>;
+    },
+  },
+  {
+    accessorKey: "vatRate",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="VAT Rate" />
+    ),
+    cell: ({ row }) => {
+      const vatRate = row.original.vatRate
+      if (vatRate === null || vatRate === undefined) {
+        return <div>Not set</div>;
+      }
+      
+      return <div className="font-medium">{vatRate}%</div>;
     },
   },
   {

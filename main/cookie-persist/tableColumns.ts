@@ -10,6 +10,7 @@ const DEFAULT_COLUMNS: Record<string, string[]> = {
   customers: ['name', 'email', 'company', 'phone', 'status'], // Example for future use
   feedbacks: ['name', 'recepientName', 'recipientEmail', 'state', 'dueDate', 'filledOn'],
   invoices: ['invoiceNumber', 'recepientName', 'totalAmount', 'state', 'issueDate', 'dueDate'],
+  receipts: ['receiptNumber', 'creationMethod', 'totalAmount', 'state', 'issueDate', 'paymentConfirmedAt'],
   // Add more tables as needed
 };
 

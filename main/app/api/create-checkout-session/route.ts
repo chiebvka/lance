@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
+import { getOrCreateStripeCustomer } from "@/utils/stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-06-30.basil",
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     const { priceId, organizationId, userId } = await request.json();
 
-    if (!priceId || !userId) {
+    if (!organizationId || !userId) {
       return NextResponse.json(
         { error: "Missing required parameters" },
         { status: 400 }
@@ -22,10 +23,7 @@ export async function POST(request: NextRequest) {
     // Get user details
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get user profile to get email
@@ -36,63 +34,122 @@ export async function POST(request: NextRequest) {
       .single();
 
     const customerEmail = profile?.email || user.user.email;
-
-    // Create or get organization if not provided
-    let orgId = organizationId;
-    if (!orgId) {
-      // Create a new organization for the user
-      const { data: newOrg, error: orgError } = await supabase
-        .from("organization")
-        .insert({
-          name: "My Organization", // Default name - user can change later
-          createdBy: userId,
-          subscriptionStatus: "trial",
-          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
-        })
-        .select()
-        .single();
-
-      if (orgError) {
-        console.error("Error creating organization:", orgError);
-        return NextResponse.json(
-          { error: "Failed to create organization" },
-          { status: 500 }
-        );
-      }
-
-      orgId = newOrg.id;
-
-      // Update user profile with organization ID
-      await supabase
-        .from("profiles")
-        .update({ organizationId: orgId })
-        .eq("profile_id", userId);
+    if (!customerEmail) {
+      return NextResponse.json(
+        { error: "Customer email not found" },
+        { status: 400 }
+      );
     }
 
-    // Create Stripe checkout session
+    // Get or create Stripe customer
+    const customerId = await getOrCreateStripeCustomer(
+      userId,
+      customerEmail,
+      organizationId
+    );
+
+    // Get organization details to check subscription status
+    const { data: organization } = await supabase
+      .from("organization")
+      .select("subscriptionstatus, subscriptionId")
+      .eq("id", organizationId)
+      .single();
+
+    if (!organization) {
+      return NextResponse.json(
+        { error: "Organization not found" },
+        { status: 404 }
+      );
+    }
+
+    const { subscriptionstatus, subscriptionId } = organization;
+
+    // If priceId is "portal" or there is an existing subscription, direct to billing portal
+    if (priceId === "portal" || subscriptionId) {
+      try {
+        // Create portal session without flow_data to show the main portal with all options
+        const portalSession = await stripe.billingPortal.sessions.create({
+          customer: customerId,
+          return_url: `${request.nextUrl.origin}/protected/settings/billing?portal=complete`,
+          // If you have a pre-created configuration, pass it via env
+          configuration: process.env.STRIPE_PORTAL_CONFIGURATION_ID || undefined,
+        });
+        return NextResponse.json({ url: portalSession.url });
+      } catch (err: any) {
+        const needsConfig =
+          err?.type === "StripeInvalidRequestError" &&
+          typeof err?.message === "string" &&
+          err.message.includes("No configuration provided")
+        ;
+
+        if (!needsConfig) throw err;
+
+        // Create a minimal billing portal configuration in test mode, then retry
+        const configuration = await stripe.billingPortal.configurations.create({
+          business_profile: {
+            privacy_policy_url: `${request.nextUrl.origin}/privacy`,
+            terms_of_service_url: `${request.nextUrl.origin}/terms`,
+          },
+          features: {
+            invoice_history: { enabled: true },
+            payment_method_update: { enabled: true },
+            subscription_cancel: { 
+              enabled: true, 
+              mode: "at_period_end",
+              cancellation_reason: {
+                enabled: true,
+                options: [
+                  "too_expensive",
+                  "missing_features", 
+                  "switched_service",
+                  "unused",
+                  "customer_service",
+                  "too_complex",
+                  "low_quality",
+                  "other"
+                ]
+              }
+            },
+            subscription_update: {
+              enabled: true,
+              default_allowed_updates: ["price"],
+              proration_behavior: "create_prorations",
+            },
+          },
+        });
+
+        const portalSession = await stripe.billingPortal.sessions.create({
+          customer: customerId,
+          configuration: configuration.id,
+          return_url: `${request.nextUrl.origin}/protected/settings/billing?portal=complete`,
+        });
+        return NextResponse.json({ url: portalSession.url });
+      }
+    }
+
+    // Otherwise, create a brand new subscription via Checkout
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
+      customer: customerId,
       line_items: [
         {
           price: priceId,
           quantity: 1,
         },
       ],
-      customer_email: customerEmail,
       subscription_data: {
-        trial_period_days: 7, // 7-day free trial
         metadata: {
-          organizationId: orgId,
-          userId: userId,
+          organizationId,
+          userId,
         },
       },
       metadata: {
-        organizationId: orgId,
-        userId: userId,
+        organizationId,
+        userId,
       },
       success_url: `${request.nextUrl.origin}/protected?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.nextUrl.origin}/pricing`,
+      cancel_url: `${request.nextUrl.origin}/protected/settings/billing`,
       allow_promotion_codes: true,
     });
 

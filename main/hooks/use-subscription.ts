@@ -9,7 +9,7 @@ type OrganizationSubscription = Pick<
   Database["public"]["Tables"]["organization"]["Row"],
   | "id"
   | "name"
-  | "subscriptionStatus"
+  | "subscriptionstatus"
   | "trialEndsAt"
   | "planType"
   | "billingCycle"
@@ -70,7 +70,7 @@ export function useSubscription() {
           .select(`
             id,
             name,
-            subscriptionStatus,
+            subscriptionstatus,
             trialEndsAt,
             planType,
             billingCycle,
@@ -89,11 +89,11 @@ export function useSubscription() {
 
         // Calculate subscription state
         const validStatuses: SubscriptionStatus[] = ['active', 'trial'];
-        const hasActiveSubscription = validStatuses.includes(organization.subscriptionStatus || 'trial');
+        const hasActiveSubscription = validStatuses.includes(organization.subscriptionstatus || 'trial');
 
         // Calculate trial days remaining
         let trialDaysRemaining = 0;
-        if (organization.subscriptionStatus === 'trial' && organization.trialEndsAt) {
+        if (organization.subscriptionstatus === 'trial' && organization.trialEndsAt) {
           const trialEndDate = new Date(organization.trialEndsAt);
           const now = new Date();
           const diffTime = trialEndDate.getTime() - now.getTime();

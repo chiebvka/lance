@@ -1,11 +1,14 @@
+import OrganizationLogo from "@/app/protected/(sidebar)/settings/_components/organization-logo";
 import { z } from "zod";
 
 const receiptCreateSchema = z.object({
-    invoiceId: z.string(),
+    // Optional – manual receipts won't have an invoiceId
+    invoiceId: z.string().optional(),
+    customerId: z.string().nullable().optional(),
     projectId: z.string().nullable().optional(),
     organizationId: z.string().nullable().optional(),
     organizationName: z.string().nullable().optional(),
-    organizationLogoUrl: z.string().nullable().optional(),
+    OrganizationLogo: z.string().nullable().optional(),
     organizationEmail: z.string().nullable().optional(),
     recepientName: z.string().nullable().optional(),
     recepientEmail: z.string().nullable().optional(),
@@ -22,7 +25,7 @@ const receiptCreateSchema = z.object({
     taxRate: z.number().optional(),
     discount: z.number().optional(),
     notes: z.string().optional(),
-    status: z.enum(["draft", "unassigned", "sent", "settled", "overdue", "cancelled"]).optional(),
+    state: z.enum(["draft", "unassigned", "sent", "settled", "overdue", "cancelled"]).optional(),
     creationMethod: z.enum(["manual", "auto", "invoice", ]).optional(),
     paymentMethod: z.string().optional(),
     paymentStatus: z.string().optional(),
@@ -32,7 +35,9 @@ const receiptCreateSchema = z.object({
         position: z.number().optional(),
         description: z.string().nullable().optional(),
         quantity: z.number().optional(),
+        // Accept either unitPrice or price from the client; we'll normalize in the route
         unitPrice: z.number().optional(),
+        price: z.number().optional(),
         total: z.number().optional(),
     })),
 })

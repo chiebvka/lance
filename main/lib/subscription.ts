@@ -27,7 +27,7 @@ export class SubscriptionManager {
       .select(`
         id,
         name,
-        subscriptionStatus,
+        subscriptionstatus,
         trialEndsAt,
         planType,
         billingCycle,
@@ -52,12 +52,12 @@ export class SubscriptionManager {
 
     const validStatuses: SubscriptionStatus[] = ['active', 'trial'];
     
-    if (!validStatuses.includes(subscription.subscriptionStatus || 'trial')) {
+    if (!validStatuses.includes(subscription.subscriptionstatus || 'trial')) {
       return false;
     }
 
     // Check if trial has expired
-    if (subscription.subscriptionStatus === 'trial' && subscription.trialEndsAt) {
+    if (subscription.subscriptionstatus === 'trial' && subscription.trialEndsAt) {
       const trialEndDate = new Date(subscription.trialEndsAt);
       const now = new Date();
       

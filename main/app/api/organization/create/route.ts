@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
         baseCurrency,
         email: customerEmail,
         createdBy: user.id,
-        subscriptionStatus: mapStripeStatusToDbStatus(stripeSubscription.status, false), // No payment method for initial trial
+        subscriptionstatus: mapStripeStatusToDbStatus(stripeSubscription.status, false), // No payment method for initial trial
         subscriptionId: stripeSubscription.id,
         trialEndsAt: stripeSubscription.trial_end 
           ? new Date(stripeSubscription.trial_end * 1000).toISOString() 
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         organizationId: organization.id,
         stripeSubscriptionId: stripeSubscription.id,
         stripeCustomerId: stripeCustomer.id,
-        subscriptionStatus: mapStripeStatusToDbStatus(stripeSubscription.status, false), // No payment method for initial trial
+        subscriptionstatus: mapStripeStatusToDbStatus(stripeSubscription.status, false), // No payment method for initial trial
         planType: "starter",
         billingCycle: "monthly",
         amount: (stripeSubscription.items.data[0]?.price.unit_amount || 0) / 100,
@@ -190,6 +190,19 @@ export async function POST(request: NextRequest) {
     if (subError) {
       console.error("Error creating subscription record:", subError);
       // Don't fail the organization creation for this
+    }
+
+    // Ensure the Stripe subscription has the organizationId in its metadata for future webhook updates
+    try {
+      await stripe.subscriptions.update(stripeSubscription.id, {
+        metadata: {
+          ...(stripeSubscription.metadata || {}),
+          organizationId: organization.id,
+          userId: user.id,
+        },
+      });
+    } catch (e) {
+      console.error("Failed to add organizationId to subscription metadata:", e);
     }
 
     // Update user profile with organizationId and organizationRole

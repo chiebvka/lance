@@ -112,6 +112,6 @@ export async function userHasActiveSubscription(
 
   // Check if user has an active subscription 
   // (either truly active OR trial with payment method attached)
-  return organization.subscriptionStatus === "active" ||
-         (organization.subscriptionStatus === "trial" && organization.paymentMethodId);
+  return organization.subscriptionstatus === "active" ||
+         (organization.subscriptionstatus === "trial" && organization.paymentMethodId);
 } 

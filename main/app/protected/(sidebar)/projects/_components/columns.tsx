@@ -45,20 +45,20 @@ export interface Project {
 
 const getStatusColor = (status: string) => {
   switch (status?.toLowerCase()) {
-    case 'active':
-    case 'in progress':
-      return 'bg-blue-100 text-blue-800'
-    case 'completed':
-    case 'done':
-      return 'bg-green-100 text-green-800'
-    case 'on hold':
-    case 'paused':
-      return 'bg-yellow-100 text-yellow-800'
-    case 'cancelled':
-    case 'canceled':
-      return 'bg-red-100 text-red-800'
+    case "pending":
+      return "bg-blue-100 text-blue-800";
+    case "inProgress":
+      return "bg-yellow-100 text-yellow-800";
+    case "signed":
+      return "bg-lime-100 text-lime-800";
+    case "overdue":
+      return "bg-red-100 text-red-800";
+    case "completed":
+      return "bg-green-100 text-green-800";
+    case "cancelled":
+      return 'bg-stone-300 text-stone-800 line-through'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return "bg-gray-100 text-gray-800";
   }
 }
 

@@ -1,8 +1,8 @@
 "use client"
 
+import React, { useState, useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
 import { Trash, Upload, Plus, Minus, GripVertical, Save, Send, Loader2 } from 'lucide-react'
 import Image from 'next/image'
-import React, { useState, useRef, forwardRef, useImperativeHandle, useEffect } from 'react'
 import { useInvoice, useUpdateInvoice, type CreateInvoiceData } from '@/hooks/invoices/use-invoices'
 import { useCustomers } from '@/hooks/customers/use-customers'
 import { useOrganization } from '@/hooks/organizations/use-organization'
@@ -36,6 +36,7 @@ type Props = {
 
 export interface EditInvoiceRef {
   handleSubmit: (emailToCustomer: boolean) => Promise<void>
+  setLayoutOption?: (key: 'hasTax' | 'hasVat' | 'hasDiscount', value: boolean) => void
 }
 
 const EditInvoice = forwardRef<EditInvoiceRef, Props>(({ 
@@ -338,6 +339,9 @@ const EditInvoice = forwardRef<EditInvoiceRef, Props>(({
 
   useImperativeHandle(ref, () => ({
     handleSubmit: (emailToCustomer: boolean) => handleSubmit(emailToCustomer),
+    setLayoutOption: (key: 'hasTax' | 'hasVat' | 'hasDiscount', value: boolean) => {
+      setLayoutOptions(prev => ({ ...prev, [key]: value }))
+    }
   }));
 
   if (invoiceLoading) {
@@ -835,7 +839,7 @@ const EditInvoice = forwardRef<EditInvoiceRef, Props>(({
           <div>
             {/* Show current payment details if they exist */}
             {(selectedPaymentMethod || paymentDetails) && (
-              <div className="mb-4 p-3 bg-muted rounded-md">
+              <div className="mb-4 p-3 bg-muted rounded-none">
                 <Label className="text-sm font-medium mb-2 block">Current Payment Details</Label>
                 {/* {selectedPaymentMethod && (
                   <p className="text-sm text-muted-foreground mb-1">
@@ -845,7 +849,7 @@ const EditInvoice = forwardRef<EditInvoiceRef, Props>(({
                 {paymentDetails && (
                   <div className="text-sm">
                     <p className="font-medium mb-1">Instructions:</p>
-                    <pre className="whitespace-pre-wrap text-xs bg-background p-2 rounded border">
+                    <pre className="whitespace-pre-wrap text-xs bg-background p-2 rounded-none border">
                       {paymentDetails}
                     </pre>
                   </div>

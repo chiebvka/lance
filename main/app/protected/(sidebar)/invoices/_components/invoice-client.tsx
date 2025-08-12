@@ -1139,6 +1139,17 @@ export default function InvoiceClient({ initialInvoices }: Props) {
   // Get the sheet type from URL
   const sheetType = searchParams.get('type') || 'details';
 
+  // Update layout options when editing an invoice to reflect database values
+  useEffect(() => {
+    if (invoiceBeingEdited && sheetType === 'edit') {
+      setLayoutOptions({
+        hasTax: invoiceBeingEdited.hasTax ?? true,
+        hasVat: invoiceBeingEdited.hasVat ?? true,
+        hasDiscount: invoiceBeingEdited.hasDiscount ?? true,
+      });
+    }
+  }, [invoiceBeingEdited, sheetType]);
+
   return (
     <>
       <CreateSearchFilter 
@@ -1196,25 +1207,110 @@ export default function InvoiceClient({ initialInvoices }: Props) {
             sheetType === 'details' 
               ? 'sm:w-3/4 md:w-1/2 lg:w-[40%]' // Same width as feedback sheet
               : 'sm:w-3/4 md:w-1/2 lg:w-[55%]' // Same width as invoice form
-          }`}
+          } ${sheetType === 'edit' ? '[&>button[aria-label="Close"]]:hidden' : ''}`}
         >
           <SheetHeader className="p-4 border-b">
             <div className="flex justify-between items-center">
               <SheetTitle>
                 {sheetType === 'details' ? 'Invoice Details' : 'Edit Invoice'}
               </SheetTitle>
-              {selectedInvoiceId && sheetType === 'details' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 rounded-none border-destructive text-destructive hover:bg-destructive/10 mr-7 hover:text-destructive"
-                  onClick={handleDeleteFromSheet}
-                  disabled={deleteInvoiceMutation.isPending}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Invoice
-                </Button>
-              )}
+              <div className="flex items-center fixed right-20 gap-2">
+                {sheetType === 'edit' && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-none">
+                        <LayoutTemplate className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56"  onCloseAutoFocus={(e) => e.preventDefault()}>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Add sales tax</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuCheckboxItem
+                            checked={layoutOptions.hasTax}
+                            onCheckedChange={(checked: boolean) => {
+                              setLayoutOptions(prev => ({ ...prev, hasTax: !!checked }));
+                              editFormRef.current?.setLayoutOption?.('hasTax', !!checked);
+                            }}
+                          >
+                            Yes
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={!layoutOptions.hasTax}
+                            onCheckedChange={(checked: boolean) => {
+                              setLayoutOptions(prev => ({ ...prev, hasTax: !checked }));
+                              editFormRef.current?.setLayoutOption?.('hasTax', !checked);
+                            }}
+                          >
+                            No
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Add VAT</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuCheckboxItem
+                            checked={layoutOptions.hasVat}
+                            onCheckedChange={(checked: boolean) => {
+                              setLayoutOptions(prev => ({ ...prev, hasVat: !!checked }));
+                              editFormRef.current?.setLayoutOption?.('hasVat', !!checked);
+                            }}
+                          >
+                            Yes
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={!layoutOptions.hasVat}
+                            onCheckedChange={(checked: boolean) => {
+                              setLayoutOptions(prev => ({ ...prev, hasVat: !checked }));
+                              editFormRef.current?.setLayoutOption?.('hasVat', !checked);
+                            }}
+                          >
+                            No
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Add discount</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                          <DropdownMenuCheckboxItem
+                            checked={layoutOptions.hasDiscount}
+                            onCheckedChange={(checked: boolean) => {
+                              setLayoutOptions(prev => ({ ...prev, hasDiscount: !!checked }));
+                              editFormRef.current?.setLayoutOption?.('hasDiscount', !!checked);
+                            }}
+                          >
+                            Yes
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={!layoutOptions.hasDiscount}
+                            onCheckedChange={(checked: boolean) => {
+                              setLayoutOptions(prev => ({ ...prev, hasDiscount: !checked }));
+                              editFormRef.current?.setLayoutOption?.('hasDiscount', !checked);
+                            }}
+                          >
+                            No
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
+                {selectedInvoiceId && sheetType === 'details' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 rounded-none border-destructive text-destructive hover:bg-destructive/10 mr-7 hover:text-destructive"
+                    onClick={handleDeleteFromSheet}
+                    disabled={deleteInvoiceMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Invoice
+                  </Button>
+                )}
+              </div>
             </div>
           </SheetHeader>
           <ScrollArea className="flex-grow">

@@ -63,7 +63,7 @@ export default function IssueInvoice({
               </Column>
               <Column style={{ paddingLeft: "20px" }}>
                 <Heading as="h1" style={headerTitleStyle}>
-                  Your Invoice Is Underway!
+                  Your Invoice Is Ready!
                 </Heading>
                 <Text style={headerSubtitleStyle}>
                   {invoiceName} • From {senderName}

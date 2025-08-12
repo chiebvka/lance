@@ -87,7 +87,7 @@ export async function middleware(request: NextRequest) {
       // Check if organization exists and get subscription status
       const { data: organization } = await supabase
         .from("organization")
-        .select("id, name, subscriptionStatus, trialEndsAt, planType")
+        .select("id, name, subscriptionstatus, trialEndsAt, planType")
         .eq("id", userProfile.organizationId)
         .single();
 
@@ -97,7 +97,7 @@ export async function middleware(request: NextRequest) {
       }
 
       // Handle subscription status checks
-      const subscriptionStatus = organization.subscriptionStatus;
+      const subscriptionStatus = organization.subscriptionstatus;
 
       // Stripe subscription statuses that allow full access
       const allowedStatuses = [

@@ -10,6 +10,7 @@ import { countries, currencies, getUserLocationAndCurrency, getCurrencyByCode, g
 import ComboBox from "@/components/combobox";
 import axios from "axios";
 import { Bubbles } from "lucide-react";
+import { toast } from "sonner";
 
 interface CreateTeamFormProps {
   user: any;
@@ -31,9 +32,10 @@ export function CreateTeamForm({ user }: CreateTeamFormProps) {
       try {
         const { country, currency } = await getUserLocationAndCurrency();
         if (country && currency) {
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
-            country: country.name,
+            // Use the country code since ComboBox values are codes
+            country: country.code,
             baseCurrency: currency.code,
           }));
         }
@@ -69,7 +71,7 @@ export function CreateTeamForm({ user }: CreateTeamFormProps) {
     } catch (error: any) {
       console.error("Error creating team:", error);
       // TODO: Show toast notification with error
-      alert(error.response?.data?.error || error.message || "Failed to create team");
+      toast.error(error.response?.data?.error || error.message || "Failed to create team");
     } finally {
       setLoading(false);
     }

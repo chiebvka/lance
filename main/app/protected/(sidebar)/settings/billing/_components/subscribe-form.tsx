@@ -11,6 +11,7 @@ import { getPriceForCycle, formatPrice, type StripeProduct } from "@/lib/pricing
 import { planFeatures } from "@/data/plans";
 import { format, parseISO } from "date-fns";
 import axios from "axios";
+import PaymentHistoryTable from "./payment-history-table";
 
 interface SubscribeFormProps {
   user: any;
@@ -23,7 +24,7 @@ interface SubscribeFormProps {
 export default function SubscribeForm({ user, userOrganization, hasActiveSubscription }: SubscribeFormProps) {
 
     const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
-  const [loading, setLoading] = useState(false);
+  const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
 
   const { 
     products, 
@@ -33,7 +34,7 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
   } = useFilteredPricing();
 
   const handleSubscribe = async (priceId: string) => {
-    setLoading(true);
+    setLoadingPriceId(priceId);
     try {
       if (!user) {
         // Redirect to sign up page if user is not authenticated
@@ -41,7 +42,21 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
         return;
       }
 
-      // Create checkout session for the subscription
+      // For existing subscriptions (including manage subscription button), redirect to billing portal
+      if (hasActiveSubscription || priceId === "") {
+        const response = await axios.post("/api/create-checkout-session", {
+          priceId: "portal", // Special flag to indicate billing portal
+          organizationId: userOrganization?.id,
+          userId: user.id,
+        });
+
+        if (response.data.url) {
+          window.location.href = response.data.url;
+        }
+        return;
+      }
+
+      // Create checkout session for new subscription
       const response = await axios.post("/api/create-checkout-session", {
         priceId,
         organizationId: userOrganization?.id,
@@ -59,7 +74,7 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
       console.error("Error creating subscription:", error);
       alert(error.response?.data?.error || error.message || "Failed to create subscription");
     } finally {
-      setLoading(false);
+      setLoadingPriceId(null);
     }
   };
 
@@ -125,24 +140,24 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
                 <div>
                   <Label className="text-sm font-medium">Status</Label>
                   <Badge className={`ml-2 ${
-                    userOrganization?.subscriptionStatus === 'active' 
+                    userOrganization?.subscriptionstatus === 'active' 
                       ? 'bg-green-500' 
-                      : userOrganization?.subscriptionStatus === 'trial'
+                      : userOrganization?.subscriptionstatus === 'trial'
                       ? 'bg-blue-500'
                       : 'bg-yellow-500'
                   }`}>
-                    {userOrganization?.subscriptionStatus === 'trial' 
+                    {userOrganization?.subscriptionstatus === 'trial' 
                       ? `Trial - ${userOrganization?.trialEndsAt ? format(parseISO(userOrganization.trialEndsAt), 'MMMM d') : 'Unknown'}`
-                      : userOrganization?.subscriptionStatus === 'active'
+                      : userOrganization?.subscriptionstatus === 'active'
                       ? `Subscribed - ${userOrganization?.subscriptionEndDate ? format(parseISO(userOrganization.subscriptionEndDate), 'MMMM d') : 'Active'}`
-                      : userOrganization?.subscriptionStatus}
+                      : userOrganization?.subscriptionstatus}
                   </Badge>
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Billing Cycle</Label>
                   <p className="text-sm">{userOrganization?.billingCycle || 'Unknown'}</p>
                 </div>
-                {userOrganization?.trialEndsAt && userOrganization?.subscriptionStatus === 'trial' && (
+                {userOrganization?.trialEndsAt && userOrganization?.subscriptionstatus === 'trial' && (
                   <div>
                     <Label className="text-sm font-medium">Trial Ends</Label>
                     <p className="text-sm">
@@ -150,10 +165,10 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
                     </p>
                   </div>
                 )}
-                {userOrganization?.subscriptionEndDate && userOrganization?.subscriptionStatus === 'active' && (
+                {userOrganization?.subscriptionEndDate && userOrganization?.subscriptionstatus === 'active' && (
                   <div>
-                    <Label className="text-sm font-medium">Next Billing</Label>
-                    <p className="text-sm">
+                    <Label className="text-sm font-medium">Next Billing Date</Label>
+                    <p className="text-sm font-semibold text-primary">
                       {format(parseISO(userOrganization.subscriptionEndDate), 'MMMM d, yyyy')}
                     </p>
                   </div>
@@ -162,70 +177,19 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
               
               <div className="flex gap-2 pt-4">
                 <Button variant="outline" onClick={() => {
-                  // TODO: Implement update subscription functionality
-                  alert("Subscription management coming soon!");
+                  // Redirect to Stripe billing portal for subscription management
+                  handleSubscribe("");
                 }}>
-                  Change Plan
-                </Button>
-                <Button variant="outline" onClick={() => {
-                  // TODO: Implement cancel subscription functionality
-                  alert("Subscription cancellation coming soon!");
-                }}>
-                  Cancel Subscription
+                  Manage Subscription
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Available Plans */}
+          {/* Payment History */}
           <div>
-            <h3 className="text-xl font-semibold mb-4">Available Plans</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {products.map((product: StripeProduct) => {
-                const price = getPriceForCycle(product, billingCycle);
-                if (!price) return null;
-
-                const isCurrentPlan = product.name.toLowerCase().includes(userOrganization?.planType?.toLowerCase() || '');
-                const features = getPlanFeatures(product.name);
-
-                return (
-                  <Card key={product.id} className={`${isCurrentPlan ? 'border-purple-500 bg-purple-50' : ''}`}>
-                    <CardHeader className="text-center pb-4">
-                      <CardTitle className="text-lg font-bold">
-                        {product.name}
-                        {isCurrentPlan && <Badge className="ml-2 bg-purple-500">Current</Badge>}
-                      </CardTitle>
-                      <CardDescription>{product.description}</CardDescription>
-                      <div className="mt-2">
-                        <span className="text-2xl font-bold">
-                          {formatPrice(price.unit_amount, price.currency)}
-                        </span>
-                        <span className="text-sm">/{billingCycle === "monthly" ? "month" : "year"}</span>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2 mb-4">
-                        {features.slice(0, 4).map((feature: string, index: number) => (
-                          <li key={index} className="flex items-center space-x-2">
-                            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                            <span className="text-sm">{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      {!isCurrentPlan && (
-                        <Button 
-                          onClick={() => handleSubscribe(price.id)} 
-                          disabled={loading}
-                          className="w-full"
-                        >
-                          {loading ? "Processing..." : "Upgrade to this plan"}
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+            <h3 className="text-xl font-semibold mb-4">Payment History</h3>
+            <PaymentHistoryTable />
           </div>
         </div>
       </div>
@@ -250,7 +214,7 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
   return (
     <div className="w-full max-w-5xl mx-auto px-4">
         {/* Trial User Banner */}
-        {userOrganization?.subscriptionStatus === 'trial' && (
+        {userOrganization?.subscriptionstatus === 'trial' && (
           <div className="mb-6">
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="pt-6">
@@ -360,16 +324,16 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
                     <div className="mt-auto">
                     <Button
                         onClick={() => handleSubscribe(price.id)}
-                        disabled={loading}
+                        disabled={loadingPriceId === price.id}
                         className={`w-full py-3 `}
                     >
-                        {loading ? (
+                        {loadingPriceId === price.id ? (
                         <>
                             <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2 " />
                             Loading...
                         </>
                         ) : (
-                        userOrganization?.subscriptionStatus === 'trial' 
+                        userOrganization?.subscriptionstatus === 'trial' 
                           ? "Subscribe Now" 
                           : "Start Free Trial"
                         )}

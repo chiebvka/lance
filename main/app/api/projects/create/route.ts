@@ -19,7 +19,25 @@ export async function POST(request: Request) {
         }
         
         const body = await request.json();
-        const validatedFields = projectCreateSchema.safeParse(body);
+        // Ensure default dates (one week ahead) for any missing deliverable/payment term due dates BEFORE validation
+        const oneWeekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const normalizedBody = {
+          ...body,
+          deliverables: Array.isArray(body?.deliverables)
+            ? body.deliverables.map((d: any) => ({
+                ...d,
+                dueDate: d?.dueDate ?? oneWeekFromNow,
+              }))
+            : body?.deliverables,
+          paymentMilestones: Array.isArray(body?.paymentMilestones)
+            ? body.paymentMilestones.map((m: any) => ({
+                ...m,
+                dueDate: m?.dueDate ?? oneWeekFromNow,
+              }))
+            : body?.paymentMilestones,
+        };
+
+        const validatedFields = projectCreateSchema.safeParse(normalizedBody);
 
         if (!validatedFields.success) {
             console.error("Validation Errors:", JSON.stringify(validatedFields.error.flatten(), null, 2));

@@ -21,7 +21,8 @@ export async function getProjectsWithDetails(
         startDate,
         endDate,
         created_at,
-        customerId(
+        customerId,
+        customer:customerId (
           id,
           name,
           email
@@ -47,13 +48,14 @@ export async function getProjectsWithDetails(
   const projects = data ?? []
 
   const projectsWithDetails = projects.map((project) => {
+    const customer = (project as any).customer as { id: string; name: string; email: string } | null | undefined
     return {
       id: project.id,
       name: project.name || 'Untitled Project',
       description: project.description || 'No description',
       type: project.type || 'General',
-      // Supabase relation selected via customerId(...). It returns an array of related rows.
-      customerName: (project as any).customerId?.[0]?.name || 'No Customer Assigned',
+      customerName: customer?.name || 'No Customer Assigned',
+      customerEmail: customer?.email || null,
       customerId: project.customerId,
       budget: project.budget || 0,
       currency: project.currency || 'USD',

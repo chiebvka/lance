@@ -90,7 +90,7 @@ export function useTrialCountdown(): TrialStatus {
         // Get organization details
         const { data: organization } = await supabase
           .from("organization")
-          .select("trialEndsAt, subscriptionStatus, subscriptionEndDate, planType")
+          .select("trialEndsAt, subscriptionstatus, subscriptionEndDate, planType")
           .eq("id", userProfile.organizationId)
           .single();
 
@@ -116,7 +116,7 @@ export function useTrialCountdown(): TrialStatus {
         let formattedNextBilling = null;
         let displayText = null;
 
-        if (organization.subscriptionStatus === 'trial' && organization.trialEndsAt) {
+        if (organization.subscriptionstatus === 'trial' && organization.trialEndsAt) {
           const result = calculateTimeRemaining(organization.trialEndsAt);
           timeRemaining = result.timeRemaining;
           isExpired = result.isExpired;
@@ -131,7 +131,7 @@ export function useTrialCountdown(): TrialStatus {
             formattedEndDate = 'Invalid date';
             displayText = isExpired ? 'Trial expired' : `Trial - ${formattedEndDate}`;
           }
-        } else if (organization.subscriptionStatus === 'active' && organization.subscriptionEndDate) {
+        } else if (organization.subscriptionstatus === 'active' && organization.subscriptionEndDate) {
           timeRemaining = 'Active subscription';
           nextBillingDate = organization.subscriptionEndDate;
           
@@ -145,19 +145,19 @@ export function useTrialCountdown(): TrialStatus {
             formattedNextBilling = 'Invalid date';
             displayText = `Subscribed - ${formattedNextBilling}`;
           }
-        } else if (organization.subscriptionStatus === 'active') {
+        } else if (organization.subscriptionstatus === 'active') {
           timeRemaining = 'Active subscription';
           displayText = 'Active subscription';
         } else {
-          timeRemaining = organization.subscriptionStatus || 'Unknown';
-          displayText = organization.subscriptionStatus || 'Unknown status';
+          timeRemaining = organization.subscriptionstatus || 'Unknown';
+          displayText = organization.subscriptionstatus || 'Unknown status';
         }
 
         setTrialStatus({
           isLoading: false,
           hasOrganization: true,
           trialEndsAt: organization.trialEndsAt,
-          subscriptionStatus: organization.subscriptionStatus,
+          subscriptionStatus: organization.subscriptionstatus,
           timeRemaining,
           isExpired,
           formattedEndDate,

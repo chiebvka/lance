@@ -123,61 +123,65 @@ export default function CreateSearchFilter({
               {sheetHeader ? (
                 sheetHeader
               ) : (
-                <SheetHeader className="p-4 border-b flex items-center justify-between">
-                  <SheetTitle>{sheetTitle}</SheetTitle>
-                  {sheetHeaderIcon && sheetHeaderDropdownOptions && (
-                  <DropdownMenu open={desktopDropdownOpen} onOpenChange={setDesktopDropdownOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      {sheetHeaderIcon}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={(e) => e.preventDefault()}>
-                    {sheetHeaderDropdownOptions?.map((option) => (
-                      <React.Fragment key={option.key}>
-                        {option.type === 'checkbox' && (
-                          <DropdownMenuCheckboxItem
-                            checked={option.checked}
-                            onCheckedChange={(checked) => {
-                              onDropdownOptionChange?.(option.key, checked);
-                              onLayoutOptionChange?.(option.key, checked);
-                              // Prevent closing the menu
-                            }}
-                            onSelect={(e) => e.preventDefault()} // Prevent default selection behavior
-                          >
-                            {option.label}
-                          </DropdownMenuCheckboxItem>
-                        )}
-                        {option.type === 'submenu' && option.subItems && (
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>{option.label}</DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                              {option.subItems.map((subItem) => (
+                <SheetHeader className="p-4 border-b">
+                  <div className="flex justify-between items-center">
+                    <SheetTitle>{sheetTitle}</SheetTitle>
+                    {sheetHeaderIcon && sheetHeaderDropdownOptions && (
+                      <div className="flex items-center  fixed right-20 gap-2">
+                        <DropdownMenu open={desktopDropdownOpen} onOpenChange={setDesktopDropdownOpen}>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            {sheetHeaderIcon}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={(e) => e.preventDefault()}>
+                          {sheetHeaderDropdownOptions?.map((option) => (
+                            <React.Fragment key={option.key}>
+                              {option.type === 'checkbox' && (
                                 <DropdownMenuCheckboxItem
-                                  key={subItem.key}
-                                  checked={subItem.checked}
+                                  checked={option.checked}
                                   onCheckedChange={(checked) => {
-                                    onDropdownOptionChange?.(subItem.key, checked);
-                                    onLayoutOptionChange?.(subItem.key, checked);
+                                    onDropdownOptionChange?.(option.key, checked);
+                                    onLayoutOptionChange?.(option.key, checked);
+                                    // Prevent closing the menu
                                   }}
                                   onSelect={(e) => e.preventDefault()} // Prevent default selection behavior
                                 >
-                                  {subItem.label}
+                                  {option.label}
                                 </DropdownMenuCheckboxItem>
-                              ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                        )}
-                        {option.type === 'item' && (
-                          <DropdownMenuItem onClick={option.action} onSelect={(e) => e.preventDefault()}>
-                            {option.label}
-                          </DropdownMenuItem>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                  )}
+                              )}
+                              {option.type === 'submenu' && option.subItems && (
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>{option.label}</DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {option.subItems.map((subItem) => (
+                                      <DropdownMenuCheckboxItem
+                                        key={subItem.key}
+                                        checked={subItem.checked}
+                                        onCheckedChange={(checked) => {
+                                          onDropdownOptionChange?.(subItem.key, checked);
+                                          onLayoutOptionChange?.(subItem.key, checked);
+                                        }}
+                                        onSelect={(e) => e.preventDefault()} // Prevent default selection behavior
+                                      >
+                                        {subItem.label}
+                                      </DropdownMenuCheckboxItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              )}
+                              {option.type === 'item' && (
+                                <DropdownMenuItem onClick={option.action} onSelect={(e) => e.preventDefault()}>
+                                  {option.label}
+                                </DropdownMenuItem>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    )}
+                  </div>
                 </SheetHeader>
               )}
               

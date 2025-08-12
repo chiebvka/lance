@@ -1,8 +1,8 @@
 "use client"
 
+import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Trash, Upload, Plus, Minus, GripVertical } from 'lucide-react'
 import Image from 'next/image'
-import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import { useInvoices, useCreateInvoice } from '@/hooks/invoices/use-invoices'
 import { useCustomers } from '@/hooks/customers/use-customers'
 import { useOrganization } from '@/hooks/organizations/use-organization'

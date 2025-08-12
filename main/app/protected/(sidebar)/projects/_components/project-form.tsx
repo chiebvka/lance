@@ -208,7 +208,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
           id: uuidv4(),
           name: "",
           description: "",
-          dueDate: undefined,
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           position: 1,
           status: "pending",
           isPublished: false,
@@ -216,8 +216,8 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
       ],
       paymentStructure: "noPayment",
       paymentMilestones: [
-        { id: uuidv4(), name: "Initial Payment", percentage: 0, amount: 0, dueDate: null, description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
-        { id: uuidv4(), name: "Final Payment", percentage: 0, amount: 0, dueDate: null, description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
+        { id: uuidv4(), name: "Initial Payment", percentage: 0, amount: 0, dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
+        { id: uuidv4(), name: "Final Payment", percentage: 0, amount: 0, dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
       ],
       hasServiceAgreement: false,
       serviceAgreement: "<p>Standard service agreement terms...</p>",
@@ -346,7 +346,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
           name: deliverable.name || `Deliverable ${deliverable.position} Payment`,
           percentage,
           amount,
-          dueDate: deliverable.dueDate,
+          dueDate: deliverable.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           description: null, 
           status: 'pending', 
           type: 'deliverable',
@@ -384,7 +384,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
       id: uuidv4(),
       name: "",
       description: "",
-      dueDate: undefined,
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       position: maxPosition + 1,
       status: "pending",
       isPublished: false,
@@ -431,7 +431,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
       description: null,
       amount: 0,
       percentage: 0,
-      dueDate: null,
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       status: null,
       type: "milestone",
       hasPaymentTerms: false,
@@ -477,27 +477,33 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
     try {
       const values = form.getValues()
 
-      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
-        id: d.id || "",
-        name: d.name || "",
-        description: d.description || "",
-        dueDate: d.dueDate?.toISOString() || "",
-        position: d.position || 0,
-        isPublished: d.isPublished || false,
-        status: d.status || "pending",
-      }));
+      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => {
+        const computedDue = d.dueDate instanceof Date ? d.dueDate : d.dueDate ? new Date(d.dueDate as any) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        return {
+          id: d.id || "",
+          name: d.name || "",
+          description: d.description || "",
+          dueDate: computedDue.toISOString(),
+          position: d.position || 0,
+          isPublished: d.isPublished || false,
+          status: d.status || "pending",
+        }
+      });
       
       const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones) 
-        ? values.paymentMilestones.map(m => ({
-            id: m.id,
-            name: m.name || null,
-            percentage: m.percentage || null,
-            amount: m.amount || null,
-            dueDate: m.dueDate?.toISOString() || "",
-            description: m.description || null,
-            status: m.status || null,
-            type: m.type || null,
-          }))
+        ? values.paymentMilestones.map(m => {
+            const computedDue = m.dueDate instanceof Date ? m.dueDate : m.dueDate ? new Date(m.dueDate as any) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            return {
+              id: m.id,
+              name: m.name || null,
+              percentage: m.percentage || null,
+              amount: m.amount || null,
+              dueDate: computedDue.toISOString(),
+              description: m.description || null,
+              status: m.status || null,
+              type: m.type || null,
+            }
+          })
         : [];
 
       const customFieldsData = (values.customFields?.name && values.customFields?.value) 
@@ -534,27 +540,33 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
     try {
       const values = form.getValues()
 
-      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
-        id: d.id || "",
-        name: d.name || "",
-        description: d.description || "",
-        dueDate: d.dueDate?.toISOString() || "",
-        position: d.position || 0,
-        isPublished: d.isPublished || false,
-        status: d.status || "pending",
-      }));
+      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => {
+        const computedDue = d.dueDate instanceof Date ? d.dueDate : d.dueDate ? new Date(d.dueDate as any) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        return {
+          id: d.id || "",
+          name: d.name || "",
+          description: d.description || "",
+          dueDate: computedDue.toISOString(),
+          position: d.position || 0,
+          isPublished: d.isPublished || false,
+          status: d.status || "pending",
+        }
+      });
 
       const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones)
-        ? values.paymentMilestones.map(m => ({
-          id: m.id,
-          name: m.name || null,
-          percentage: m.percentage || null,
-          amount: m.amount || null,
-          dueDate: m.dueDate?.toISOString() || "",
-          description: m.description || null,
-          status: m.status || null,
-          type: m.type || null,
-        }))
+        ? values.paymentMilestones.map(m => {
+          const computedDue = m.dueDate instanceof Date ? m.dueDate : m.dueDate ? new Date(m.dueDate as any) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          return {
+            id: m.id,
+            name: m.name || null,
+            percentage: m.percentage || null,
+            amount: m.amount || null,
+            dueDate: computedDue.toISOString(),
+            description: m.description || null,
+            status: m.status || null,
+            type: m.type || null,
+          }
+        })
         : [];
 
       const customFieldsData = (values.customFields?.name && values.customFields?.value) 
@@ -750,7 +762,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
         id: d.id || "",
         name: d.name,
         description: d.description,
-        dueDate: d.dueDate, 
+        dueDate: d.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 
         position: d.position || 0,
         isPublished: d.isPublished || false,
       }));
@@ -762,7 +774,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
             name: m.name,
             percentage: m.percentage,
             amount: m.amount,
-            dueDate: m.dueDate,
+            dueDate: m.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           }))
         : [];
 

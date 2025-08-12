@@ -1,10 +1,10 @@
 "use client"
 
-import React from 'react'
+import React, { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { CalendarDays, ClipboardCopy, DollarSign, FileEdit, FileText, User, Tag, HardDriveDownload, Bell, ExternalLink } from 'lucide-react'
+import { CalendarDays, ClipboardCopy, DollarSign, FileEdit, FileText, User, Tag, HardDriveDownload, Bell, ExternalLink, Grip, UserPlus, X, Ban, Check } from 'lucide-react'
 import { format, differenceInDays, isBefore } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { baseUrl } from '@/utils/universal'
 import { downloadProjectAsPDF, type ProjectPDFData } from '@/utils/project-pdf'
 import axios from 'axios'
+import { useCustomers } from '@/hooks/customers/use-customers'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Calendar as CalendarComponent } from '@/components/ui/calendar'
+import ConfirmModal from '@/components/modal/confirm-modal'
+import ProjectConfirmModal from './project-confirm-modal'
 
 type ProjectDetails = {
   id: string
@@ -20,6 +27,7 @@ type ProjectDetails = {
   description?: string | null
   type?: string | null
   customerName?: string | null
+  customerEmail?: string | null
   budget?: number | null
   currency?: string | null
   state?: string | null
@@ -34,19 +42,30 @@ type Props = {
   project: ProjectDetails
 }
 
-const getStateColor = (state: string) => {
-  switch (state.toLowerCase()) {
-    case 'draft':
-      return 'bg-blue-100 text-blue-800'
-    case 'published':
-      return 'bg-green-100 text-green-800'
+const getStateColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case "pending":
+      return "bg-blue-100 text-blue-800";
+    case "inProgress":
+      return "bg-yellow-100 text-yellow-800";
+    case "signed":
+      return "bg-lime-100 text-lime-800";
+    case "overdue":
+      return "bg-red-100 text-red-800";
+    case "completed":
+      return "bg-green-100 text-green-800";
+    case "cancelled":
+      return 'bg-stone-300 text-stone-800 line-through'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return "bg-gray-100 text-gray-800";
   }
 }
 
 export default function ProjectDetailsSheet({ project }: Props) {
   const router = useRouter()
+  const queryClient = useQueryClient()
+  const { data: customers = [] } = useCustomers()
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   const state = (project.state ?? 'draft').toLowerCase()
   const status = (project.status ?? 'pending').toLowerCase()
@@ -94,15 +113,178 @@ export default function ProjectDetailsSheet({ project }: Props) {
   const disableReminderDueToState = state !== 'published'
   const disableReminderDueToStatus = ['signed', 'completed', 'cancelled'].includes(status)
   const isReminderDisabled = disableReminderDueToType || disableReminderDueToState || disableReminderDueToStatus
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false)
+
+  // --- Mutations ---
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      return axios.patch(`/api/projects/${project.id}`, { action: 'cancel' })
+    },
+    onSuccess: () => {
+      toast.success('Project cancelled successfully!')
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Failed to cancel project')
+  })
+
+  const unassignMutation = useMutation({
+    mutationFn: async () => {
+      return axios.patch(`/api/projects/${project.id}`, { action: 'unassign' })
+    },
+    onSuccess: () => {
+      toast.success('Project unassigned successfully!')
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Failed to unassign project')
+  })
+
+  const assignMutation = useMutation({
+    mutationFn: async (customerId: string) => {
+      return axios.patch(`/api/projects/${project.id}`, { action: 'assign', customerId, emailToCustomer: true })
+    },
+    onSuccess: () => {
+      toast.success('Project assigned to customer! Email sent.')
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Failed to assign project')
+  })
+
+  const completeMutation = useMutation({
+    mutationFn: async (completedDate: Date) => {
+      return axios.patch(`/api/projects/${project.id}`, { action: 'mark_completed', completedDate: completedDate.toISOString() })
+    },
+    onSuccess: () => {
+      toast.success('Project marked as completed!')
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Failed to mark as completed')
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => axios.delete(`/api/projects/${project.id}`),
+    onSuccess: () => {
+      toast.success('Project deleted successfully!')
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      // Close the sheet by removing projectId from URL
+      const params = new URLSearchParams(window.location.search)
+      params.delete('projectId')
+      params.delete('type')
+      router.push(`${window.location.pathname}?${params.toString()}`)
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.error || 'Failed to delete project')
+  })
+
+  const handleAssignToCustomer = (customerId: string) => {
+    assignMutation.mutate(customerId)
+  }
+
+  const getAvailableActions = (status: string) => {
+    const s = status.toLowerCase()
+    switch (s) {
+      case 'pending':
+        return ['assign', 'unassign', 'cancel', 'delete'] as const
+      case 'inprogress':
+        return ['assign', 'unassign', 'cancel', 'delete'] as const
+      case 'signed':
+        return ['mark_completed', 'delete'] as const
+      case 'overdue':
+        return ['assign', 'unassign', 'cancel', 'delete'] as const
+      case 'completed':
+        return ['delete'] as const
+      case 'cancelled':
+        return ['assign', 'unassign', 'delete'] as const
+      default:
+        return ['delete'] as const
+    }
+  }
 
   return (
     <div className="p-4">
       <div className="flex items-center justify-between gap-2 pt-2">
         <span className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">State</span>
-          <Badge className={getStateColor(state)}>{state.charAt(0).toUpperCase() + state.slice(1)}</Badge>
+          <span className="text-sm text-muted-foreground">Status</span>
+          <Badge className={getStateColor(status)}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>
         </span>
-        <span className="text-sm text-muted-foreground">{project.id.slice(0, 8)}</span>
+        <div className='flex items-center gap-2'>
+          <span className="text-sm text-muted-foreground">{project.id.slice(0, 8)}</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0 border rounded-none">
+                <Grip size={12} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              {getAvailableActions(status).includes('mark_completed' as any) && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Check className="w-4 h-4 mr-2" />
+                    Mark as completed
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="p-0 h-[350px] w-auto">
+                    <CalendarComponent
+                      mode="single"
+                      selected={new Date()}
+                      onSelect={(date) => { if (date) completeMutation.mutate(date) }}
+                      initialFocus
+                      className="h-full"
+                    />
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+
+              {getAvailableActions(status).includes('assign' as any) && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Assign to customer
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-64 h-[350px] p-0">
+                    <Command className="h-full">
+                      <CommandInput placeholder="Search customers..." />
+                      <CommandList className="h-full max-h-none">
+                        <CommandEmpty>No customers found.</CommandEmpty>
+                        <CommandGroup>
+                          {customers.map((c) => (
+                            <CommandItem key={c.id} value={c.name}
+                              onSelect={() => handleAssignToCustomer(c.id)}
+                              className="cursor-pointer">
+                              <Check className="mr-2 h-4 w-4 opacity-0" />
+                              {c.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+
+              {getAvailableActions(status).includes('unassign' as any) && (
+                <DropdownMenuItem onClick={() => unassignMutation.mutate()}>
+                  <X className="w-4 h-4 mr-2" />
+                  Use personal (unassign)
+                </DropdownMenuItem>
+              )}
+
+              {getAvailableActions(status).includes('cancel' as any) && (
+                <DropdownMenuItem onClick={() => cancelMutation.mutate()}>
+                  <Ban className="w-4 h-4 mr-2" />
+                  Cancel
+                </DropdownMenuItem>
+              )}
+
+              {getAvailableActions(status).includes('delete' as any) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-red-600">
+                    <X className="w-4 h-4 mr-2 rotate-45" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <Separator />
 
@@ -289,6 +471,7 @@ export default function ProjectDetailsSheet({ project }: Props) {
                     variant="outline"
                     className="h-10 bg-transparent w-full"
                     disabled={isReminderDisabled}
+                    onClick={() => setIsReminderModalOpen(true)}
                   >
                     <Bell className="w-4 h-4 mr-2" />
                     Send Reminder
@@ -308,6 +491,27 @@ export default function ProjectDetailsSheet({ project }: Props) {
           </TooltipProvider>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => deleteMutation.mutate()}
+        title="Delete Project"
+        itemName={project.name || project.id.slice(0,8)}
+        itemType="project"
+        description="This action cannot be undone."
+        isLoading={deleteMutation.isPending}
+      />
+
+      <ProjectConfirmModal
+        isOpen={isReminderModalOpen}
+        onClose={() => setIsReminderModalOpen(false)}
+        projectId={project.id}
+        projectState={state}
+        projectStatus={status}
+        recipientEmail={project.customerEmail || ''}
+      />
     </div>
   )
 }
