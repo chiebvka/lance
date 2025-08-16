@@ -243,3 +243,14 @@ export async function downloadProjectAsPDF(project: ProjectPDFData, filename?: s
 }
 
 
+export async function generateProjectPDFBlob(project: ProjectPDFData): Promise<Blob> {
+  try {
+    const { pdf } = await import('@react-pdf/renderer')
+    return await pdf(generateProjectPDF(project)).toBlob()
+  } catch (error) {
+    console.error('Error generating Project PDF blob:', error)
+    throw error
+  }
+}
+
+

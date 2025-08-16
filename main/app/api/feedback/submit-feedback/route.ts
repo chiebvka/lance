@@ -2,6 +2,7 @@ import { ratelimit } from "@/utils/rateLimit";
 import { createClient } from "@/utils/supabase/server";
 import { feedbackAnswerSchema } from "@/validation/feedback";
 import { NextResponse } from "next/server";
+import { isOrgSubscriptionActive, deriveInactiveReason } from "@/utils/subscription";
 
 interface Question {
   id: string;
@@ -117,6 +118,11 @@ export async function GET(request: Request) {
         organizationName,
         organizationLogoUrl,
         organizationEmail,
+        organization:organizationId (
+          id,
+          subscriptionstatus,
+          trialEndsAt
+        ),
         message,
         created_at
       `)
@@ -126,6 +132,20 @@ export async function GET(request: Request) {
 
     if (error || !feedback) {
       return NextResponse.json({ error: "Invalid or expired link" }, { status: 404 });
+    }
+
+    // Gate by organization subscription (non-auth public preview)
+    const orgStatus = (feedback as any)?.organization?.subscriptionstatus ?? null;
+    const orgTrialEndsAt = (feedback as any)?.organization?.trialEndsAt ?? null;
+    if (!isOrgSubscriptionActive(orgStatus, orgTrialEndsAt)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Organization subscription inactive",
+          reason: deriveInactiveReason(orgStatus, orgTrialEndsAt),
+        },
+        { status: 403 }
+      );
     }
 
     return NextResponse.json({ success: true, data: feedback }, { status: 200 });

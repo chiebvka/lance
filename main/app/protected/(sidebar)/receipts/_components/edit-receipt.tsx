@@ -106,7 +106,11 @@ const EditReceipt = forwardRef<EditReceiptRef, Props>(({
       if (receipt.paymentConfirmedAt) setPaymentConfirmedAt(new Date(receipt.paymentConfirmedAt))
       
       // Set customer
-      setSelectedCustomer(receipt.customerId)
+      // customerId can be returned either as a string (uuid) or as an object with an `id`.
+      const customerIdValue = (typeof (receipt as any).customerId === 'string'
+        ? (receipt as any).customerId
+        : (receipt as any).customerId?.id) || null
+      setSelectedCustomer(customerIdValue)
       
       // Set organization email
       setFromEmail(receipt.organizationEmail || userEmail || organization?.email || '')

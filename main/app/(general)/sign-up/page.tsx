@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { SmtpMessage } from "../smtp-message";
+import type { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/seo'
 
 export default async function Signup(props: {
   searchParams: Promise<Message>;
@@ -49,3 +51,9 @@ export default async function Signup(props: {
     </>
   );
 }
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Create account',
+  description: 'Start your 7‑day free trial of BexForte. No credit card required.',
+  path: '/sign-up',
+});

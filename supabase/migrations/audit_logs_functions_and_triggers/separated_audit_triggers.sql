@@ -111,9 +111,10 @@ BEGIN
         VALUES (
             'receipts', NEW.id, NEW."createdBy", 'update', row_to_json(OLD), row_to_json(NEW),
             jsonb_build_object(
-                'status', jsonb_build_object('old_value', OLD."status", 'new_value', NEW."status"),
-                'totalamount', jsonb_build_object('old_value', OLD."totalamount", 'new_value', NEW."totalamount"),
+                'state', jsonb_build_object('old_value', OLD."state", 'new_value', NEW."state"),
+                'totalAmount', jsonb_build_object('old_value', OLD."totalAmount", 'new_value', NEW."totalAmount"),
                 'issueDate', jsonb_build_object('old_value', OLD."issueDate", 'new_value', NEW."issueDate"),
+                'paymentConfirmedAt', jsonb_build_object('old_value', OLD."paymentConfirmedAt", 'new_value', NEW."paymentConfirmedAt"),
                 'receiptNumber', jsonb_build_object('old_value', OLD."receiptNumber", 'new_value', NEW."receiptNumber"),
                 'customerId', jsonb_build_object('old_value', OLD."customerId", 'new_value', NEW."customerId"),
                 'invoiceId', jsonb_build_object('old_value', OLD."invoiceId", 'new_value', NEW."invoiceId")

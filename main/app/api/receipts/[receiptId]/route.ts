@@ -1,6 +1,45 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { receiptCreateSchema } from '@/validation/receipt';
+import sendgrid from "@sendgrid/mail";
+import IssueReceipt from '../../../../emails/IssueReceipt';
+import { render } from "@react-email/components";
+
+
+sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
+
+async function sendReceiptEmail(supabase: any, user: any, receipt: any, recipientEmail: string, recepientName: string | null, organizationName: string, logoUrl: string) {
+  try {
+    const fromEmail = 'no_reply@receipts.bexforte.com';
+    const fromName = 'Bexforte';
+    const senderName = organizationName || 'Bexforte';
+
+    const finalLogoUrl = logoUrl || 'https://www.bexoni.com/favicon.ico';
+
+    const emailHtml = await render(IssueReceipt({
+      receiptId: receipt.id,
+      clientName: recepientName || 'Valued Customer',
+      receiptName: receipt.receiptNumber || 'Receipt',
+      senderName,
+      logoUrl: finalLogoUrl,
+    }));
+
+    await sendgrid.send({
+      to: recipientEmail,
+      from: `${fromName} <${fromEmail}>`,
+      subject: `${senderName} sent you a receipt`,
+      html: emailHtml,
+      customArgs: {
+        receiptId: receipt.id,
+        customerId: receipt.customerId || '',
+        userId: user.id,
+        type: 'receipt_sent',
+      },
+    });
+  } catch (emailError) {
+    console.error('SendGrid Error (receipt):', emailError);
+  }
+}
 
 export async function GET(
   _req: NextRequest,

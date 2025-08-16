@@ -6,6 +6,7 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Preview,
   Row,
   Section,
@@ -27,7 +28,6 @@ export default function IssueInvoice({
   clientName = "Client",
   invoiceName = "Your Invoice",
   invoiceId = "123",
-
   logoUrl = "https://www.bexoni.com/favicon.ico",
 }: IssueInvoiceEmailProps) {
   const previewText = ` ${invoiceName} has been initiated.`
@@ -38,30 +38,39 @@ export default function IssueInvoice({
     height: "48px",
     border: "2px solid #faf8f5",
     backgroundColor: "#faf8f5",
-    backgroundImage: `url(${logoUrl})`,
-    backgroundPosition: "center ",
-    backgroundSize: "contain", // Changed to 'cover' to fill the circle
-    backgroundRepeat: "no-repeat",
-    overflow: "hidden",
-
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center", 
+    borderRadius: "0px",
+    display: "block",
   }
 
   return (
     <Html>
-      <Head />
+      <Head>
+        <meta name="color-scheme" content="light dark" />
+        <meta name="supported-color-schemes" content="light dark" />
+        <style>{`
+          @media (prefers-color-scheme: dark) {
+            .dark-mode-bg { background-color: #1f2937 !important; }
+            .dark-mode-text { color: #f9fafb !important; }
+            .dark-mode-border { border-color: #374151 !important; }
+          }
+        `}</style>
+      </Head>
       <Preview>{previewText}</Preview>
       <Body style={main}>
         <Container style={container}>
           {/* Header */}
           <Section style={headerStyle}>
             <Row>
-              <Column>
-                <Section style={logoStyle} />
+              <Column style={{ width: "48px", verticalAlign: "top" }}>
+                <Img
+                  src={logoUrl}
+                  alt={`${senderName} logo`}
+                  style={logoStyle}
+                  width="48"
+                  height="48"
+                />
               </Column>
-              <Column style={{ paddingLeft: "20px" }}>
+              <Column style={{ paddingLeft: "20px", verticalAlign: "top"  }}>
                 <Heading as="h1" style={headerTitleStyle}>
                   Your Invoice Is Ready!
                 </Heading>
@@ -107,11 +116,15 @@ export default function IssueInvoice({
   )
 }
 
-// Styles
-const main = {
+ // Styles
+ const main = {
   backgroundColor: "#faf8f5",
-  fontFamily: "'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
   lineHeight: "1.5",
+  margin: "0",
+  padding: "0",
+  WebkitTextSizeAdjust: "100%",
+  msTextSizeAdjust: "100%",
 }
 
 const container = {
@@ -120,16 +133,23 @@ const container = {
   border: "1px solid #e8e3db",
   borderRadius: "0px",
   overflow: "hidden",
-  boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
   color: "#44413f",
+  backgroundColor: "#ffffff",
+  msoTableLspace: "0pt",
+  msoTableRspace: "0pt",
+  borderCollapse: "collapse" as const,
 }
 
 const headerStyle = {
   padding: "30px",
+  backgroundColor: "#9948fb", // Fallback for clients that don't support gradients
   background: "linear-gradient(135deg, #9948fb 0%, #a855f7 100%)",
-  color: "#e0e0e0",
+  color: "#ffffff",
   position: "relative" as const,
   overflow: "hidden",
+  msoTableLspace: "0pt",
+  msoTableRspace: "0pt",
 }
 
 const logoContainerStyle = {
@@ -153,36 +173,43 @@ const headerTitleStyle = {
   margin: "0 0 5px 0",
   fontSize: "18px",
   fontWeight: "600",
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  color: "#e0e0e0",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+  color: "#ffffff",
+  lineHeight: "1.3",
 }
 
 const headerSubtitleStyle = {
   margin: "0",
-  opacity: "0.8",
+  opacity: "0.9",
   fontSize: "12px",
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+  color: "rgba(255, 255, 255, 0.9)",
 }
 
 const contentStyle = {
   padding: "40px",
-  backgroundColor: "#faf8f5",
+  backgroundColor: "#ffffff",
+  msoTableLspace: "0pt",
+  msoTableRspace: "0pt",
 }
 
 const greetingStyle = {
-  color: "#8b949e",
+  color: "#44413f",
   marginBottom: "30px",
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
   fontSize: "14px",
+  lineHeight: "1.5",
 }
 
 const codeBlockStyle = {
-  background: "#fff",
+  backgroundColor: "#f8f9fa",
   border: "1px solid #e8e3db",
   borderRadius: "0px",
   padding: "20px",
   margin: "20px 0",
   overflowX: "auto" as const,
+  msoTableLspace: "0pt",
+  msoTableRspace: "0pt",
 }
 
 const codeHeaderStyle = {
@@ -203,7 +230,8 @@ const codeLineStyle = {
 }
 
 const buttonStyle = {
-  display: "block",
+  display: "inline-block",
+  backgroundColor: "#9948fb", // Fallback for clients that don't support gradients
   background: "linear-gradient(135deg, #9948fb 0%, #a855f7 100%)",
   color: "#ffffff",
   textDecoration: "none",
@@ -214,30 +242,35 @@ const buttonStyle = {
   margin: "30px 0",
   textAlign: "center" as const,
   textTransform: "uppercase" as const,
-  letterSpacing: "2px",
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  border: "1px solid #9948fb",
+  letterSpacing: "1px",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+  border: "none",
+  msoHide: "all",
 }
 
 const signatureStyle = {
   marginTop: "30px",
   fontSize: "12px",
-  color: "#8b949e",
+  color: "#6b7280",
   textAlign: "left" as const,
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+  lineHeight: "1.5",
 }
 
 const footerStyle = {
   padding: "30px 40px",
   textAlign: "left" as const,
-  backgroundColor: "#f5f2ed",
+  backgroundColor: "#f8f9fa",
   borderTop: "1px solid #e8e3db",
+  msoTableLspace: "0pt",
+  msoTableRspace: "0pt",
 }
 
 const footerTextStyle = {
   margin: "5px 0",
   fontSize: "11px",
-  color: "#8b949e",
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  color: "#6b7280",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+  lineHeight: "1.4",
 }
   

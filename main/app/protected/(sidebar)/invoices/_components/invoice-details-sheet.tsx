@@ -129,6 +129,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
   // State for UI interactions
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [selectedAssignCustomerId, setSelectedAssignCustomerId] = useState<string | null>(null);
   
   // State management functions
   const handleDeleteInvoice = async () => {
@@ -196,7 +197,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
     }
   };
 
-  const handleAssignToCustomer = async (customerId: string) => {
+  const handleAssignToCustomer = async (customerId: string, emailToCustomer: boolean) => {
     const selectedCustomer = customers.find(c => c.id === customerId);
     if (!selectedCustomer) {
       toast.error("Selected customer not found");
@@ -211,12 +212,13 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
           customerId: customerId,
           recepientName: selectedCustomer.name,
           recepientEmail: selectedCustomer.email,
+          emailToCustomer,
         }
       });
-      toast.success("Invoice assigned to customer successfully!");
+      toast.success(emailToCustomer ? "Invoice assigned and email sent!" : "Invoice assigned to customer successfully!");
     } catch (error) {
       console.error('Error assigning invoice to customer:', error);
-      toast.error("Failed to assign invoice to customer");
+      toast.error(emailToCustomer ? "Failed to assign and email customer" : "Failed to assign invoice to customer");
     }
   };
 
@@ -248,7 +250,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
   const getAvailableActions = (state: string) => {
     switch (state.toLowerCase()) {
       case 'draft':
-        return ['delete'];
+        return ['assign', 'delete'];
       case 'sent':
         return ['settle', 'unassign', 'cancel', 'delete'];
       case 'unassigned':
@@ -380,13 +382,14 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
               
               {/* Assign to customer with customer selection */}
               {getAvailableActions(state).includes('assign') && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Assign to customer
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-64 h-[350px] p-0">
-                    <Command className="h-full">
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Assign to customer
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-64 h-[350px] p-0">
+                  <div className="flex flex-col h-full">
+                    <Command className="flex-1">
                       <CommandInput placeholder="Search customers..." />
                       <CommandList className="h-full max-h-none">
                         <CommandEmpty>No customers found.</CommandEmpty>
@@ -395,20 +398,38 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
                             <CommandItem
                               key={customer.id}
                               value={customer.name}
-                              onSelect={() => {
-                                handleAssignToCustomer(customer.id);
-                              }}
-                              className="cursor-pointer"
+                              onSelect={() => setSelectedAssignCustomerId(customer.id)}
+                              className={`cursor-pointer ${selectedAssignCustomerId === customer.id ? 'bg-muted' : ''}`}
                             >
-                              <Check className="mr-2 h-4 w-4 opacity-0" />
+                              <Check className={`mr-2 h-4 w-4 ${selectedAssignCustomerId === customer.id ? 'opacity-100' : 'opacity-0'}`} />
                               {customer.name}
                             </CommandItem>
                           ))}
                         </CommandGroup>
                       </CommandList>
                     </Command>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                    <div className="p-2 border-t flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1 rounded-none"
+                        disabled={!selectedAssignCustomerId}
+                        onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
+                      >
+                        Assign only
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 rounded-none"
+                        disabled={!selectedAssignCustomerId}
+                        onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
+                      >
+                        Assign & Email
+                      </Button>
+                    </div>
+                  </div>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               )}
               
               {/* Direct action items */}

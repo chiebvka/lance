@@ -39,6 +39,7 @@ import {
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
+import { Receipt as ReceiptType } from '@/hooks/receipts/use-receipts'; 
 
 type Receipt = {
     id: string
@@ -77,7 +78,7 @@ type Receipt = {
 }
 
 type Props = {
-  receipt: Receipt
+  receipt: ReceiptType
 }
 
 const getStateColor = (state: string) => {
@@ -111,6 +112,7 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
     // State for UI interactions
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+    const [selectedAssignCustomerId, setSelectedAssignCustomerId] = useState<string | null>(null);
   
     // State management functions
     const handleDeleteReceipt = async () => {
@@ -153,10 +155,10 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
               recepientEmail: null,
             }
           });
-          toast.success("Invoice unassigned successfully!");
+          toast.success("Receipt unassigned successfully!");
         } catch (error) {
           console.error('Error unassigning invoice:', error);
-          toast.error("Failed to unassign invoice");
+          toast.error("Failed to unassign receipt");
         }
     };
 
@@ -168,20 +170,20 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
             state: 'cancelled',
         }
         });
-        toast.success("Invoice cancelled successfully!");
+        toast.success("Receipt cancelled successfully!");
     } catch (error) {
         console.error('Error cancelling invoice:', error);
-        toast.error("Failed to cancel invoice");
+        toast.error("Failed to cancel receipt");
     }
     };
 
-    const handleAssignToCustomer = async (customerId: string) => {
+    const handleAssignToCustomer = async (customerId: string, emailToCustomer: boolean) => {
         const selectedCustomer = customers.find(c => c.id === customerId);
         if (!selectedCustomer) {
           toast.error("Selected customer not found");
           return;
         }
-    
+
         try {
           await updateReceiptMutation.mutateAsync({
             receiptId: receipt.id,
@@ -190,12 +192,13 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
               customerId: customerId,
               recepientName: selectedCustomer.name,
               recepientEmail: selectedCustomer.email,
+              emailToCustomer,
             }
           });
-          toast.success("Invoice assigned to customer successfully!");
+          toast.success(emailToCustomer ? "Receipt assigned and email sent!" : "Receipt assigned to customer successfully!");
         } catch (error) {
-          console.error('Error assigning invoice to customer:', error);
-          toast.error("Failed to assign invoice to customer");
+          console.error('Error assigning receipt to customer:', error);
+          toast.error(emailToCustomer ? "Failed to assign and email customer" : "Failed to assign receipt to customer");
         }
     };
 
@@ -218,7 +221,7 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
     const getAvailableActions = (state: string) => {
         switch (state.toLowerCase()) {
         case 'draft':
-            return ['delete'];
+            return ['assign', 'delete'];
         case 'sent':
             return ['settle', 'unassign', 'cancel', 'delete'];
         case 'unassigned':
@@ -353,35 +356,54 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
             
             {/* Assign to customer with customer selection */}
             {getAvailableActions(state).includes('assign') && (
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Assign to customer
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-64 h-[350px] p-0">
-                  <Command className="h-full">
-                    <CommandInput placeholder="Search customers..." />
-                    <CommandList className="h-full max-h-none">
-                      <CommandEmpty>No customers found.</CommandEmpty>
-                      <CommandGroup>
-                        {customers.map((customer) => (
-                          <CommandItem
-                            key={customer.id}
-                            value={customer.name}
-                            onSelect={() => {
-                              handleAssignToCustomer(customer.id);
-                            }}
-                            className="cursor-pointer"
-                          >
-                            <Check className="mr-2 h-4 w-4 opacity-0" />
-                            {customer.name}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <UserPlus className="w-4 h-4 mr-2" />
+              Assign to customer
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-64 h-[350px] p-0">
+              <div className="flex flex-col h-full">
+                <Command className="flex-1">
+                  <CommandInput placeholder="Search customers..." />
+                  <CommandList className="h-full max-h-none">
+                    <CommandEmpty>No customers found.</CommandEmpty>
+                    <CommandGroup>
+                      {customers.map((customer) => (
+                        <CommandItem
+                          key={customer.id}
+                          value={customer.name}
+                          onSelect={() => setSelectedAssignCustomerId(customer.id)}
+                          className={`cursor-pointer ${selectedAssignCustomerId === customer.id ? 'bg-muted' : ''}`}
+                        >
+                          <Check className={`mr-2 h-4 w-4 ${selectedAssignCustomerId === customer.id ? 'opacity-100' : 'opacity-0'}`} />
+                          {customer.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+                <div className="p-2 border-t flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1 rounded-none"
+                    disabled={!selectedAssignCustomerId}
+                    onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
+                  >
+                    Assign only
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 rounded-none"
+                    disabled={!selectedAssignCustomerId}
+                    onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
+                  >
+                    Assign & Email
+                  </Button>
+                </div>
+              </div>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
             )}
             
             {/* Direct action items */}
@@ -558,7 +580,7 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
 
       {/* Action Buttons */}
       <div className="space-y-3">
-        <Button 
+          <Button 
           className="w-full h-11 text-base"
           onClick={() => {
             const params = new URLSearchParams(window.location.search);
@@ -567,7 +589,7 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
           }}
         >
           <Edit className="w-4 h-4 mr-2" />
-          Edit Invoice
+          Edit Receipt
         </Button>
         <div className="grid grid-cols-2 gap-3">
           <Button

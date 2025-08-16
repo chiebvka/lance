@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { SmtpMessage } from "../smtp-message";
+import type { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/seo'
 
 export default async function ForgotPassword(props: {
   searchParams: Promise<Message>;
@@ -35,3 +37,9 @@ export default async function ForgotPassword(props: {
     </>
   );
 }
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Reset password',
+  description: 'Set a new password for your BexForte account.',
+  path: '/forgot-password',
+});

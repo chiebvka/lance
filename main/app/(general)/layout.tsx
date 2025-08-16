@@ -1,3 +1,12 @@
+import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = createPageMetadata({
+  title: "BexForte – Client operations hub",
+  description:
+    "Docs, pricing, terms, policy, branding assets and product updates for BexForte.",
+  path: "/",
+});
 import Header from "@/components/header";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 

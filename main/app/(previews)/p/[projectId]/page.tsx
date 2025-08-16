@@ -1,5 +1,7 @@
 import React from 'react'
 import ProjectPreview from './_components/project-preview';
+import type { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/seo'
 
 type PageProps = {
   params: Promise<{ projectId: string }>
@@ -23,20 +25,14 @@ export default async function page({ params, searchParams }: PageProps) {
   //   )
   // }
 
-  if (!token) {
-    return (
-      <div className="min-h-screen flex items-center justify-center ">
-        <div className="text-center p-8 bg-white rounded-none shadow-lg">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Invalid Link</h1>
-          <p className="text-gray-600">This project link is missing required information.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className='h-full w-full'>
-      <ProjectPreview projectId={projectId} token={token} />
+      <ProjectPreview projectId={projectId} token={token || ''} />
     </div>
   )
 }
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Project Wall',
+  description: 'A single wall with instructions, assets and approvals for your project.',
+});

@@ -113,7 +113,7 @@ export default function SettingsForm() {
       // Upload file first
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("type", "logo");
+      formData.append("type", "organizations/logos");
       const uploadResponse = await axios.post("/api/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });

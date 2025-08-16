@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Building2, Calendar, Clock, AlertCircle, Download, FileText, DollarSign, Receipt, Copy, Ban, SquareDashedKanban, Ungroup } from "lucide-react";
 import { toast } from "sonner";
 import { downloadInvoiceAsPDF, InvoicePDFData } from '@/utils/invoice-pdf';
+import SubscriptionNotice from "@/app/(previews)/_components/SubscriptionNotice";
 
 interface InvoiceDetail {
   description: string;
@@ -49,6 +50,7 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInvoiceData();
@@ -61,7 +63,13 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
         setInvoiceData(response.data.data);
       }
     } catch (error: any) {
-      setError(error.response?.data?.error || "Failed to load invoice");
+      const status = error?.response?.status;
+      if (status === 403) {
+        setBlockedReason(error.response?.data?.reason || null);
+        setError(null);
+      } else {
+        setError(error.response?.data?.error || "Failed to load invoice");
+      }
     } finally {
       setLoading(false);
     }
@@ -132,6 +140,10 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
         </div>
       </div>
     );
+  }
+
+  if (blockedReason) {
+    return <SubscriptionNotice reason={blockedReason} />
   }
 
   if (error) {

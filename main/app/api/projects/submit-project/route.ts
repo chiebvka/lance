@@ -5,6 +5,7 @@ import sendgrid from "@sendgrid/mail";
 import { render } from "@react-email/components";
 import ProjectSignoff from "@/emails/ProjectSignoff";
 import { baseUrl } from "@/utils/universal";
+import { isOrgSubscriptionActive, deriveInactiveReason } from "@/utils/subscription";
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
@@ -19,10 +20,71 @@ export async function GET(request: Request) {
     const token = searchParams.get('token');
   
     if (!projectId || !token) {
+      // Even if token is missing, check org subscription by projectId to decide if we should show a subscription notice
+      if (projectId) {
+        try {
+          const { data: projOrg } = await supabase
+            .from('projects')
+            .select(`
+              id,
+              organization:organization!projects_organizationId_fkey (subscriptionstatus, trialEndsAt)
+            `)
+            .eq('id', projectId)
+            .maybeSingle();
+
+          const orgStatus = (projOrg as any)?.organization?.subscriptionstatus ?? null;
+          const orgTrialEndsAt = (projOrg as any)?.organization?.trialEndsAt ?? null;
+          if (orgStatus !== undefined && orgStatus !== null) {
+            const { isOrgSubscriptionActive, deriveInactiveReason } = await import('@/utils/subscription');
+            if (!isOrgSubscriptionActive(orgStatus, orgTrialEndsAt)) {
+              return NextResponse.json(
+                {
+                  success: false,
+                  error: 'Organization subscription inactive',
+                  reason: deriveInactiveReason(orgStatus, orgTrialEndsAt),
+                },
+                { status: 403 }
+              );
+            }
+          }
+        } catch (e) {
+          // Fail open to normal error handling below
+        }
+      }
       return NextResponse.json({ error: "Missing projectId or token" }, { status: 400 });
     }
   
     try {
+      // Pre-check subscription by projectId so we can return a subscription notice regardless of token validity
+      try {
+        const { data: projOrg } = await supabase
+          .from('projects')
+          .select(`
+            id,
+            organization:organization!projects_organizationId_fkey (subscriptionstatus, trialEndsAt)
+          `)
+          .eq('id', projectId)
+          .maybeSingle();
+
+        const orgStatus = (projOrg as any)?.organization?.subscriptionstatus ?? null;
+        const orgTrialEndsAt = (projOrg as any)?.organization?.trialEndsAt ?? null;
+        if (orgStatus !== undefined && orgStatus !== null) {
+          const { isOrgSubscriptionActive, deriveInactiveReason } = await import('@/utils/subscription');
+          if (!isOrgSubscriptionActive(orgStatus, orgTrialEndsAt)) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: 'Organization subscription inactive',
+                reason: deriveInactiveReason(orgStatus, orgTrialEndsAt),
+              },
+              { status: 403 }
+            );
+          }
+        }
+      } catch (e) {
+        // continue to normal flow
+      }
+
       const { data: project, error } = await supabase
         .from("projects")
         .select(`
@@ -35,7 +97,7 @@ export async function GET(request: Request) {
           startDate,
           endDate,
           createdBy,
-          organization:organization!projects_organizationId_fkey(name,logoUrl,email),
+          organization:organization!projects_organizationId_fkey(id,name,logoUrl,email,subscriptionstatus,trialEndsAt),
           created_at,
           budget,
           currency,
@@ -69,6 +131,20 @@ export async function GET(request: Request) {
       }
 
   
+      // Gate by organization subscription (non-auth public preview)
+      const orgStatus = (project as any)?.organization?.subscriptionstatus ?? null;
+      const orgTrialEndsAt = (project as any)?.organization?.trialEndsAt ?? null;
+      if (!isOrgSubscriptionActive(orgStatus, orgTrialEndsAt)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Organization subscription inactive",
+            reason: deriveInactiveReason(orgStatus, orgTrialEndsAt),
+          },
+          { status: 403 }
+        );
+      }
+
       // Fetch related collections
       const { data: deliverables, error: deliverablesError } = await supabase
         .from('deliverables')

@@ -8,6 +8,8 @@ import {
  } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import Breadcrumbs from '@/components/breadcrumbs';
+import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/seo";
 
 type Props = {}
 
@@ -47,3 +49,11 @@ export default async function ProtectedLayout({
     </div>
   )
 }
+
+export const metadata: Metadata = createPageMetadata({
+  title: "Workspace",
+  description:
+    "Work on customers, walls, feedback, projects, invoices and receipts in your BexForte workspace.",
+  path: "/protected",
+  noIndex: true,
+});

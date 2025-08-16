@@ -1,6 +1,8 @@
 import React from 'react'
 import FeedbackForm from './_components/feedback-form'
 import { baseUrl } from '@/utils/universal';
+import type { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/seo'
 
 interface PageProps {
   params: Promise<{ feedbackId: string }>
@@ -52,3 +54,8 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
     </div>
   )
 }
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Feedback Form',
+  description: 'Fill and submit the requested feedback securely via BexForte.',
+});

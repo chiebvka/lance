@@ -55,6 +55,8 @@ import { Project } from '@/validation/forms/project'
 import { useProjects } from '@/hooks/projects/use-projects'
 import ProjectClientSkeleton from './project-client-skeleton'
 import Pagination from '@/components/pagination'
+import JSZip from 'jszip'
+import { generateProjectPDFBlob, type ProjectPDFData } from '@/utils/project-pdf'
 
 
 interface Props {
@@ -131,6 +133,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -391,6 +394,210 @@ export default function ProjectsClient({ initialProjects }: Props) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
+
+  const selectedProjects = useMemo(() => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    return selectedRows.map(row => row.original)
+  }, [table, rowSelection])
+
+  const sanitizeFilename = (name: string): string => {
+    return name
+      .replace(/[^a-z0-9]/gi, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .toLowerCase();
+  };
+
+  const handleExport = async () => {
+    const validProjects = selectedProjects.filter(project => {
+      const hasValidId = project.id && project.id.trim() !== ''
+      const hasValidName = project.name && project.name.trim() !== ''
+      return hasValidId || hasValidName
+    })
+
+    if (validProjects.length === 0) {
+      toast.error('No valid projects selected for export')
+      return
+    }
+
+    if (validProjects.length !== selectedProjects.length) {
+      toast.warning(`${selectedProjects.length - validProjects.length} invalid projects were skipped`)
+    }
+
+    setIsExporting(true)
+    const loadingToast = toast.loading('Preparing export...')
+
+    try {
+      if (selectedProjects.length === 1) {
+        const project = selectedProjects[0]
+        const projectData: ProjectPDFData = {
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          type: (project.type as any) || null,
+          customerName: project.customerName,
+          budget: project.budget,
+          currency: project.currency,
+          endDate: project.endDate,
+        }
+
+        const filename = project.name ? `${sanitizeFilename(project.name)}.pdf` : `project-${project.id}.pdf`
+
+        await generateProjectPDFBlob(projectData).then(blob => {
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = filename
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+        })
+
+        toast.success('Project PDF downloaded successfully!', { id: loadingToast })
+      } else {
+        const zip = new JSZip()
+        const processedFilenames = new Set<string>()
+
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        for (let i = 0; i < selectedProjects.length; i++) {
+          const project = selectedProjects[i]
+          const progress = Math.round(((i + 1) / selectedProjects.length) * 100)
+
+          toast.loading(
+            <div className="flex flex-col gap-3 py-2">
+              <div className="flex flex-col gap-1">
+                <div className="font-medium text-base">
+                  Processing project {i + 1} of {selectedProjects.length}...
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Working on: {project.name || `Project ${project.id}`}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex justify-between text-sm">
+                  <span>Progress</span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                </div>
+              </div>
+            </div>,
+            { id: loadingToast, duration: Infinity, className: 'w-[380px] p-4' }
+          )
+
+          const projectData: ProjectPDFData = {
+            id: project.id,
+            name: project.name,
+            description: project.description,
+            type: (project.type as any) || null,
+            customerName: project.customerName,
+            budget: project.budget,
+            currency: project.currency,
+            endDate: project.endDate,
+          }
+
+          let baseName = project.name || `project-${project.id}`
+          let fileName = `${sanitizeFilename(baseName)}.pdf`
+          let counter = 1
+          while (processedFilenames.has(fileName)) {
+            fileName = `${sanitizeFilename(baseName)}_${counter}.pdf`
+            counter++
+          }
+          processedFilenames.add(fileName)
+
+          const pdfBlob = await generateProjectPDFBlob(projectData)
+          zip.file(fileName, pdfBlob)
+
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+
+        toast.loading(
+          <div className="flex flex-col gap-3 py-2">
+            <div className="flex flex-col gap-1">
+              <div className="font-medium text-base">Finalizing your export...</div>
+              <div className="text-sm text-muted-foreground">Creating zip file</div>
+            </div>
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex justify-between text-sm">
+                <span>Progress</span>
+                <span>100%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: '100%' }}></div>
+              </div>
+            </div>
+          </div>,
+          { id: loadingToast, duration: Infinity, className: 'w-[380px] p-4' }
+        )
+
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' })
+
+        toast.success(
+          <div className="flex flex-col gap-3 py-1">
+            <div className="flex flex-col gap-1">
+              <div className="font-medium text-base">Export completed!</div>
+              <div className="text-sm text-muted-foreground">{selectedProjects.length} project PDFs ready for download</div>
+            </div>
+          </div>,
+          {
+            id: loadingToast,
+            description: `File size: ${(zipBlob.size / 1024).toFixed(1)} KB`,
+            action: {
+              label: 'Download',
+              onClick: () => {
+                const url = URL.createObjectURL(zipBlob)
+                const link = document.createElement('a')
+                link.href = url
+                link.download = `projects-export-${new Date().toISOString().split('T')[0]}.zip`
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                URL.revokeObjectURL(url)
+                toast.success('Download started!')
+              },
+            },
+            duration: 15000,
+            className: 'w-[380px] p-4',
+          }
+        )
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Failed to export projects', {
+        id: loadingToast,
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        className: 'w-[380px] p-4',
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const ExportBar = () => {
+    const handleExportClick = () => {
+      handleExport()
+    }
+    return (
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 border bg-foreground/10 shadow-lg flex items-center justify-between space-x-3 px-8 py-4 z-70 min-w-[300px]">
+        <div>
+          <span className="font-medium">{selectedProjects.length} selected</span>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" className="rounded-none" size="sm" onClick={() => setRowSelection({})}>
+            Deselect all
+          </Button>
+          <Button variant="default" size="sm" className="rounded-none" disabled={isExporting || selectedProjects.length === 0} onClick={handleExportClick}>
+            {isExporting ? 'Preparing...' : 'Export'}
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   const updateURL = (newFilters: typeof activeFilters, search?: string) => {
     const params = new URLSearchParams(searchParams);
@@ -953,6 +1160,9 @@ export default function ProjectsClient({ initialProjects }: Props) {
           />
         </Suspense>
       </div>
+
+      {/* Export Bar */}
+      {selectedProjects.length > 0 && <ExportBar />}
     </>
   )
 } 

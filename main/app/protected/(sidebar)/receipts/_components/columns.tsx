@@ -146,6 +146,20 @@ export const columns: ColumnDef<Receipt>[] = [
     },
   },
   {
+    accessorKey: "recepientName",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Customer" />
+    ),
+    cell: ({ row }) => {
+      const customerName = row.original.recepientName
+      if (!customerName) {
+        return <div className="text-muted-foreground">No Customer Assigned</div>
+      }
+      
+      return <div className="font-medium">{customerName}</div>
+    },
+  },
+  {
     accessorKey: "creationMethod",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Creation Method" />

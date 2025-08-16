@@ -3,6 +3,8 @@ import { GalleryVerticalEnd } from 'lucide-react';
 import { Toaster } from "sonner";
 import Link from 'next/link';
 import ForgotForm from './_components/ForgotForm';
+import type { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/seo'
 
 type Props = {}
 
@@ -56,3 +58,9 @@ export default function page({}: Props) {
     </div>
   )
 }
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Reset password',
+  description: 'Request a password reset link for your BexForte account.',
+  path: '/forgot',
+});

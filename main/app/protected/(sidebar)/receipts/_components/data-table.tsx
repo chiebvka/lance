@@ -17,13 +17,13 @@ import { Receipt } from './columns';
 
 interface DataTableProps<TData> {
   table: Table<TData>
-  onInvoiceSelect?: (invoiceId: string) => void
+  onReceiptSelect?: (receiptId: string) => void
   searchQuery?: string
 }
 
 export function DataTable<TData>({
   table,
-  onInvoiceSelect,
+  onReceiptSelect,
   searchQuery = "",
 }: DataTableProps<TData>) {
   const handleRowClick = (row: any) => {
@@ -32,10 +32,10 @@ export function DataTable<TData>({
       return
     }
 
-    if (onInvoiceSelect) {
+    if (onReceiptSelect) {
       const receipt = row.original as Receipt
       if (receipt.id) {
-        onInvoiceSelect(receipt.id)
+        onReceiptSelect(receipt.id)
       }
     }
   }

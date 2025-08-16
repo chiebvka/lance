@@ -2,7 +2,6 @@
 
 import React, { useMemo, useRef, useState, useEffect, Suspense } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import axios from 'axios'
 import { format, parseISO, isWithinInterval, isSameDay } from "date-fns"
 import { type DateRange } from "react-day-picker"
@@ -22,7 +21,7 @@ import CreateSearchFilter, { DropdownOption } from "@/components/general/create-
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { columns, Receipt } from "./columns"
+import { columns } from "./columns"
 import ReceiptForm from './receipt-form'
 import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload } from "lucide-react"
 import { FilterTag } from '@/components/filtering/search-filter'
@@ -38,16 +37,16 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
-import { DataTableViewOptions } from './data-table-view-options'
+import { DataTableViewOptions } from './data-table-view-options';
 
 import { Calendar } from '@/components/ui/calendar'
 import { getTableColumns, setTableColumns, getTableColumnsWithDefaults, getDefaultColumns } from '@/cookie-persist/tableColumns';
 import ConfirmModal from '@/components/modal/confirm-modal'
-import { toast } from 'sonner'
+import { toast } from 'sonner';
 import { z } from 'zod';
-import { useReceipts } from '@/hooks/receipts/use-receipts';
-import Pagination from '@/components/pagination'
-import { createClient } from '@/utils/supabase/client'
+import { Receipt, useReceipts } from '@/hooks/receipts/use-receipts';
+import Pagination from '@/components/pagination';
+// import { createClient } from '@/utils/supabase/client'
 import { currencies, type Currency } from '@/data/currency'
 import { ReceiptFormRef } from './receipt-form'
 import { DataTable } from './data-table'
@@ -56,19 +55,19 @@ import ProjectClientSkeleton from '../../projects/_components/project-client-ske
 import ReceiptDetailsSheet from './receipt-details-sheet'
 import EditReceipt, { EditReceiptRef } from './edit-receipt'
 import { generateReceiptPDFBlob, type ReceiptPDFData } from '@/utils/receipt-pdf'
-import JSZip from 'jszip'
+import JSZip from 'jszip';
+import { parseAsArrayOf, parseAsIsoDateTime, parseAsString, useQueryStates } from 'nuqs'; 
 
 
 interface Props  {
   initialReceipts: Receipt[]
+  userEmail: string | null
 }
 
-export default function ReceiptClient({ initialReceipts }: Props) {
+export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
   const queryClient = useQueryClient();
   const closeRef = useRef<HTMLButtonElement>(null);
   const editCloseRef = useRef<HTMLButtonElement>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
   const [filterTags, setFilterTags] = useState<FilterTag[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
@@ -98,35 +97,83 @@ export default function ReceiptClient({ initialReceipts }: Props) {
   // Create a ref to the edit component to call its methods
   const editFormRef = useRef<EditReceiptRef>(null);
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+  // nuqs for URL params (replaces useSearchParams, big useEffect, updateURL)
+  const [params, setParams] = useQueryStates({
+    query: parseAsString.withDefault(''),
+    receiptId: parseAsString.withOptions({ clearOnDefault: true }), // null to remove
+    type: parseAsString.withDefault('details'),
+    state: parseAsArrayOf(parseAsString).withDefault([]),
+    creationMethod: parseAsArrayOf(parseAsString).withDefault([]),
+    issueDateFrom: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    issueDateTo: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    paymentDateFrom: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    paymentDateTo: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+  }, { history: 'push' }); // Push to URL on change
 
-  const [activeFilters, setActiveFilters] = useState<{
-    state: string[];
-    creationMethod: string[];
-    issueDate?: DateRange;
-    paymentDate?: DateRange;
-  }>({
-    state: [],
-    creationMethod: [],
-    issueDate: undefined,
-    paymentDate: undefined,
-  });
+  // Derive activeFilters from params
+  const activeFilters = useMemo(() => ({
+    state: params.state,
+    creationMethod: params.creationMethod,
+    issueDate: params.issueDateFrom ? { from: params.issueDateFrom, to: params.issueDateTo ?? undefined } : undefined,
+    paymentDate: params.paymentDateFrom ? { from: params.paymentDateFrom, to: params.paymentDateTo ?? undefined } : undefined,
+  }), [params]);
+
+  // Build filterTags from activeFilters
+  const filterTagsMemo = useMemo<FilterTag[]>(() => {
+    const tags: FilterTag[] = [];
+
+    if (activeFilters.issueDate?.from) {
+      let label = format(activeFilters.issueDate.from, 'PPP');
+      if (activeFilters.issueDate.to) {
+        label = `${format(activeFilters.issueDate.from, 'PPP')} - ${format(activeFilters.issueDate.to, 'PPP')}`;
+      }
+      tags.push({ key: 'issue-date-range', label: 'Issue Date', value: label });
+    }
+
+    if (activeFilters.paymentDate?.from) {
+      let label = format(activeFilters.paymentDate.from, 'PPP');
+      if (activeFilters.paymentDate.to) {
+        label = `${format(activeFilters.paymentDate.from, 'PPP')} - ${format(activeFilters.paymentDate.to, 'PPP')}`;
+      }
+      tags.push({ key: 'payment-date-range', label: 'Payment Date', value: label });
+    }
+
+    activeFilters.state.forEach(value => {
+      tags.push({ 
+        key: `state-${value}`, 
+        label: 'State', 
+        value: value.charAt(0).toUpperCase() + value.slice(1) 
+      });
+    });
+    activeFilters.creationMethod.forEach(value => {
+      tags.push({
+        key: `creationMethod-${value}`,
+        label: 'Creation',
+        value: value.charAt(0).toUpperCase() + value.slice(1),
+      })
+    })
+
+    return tags;
+  }, [activeFilters]);
 
   const { 
     data: receipts = [], 
     isLoading, 
     isError, 
     error 
-  } = useReceipts();
+  } = useReceipts(initialReceipts);
+
+
+
+
+
+
 
   // --- Table State ---
   const [rowSelection, setRowSelection] = useState({})
   
   // Fix hydration issue: Initialize with server-safe default state
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
-    // Use default columns for SSR to prevent hydration mismatch
     const defaultColumns = getDefaultColumns('receipts');
     const allColumns = ['receiptNumber', 'creationMethod', 'totalAmount', 'state', 'issueDate', 'paymentConfirmedAt', 'taxRate', 'vatRate'];
     
@@ -141,175 +188,85 @@ export default function ReceiptClient({ initialReceipts }: Props) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
 
-  // Single comprehensive useEffect to handle all initialization
+  // Load saved column visibility (client-only)
   useEffect(() => {
-    // Mark as hydrated
-    setIsHydrated(true);
-
-    // Extract URL parameters
-    const query = searchParams.get('query') || '';
-    const receiptId = searchParams.get('receiptId');
-    const sheetType = searchParams.get('type') || 'details'; // Default to details
-    const stateFilters = searchParams.getAll('state');
-    const creationFilters = searchParams.getAll('creationMethod');
-    const issueDateFrom = searchParams.get('issueDateFrom');
-    const issueDateTo = searchParams.get('issueDateTo');
-    const paymentDateFrom = searchParams.get('paymentDateFrom');
-    const paymentDateTo = searchParams.get('paymentDateTo');
-
-    // Update state from URL
-    setSearchQuery(query);
-    setSelectedReceiptId(receiptId);
-
-    // Build date ranges
-    let issueDateRange: DateRange | undefined = undefined;
-    if (issueDateFrom) {
-      issueDateRange = { from: parseISO(issueDateFrom) };
-      if (issueDateTo) {
-        issueDateRange.to = parseISO(issueDateTo);
-      }
+    const savedColumns = getTableColumnsWithDefaults('receipts');
+    const allColumns = ['receiptNumber', 'creationMethod', 'totalAmount', 'state', 'issueDate', 'paymentConfirmedAt', 'taxRate', 'vatRate'];
+    
+    const newState: VisibilityState = {};
+    for (const col of allColumns) {
+      newState[col] = savedColumns.includes(col);
     }
+    
+    setColumnVisibility(newState);
+  }, []);
 
-    let paymentDateRange: DateRange | undefined = undefined;
-    if (paymentDateFrom) {
-      paymentDateRange = { from: parseISO(paymentDateFrom) };
-      if (paymentDateTo) {
-        paymentDateRange.to = parseISO(paymentDateTo);
-      }
-    }
-
-    // Update active filters
-    setActiveFilters({
-      state: stateFilters,
-      creationMethod: creationFilters,
-      issueDate: issueDateRange,
-      paymentDate: paymentDateRange,
-    });
-
-    // Build filter tags array
-    const tags: FilterTag[] = [];
-
-    if (issueDateRange?.from) {
-      let label = format(issueDateRange.from, 'PPP');
-      if (issueDateRange.to) {
-        label = `${format(issueDateRange.from, 'PPP')} - ${format(issueDateRange.to, 'PPP')}`;
-      }
-      tags.push({ key: 'issue-date-range', label: 'Issue Date', value: label });
-    }
-
-    if (paymentDateRange?.from) {
-      let label = format(paymentDateRange.from, 'PPP');
-      if (paymentDateRange.to) {
-        label = `${format(paymentDateRange.from, 'PPP')} - ${format(paymentDateRange.to, 'PPP')}`;
-      }
-      tags.push({ key: 'payment-date-range', label: 'Payment Date', value: label });
-    }
-
-    stateFilters.forEach(value => {
-      tags.push({ 
-        key: `state-${value}`, 
-        label: 'State', 
-        value: value.charAt(0).toUpperCase() + value.slice(1) 
-      });
-    });
-
-    creationFilters.forEach(value => {
-      tags.push({
-        key: `creationMethod-${value}`,
-        label: 'Creation',
-        value: value.charAt(0).toUpperCase() + value.slice(1),
-      })
-    })
-
-    setFilterTags(tags);
-
-    // Load saved column visibility after hydration
-    if (typeof window !== 'undefined') {
-      const savedColumns = getTableColumnsWithDefaults('receipts');
-      const allColumns = ['receiptNumber', 'creationMethod', 'totalAmount', 'state', 'issueDate', 'paymentConfirmedAt', 'taxRate', 'vatRate'];
-      
-      const newState: VisibilityState = {};
-      for (const col of allColumns) {
-        newState[col] = savedColumns.includes(col);
-      }
-      
-      setColumnVisibility(newState);
-    }
-  }, [searchParams]);
-
-  // Persist column visibility to cookie on change (only after hydration)
+  // Persist column visibility to cookie on change
   useEffect(() => {
-    if (isHydrated) {
-      const visibleCols = Object.entries(columnVisibility)
-        .filter(([_, v]) => v)
-        .map(([k]) => k);
-      setTableColumns('receipts', visibleCols);
-    }
-  }, [columnVisibility, isHydrated]);
+    const visibleCols = Object.entries(columnVisibility)
+      .filter(([_, v]) => v)
+      .map(([k]) => k);
+    setTableColumns('receipts', visibleCols);
+  }, [columnVisibility]);
 
   const filteredReceipts = useMemo(() => {
-    let filtered = [...receipts];
+      let filtered = [...receipts];
 
-    // Apply search query - search in receipt number, customer name
-    if (searchQuery) {
-      filtered = filtered.filter(receipt => 
-        receipt.receiptNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        receipt.recepientName?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
+      // Apply search query
+      if (params.query) {
+        filtered = filtered.filter(receipt => 
+          receipt.receiptNumber?.toLowerCase().includes(params.query.toLowerCase()) ||
+          receipt.recepientName?.toLowerCase().includes(params.query.toLowerCase())
+        );
+      }
 
-    // Apply issue date filter
-    if (activeFilters.issueDate?.from) {
-      filtered = filtered.filter(receipt => {
-        if (!receipt.issueDate || !activeFilters.issueDate?.from) return false;
+      // Apply issue date filter
+      if (activeFilters.issueDate?.from) {
+        filtered = filtered.filter(receipt => {
+        if (!receipt.issueDate) return false;
         const rDate = new Date(receipt.issueDate);
-        if (isNaN(rDate.getTime())) return false; // Invalid date
-
-        if (activeFilters.issueDate.to) {
-          // Range selected
-          return isWithinInterval(rDate, { start: activeFilters.issueDate.from, end: activeFilters.issueDate.to });
+        if (isNaN(rDate.getTime())) return false;
+       
+        if (activeFilters?.issueDate?.to) {
+        return isWithinInterval(rDate, { start: activeFilters?.issueDate?.from!, end: activeFilters?.issueDate?.to! });
         }
-        // Single date selected
-        return isSameDay(rDate, activeFilters.issueDate.from);
-      });
-    }
-
-    // Apply payment date filter
-    if (activeFilters.paymentDate?.from) {
-      filtered = filtered.filter(receipt => {
-        if (!receipt.paymentConfirmedAt || !activeFilters.paymentDate?.from) return false;
-        const pDate = new Date(receipt.paymentConfirmedAt);
-        if (isNaN(pDate.getTime())) return false; // Invalid date
-
-        if (activeFilters.paymentDate.to) {
-          // Range selected
-          return isWithinInterval(pDate, { start: activeFilters.paymentDate.from, end: activeFilters.paymentDate.to });
+        return isSameDay(rDate, activeFilters?.issueDate?.from!);
+        });
         }
-        // Single date selected
-        return isSameDay(pDate, activeFilters.paymentDate.from);
-      });
-    }
 
-    // Apply state filter
-    if (activeFilters.state.length > 0) {
-      filtered = filtered.filter(receipt => 
-        activeFilters.state.includes(receipt.state?.trim().toLowerCase() || '')
-      );
-    }
+      // Apply payment date filter
+      if (activeFilters.paymentDate?.from) {
+        filtered = filtered.filter(receipt => {
+          if (!receipt.paymentConfirmedAt) return false;
+          const pDate = new Date(receipt.paymentConfirmedAt);
+          if (isNaN(pDate.getTime())) return false;
 
-    // Apply creation method filter
-    if (activeFilters.creationMethod.length > 0) {
-      filtered = filtered.filter(receipt =>
-        activeFilters.creationMethod.includes(receipt.creationMethod?.trim().toLowerCase() || '')
-      );
-    }
-
-    return filtered;
-  }, [receipts, searchQuery, activeFilters]);
+          if (activeFilters?.paymentDate?.to) {
+            return isWithinInterval(pDate, { start: activeFilters?.paymentDate?.from!, end: activeFilters?.paymentDate?.to! });
+          }
+          return isSameDay(pDate, activeFilters?.paymentDate?.from!);
+        });
+      }
+      // Apply state filter
+      if (activeFilters.state.length > 0) {
+        filtered = filtered.filter(receipt => 
+          activeFilters.state.includes(receipt.state?.trim().toLowerCase() || '')
+        );
+      }
+      
+      // Apply creation method filter
+      if (activeFilters.creationMethod.length > 0) {
+        filtered = filtered.filter(receipt =>
+          activeFilters.creationMethod.includes(receipt.creationMethod?.trim().toLowerCase() || '')
+        );
+      }
+    
+      return filtered;
+    }, [receipts, params.query, activeFilters]);
 
   const receiptBeingEdited = useMemo(() => {
-    return receipts.find(i => i.id === selectedReceiptId)
-  }, [receipts, selectedReceiptId])
+    return receipts.find(i => i.id === params.receiptId)
+  }, [receipts, params.receiptId])
 
   const deleteReceiptMutation = useMutation({
     mutationFn: async (receiptId: string) => {
@@ -318,11 +275,7 @@ export default function ReceiptClient({ initialReceipts }: Props) {
     onSuccess: () => {
       toast.success("Receipt deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ['receipts'] });
-      
-      const currentParams = new URLSearchParams(searchParams.toString());
-      currentParams.delete('receiptId');
-      const newUrl = currentParams.toString() ? `${pathname}?${currentParams.toString()}` : pathname;
-      router.replace(newUrl);
+      setParams({ receiptId: null });
     },
     onError: (error: any) => {
       console.error("Delete receipt error:", error.response?.data);
@@ -333,7 +286,7 @@ export default function ReceiptClient({ initialReceipts }: Props) {
 
   const table = useReactTable({
     data: filteredReceipts,
-    columns,
+    columns: columns as any,
     state: {
       sorting,
       columnVisibility,
@@ -545,76 +498,51 @@ export default function ReceiptClient({ initialReceipts }: Props) {
     }
   };
 
-  const updateURL = (newFilters: typeof activeFilters, search?: string) => {
-    const params = new URLSearchParams(searchParams);
-    
-    // Update search query
-    if (search !== undefined) {
-      if (search) {
-        params.set('query', search);
-      } else {
-        params.delete('query');
-      }
-    }
 
-    // Clear existing filter params
-    params.delete('state');
-    params.delete('issueDateFrom');
-    params.delete('issueDateTo');
-    params.delete('paymentDateFrom');
-    params.delete('paymentDateTo');
-    params.delete('creationMethod');
-
-    // Add new filter params
-    if (newFilters.issueDate?.from) {
-      params.append('issueDateFrom', newFilters.issueDate.from.toISOString());
-      if (newFilters.issueDate.to) {
-        params.append('issueDateTo', newFilters.issueDate.to.toISOString());
-      }
-    }
-    if (newFilters.paymentDate?.from) {
-      params.append('paymentDateFrom', newFilters.paymentDate.from.toISOString());
-      if (newFilters.paymentDate.to) {
-        params.append('paymentDateTo', newFilters.paymentDate.to.toISOString());
-      }
-    }
-    newFilters.state.forEach(value => params.append('state', value));
-    newFilters.creationMethod.forEach(value => params.append('creationMethod', value));
-
-    router.replace(`${pathname}?${params.toString()}`);
-  };
 
   const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    updateURL(activeFilters, value);
+    setParams({ query: value || null });
   };
 
   const handleIssueDateChange = (date: DateRange | undefined) => {
-    const newFilters = { ...activeFilters, issueDate: date };
-    setActiveFilters(newFilters);
-    updateURL(newFilters);
-    updateFilterTags('issue-date', date, !!date);
+    setParams({
+      issueDateFrom: date?.from ? date.from : null,
+      issueDateTo: date?.to ? date.to : null,
+    });
   }
 
   const handlePaymentDateChange = (date: DateRange | undefined) => {
-    const newFilters = { ...activeFilters, paymentDate: date };
-    setActiveFilters(newFilters);
-    updateURL(newFilters);
-    updateFilterTags('payment-date', date, !!date);
+    setParams({
+      paymentDateFrom: date?.from ? date.from : null,
+      paymentDateTo: date?.to ? date.to : null,
+    });
   }
 
   const handleFilterChange = (filterType: 'state' | 'creationMethod', value: string, checked: boolean) => {
-    const newFilters = { ...activeFilters };
-    if (checked) {
-      newFilters[filterType] = [...newFilters[filterType], value];
-    } else {
-      newFilters[filterType] = newFilters[filterType].filter(item => item !== value);
-    }
-    
-    setActiveFilters(newFilters);
-    updateURL(newFilters);
-    updateFilterTags(filterType, value, checked);
+    setParams((prev) => {
+      let newArr = [...(prev[filterType] || [])];
+      if (checked) {
+        newArr.push(value);
+      } else {
+        newArr = newArr.filter(item => item !== value);
+      }
+      return { [filterType]: newArr.length ? newArr : null };
+    });
   };
+
+  const handleRemoveFilter = (key: string) => {
+    if (key === 'issue-date-range') {
+      handleIssueDateChange(undefined);
+      return;
+    }
+    if (key === 'payment-date-range') {
+      handlePaymentDateChange(undefined);
+      return;
+    }
+    const [filterType, value] = key.split('-') as ['state' | 'creationMethod', string];
+    handleFilterChange(filterType, value, false);
+  };
+
 
   const updateFilterTags = (filterType: 'state' | 'creationMethod' | 'issue-date' | 'payment-date', value: string | DateRange | undefined, checked: boolean) => {
     setFilterTags(prev => {
@@ -671,49 +599,32 @@ export default function ReceiptClient({ initialReceipts }: Props) {
     });
   };
 
-  const handleRemoveFilter = (key: string) => {
-    if (key === 'issue-date-range') {
-      handleIssueDateChange(undefined);
-      return;
-    }
-    if (key === 'payment-date-range') {
-      handlePaymentDateChange(undefined);
-      return;
-    }
-    const [filterType, value] = key.split('-') as ['state', string];
-    handleFilterChange(filterType, value, false);
-  };
+
 
   const handleClearAllFilters = () => {
-    setActiveFilters({ state: [], creationMethod: [], issueDate: undefined, paymentDate: undefined });
-    setFilterTags([]);
-    updateURL({ state: [], creationMethod: [], issueDate: undefined, paymentDate: undefined });
+    setParams({
+      state: null,
+      creationMethod: null,
+      issueDateFrom: null,
+      issueDateTo: null,
+      paymentDateFrom: null,
+      paymentDateTo: null,
+    });
   };
 
   const handleReceiptSelect = (receiptId: string) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('receiptId', receiptId);
-    params.set('type', 'details'); // Default to details view
-    router.push(`${pathname}?${params.toString()}`);
+    setParams({ receiptId, type: 'details' });
   };
+
 
   const handleCreateSuccess = () => {
     closeRef.current?.click();
-    // Remove createReceipt param
-    const params = new URLSearchParams(searchParams);
-    params.delete('createReceipt');
-    router.replace(`${pathname}?${params.toString()}`);
     queryClient.invalidateQueries({ queryKey: ['receipts'] });
   };
 
   const handleEditSuccess = () => {
     editCloseRef.current?.click();
-    setSelectedReceiptId(null);
-    // Remove receiptId and type params
-    const params = new URLSearchParams(searchParams);
-    params.delete('receiptId');
-    params.delete('type');
-    router.replace(`${pathname}?${params.toString()}`);
+    setParams({ receiptId: null, type: null });
     queryClient.invalidateQueries({ queryKey: ['receipts'] });
   };
 
@@ -765,24 +676,21 @@ export default function ReceiptClient({ initialReceipts }: Props) {
   };
 
   const handleCloseSheet = () => {
-    router.push("/protected/receipts");
-    setSelectedReceiptId(null);
+    setParams({ receiptId: null, type: null });
   };
 
   const handleCreateCancel = () => {
     closeRef.current?.click();
-    const params = new URLSearchParams(searchParams);
-    params.delete('createReceipt');
-    router.replace(`${pathname}?${params.toString()}`);
   }
+
 
   const handleDeleteFromSheet = () => {
     setDeleteModalOpen(true)
   }
 
   const handleConfirmDelete = () => {
-    if (selectedReceiptId) {
-      deleteReceiptMutation.mutate(selectedReceiptId)
+    if (params.receiptId) {
+      deleteReceiptMutation.mutate(params.receiptId)
     }
     setDeleteModalOpen(false)
   }
@@ -800,47 +708,7 @@ export default function ReceiptClient({ initialReceipts }: Props) {
     setIsSaving(saving); // Keep the general state for backward compatibility
   };
 
-  // Use the receipts hook
-  const { data: userEmail } = useQuery({
-    queryKey: ['userEmail'],
-    queryFn: async () => {
-      const supabase = createClient()
-      
-      try {
-        // First try to get the current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) return null
-
-        // Try to get user profile email first
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('profile_id', user.id)
-          .single()
-
-        if (profile?.email) {
-          return profile.email
-        }
-
-        // If no profile email, try to get organization email from profiles table
-        const { data: orgProfile, error: orgProfileError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('profile_id', user.id)
-          .single()
-
-        if (orgProfile?.email) {
-          return orgProfile.email
-        }
-
-        return null
-      } catch (error) {
-        console.error('Error fetching user email:', error)
-        return null
-      }
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  })
+  // userEmail now provided from server via props
 
   // Define dropdown options for receipt layout
   const receiptDropdownOptions: DropdownOption[] = [
@@ -1168,19 +1036,18 @@ export default function ReceiptClient({ initialReceipts }: Props) {
     return <div className="p-8">Error fetching receipts: {(error as Error).message}</div>;
   }
 
-  // Get the sheet type from URL
-  const sheetType = searchParams.get('type') || 'details';
 
-    // Update layout options when editing an invoice to reflect database values
-    useEffect(() => {
-      if (receiptBeingEdited && sheetType === 'edit') {
-        setLayoutOptions({
-          hasTax: receiptBeingEdited.hasTax ?? true,
-          hasVat: receiptBeingEdited.hasVat ?? true,
-          hasDiscount: receiptBeingEdited.hasDiscount ?? true,
-        });
-      }
-    }, [receiptBeingEdited, sheetType]);
+  // Update layout options when editing a rceipt to reflect database values
+    
+  useEffect(() => {
+    if (receiptBeingEdited && params.type === 'edit') {
+      setLayoutOptions({
+        hasTax: receiptBeingEdited.hasTax ?? true,
+        hasVat: receiptBeingEdited.hasVat ?? true,
+        hasDiscount: receiptBeingEdited.hasDiscount ?? true,
+      });
+    }
+  }, [receiptBeingEdited, params.type]);
 
   return (
     <>
@@ -1188,7 +1055,7 @@ export default function ReceiptClient({ initialReceipts }: Props) {
         placeholder="Search receipts..." 
         onSearch={handleSearch}
         filterContent={filterContent}
-        filterTags={filterTags}
+        filterTags={filterTagsMemo}
         layoutOptions={layoutOptions}
         onLayoutOptionChange={handleLayoutOptionChange}
         onRemoveFilter={handleRemoveFilter}
@@ -1228,13 +1095,13 @@ export default function ReceiptClient({ initialReceipts }: Props) {
       />
 
       {/* Receipt Sheets */}
-      <Sheet open={!!selectedReceiptId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
+      <Sheet open={!!params.receiptId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
         <SheetContent 
           side="right" 
           bounce="right" 
           withGap={true} 
           className={`w-full flex flex-col p-0 ${
-            sheetType === 'details' 
+            params.type === 'details' 
               ? 'sm:w-3/4 md:w-1/2 lg:w-[40%]' 
               : 'sm:w-3/4 md:w-1/2 lg:w-[55%]'
           }`}
@@ -1242,10 +1109,10 @@ export default function ReceiptClient({ initialReceipts }: Props) {
           <SheetHeader className="p-4 border-b">
             <div className="flex justify-between items-center">
               <SheetTitle>
-                {sheetType === 'details' ? 'Receipt Details' : 'Edit Receipt'}
+                {params.type === 'details' ? 'Receipt Details' : 'Edit Receipt'}
               </SheetTitle>
               <div className="flex items-center fixed right-20 gap-2">
-                {sheetType === 'edit' && (
+                {params.type === 'edit' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-none">
@@ -1327,7 +1194,7 @@ export default function ReceiptClient({ initialReceipts }: Props) {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                {selectedReceiptId && sheetType === 'details' && (
+                {params.receiptId && params.type === 'details' && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -1343,8 +1210,8 @@ export default function ReceiptClient({ initialReceipts }: Props) {
             </div>
           </SheetHeader>
           <ScrollArea className="flex-grow">
-            {selectedReceiptId && receiptBeingEdited && (
-              sheetType === 'details' ? (
+            {params.receiptId && receiptBeingEdited && (
+              params.type === 'details' ? (
                 <ReceiptDetailsSheet receipt={receiptBeingEdited} />
               ) : (
                 <EditReceipt 
@@ -1357,7 +1224,7 @@ export default function ReceiptClient({ initialReceipts }: Props) {
               )
             )}
           </ScrollArea>
-          {sheetType === 'edit' && (
+          {params.type === 'edit' && (
             <SheetFooter className="p-4 border-t">
               {editFooter}
             </SheetFooter>
@@ -1372,8 +1239,18 @@ export default function ReceiptClient({ initialReceipts }: Props) {
         <Suspense fallback={<ProjectClientSkeleton />}>
           <DataTable 
             table={table} 
-            onInvoiceSelect={handleReceiptSelect} 
+            onReceiptSelect={handleReceiptSelect} 
             searchQuery={searchQuery}
+          />
+
+          <Pagination
+            currentPage={table.getState().pagination.pageIndex + 1}
+            totalPages={table.getPageCount()}
+            pageSize={table.getState().pagination.pageSize}
+            totalItems={table.getFilteredRowModel().rows.length}
+            onPageChange={page => table.setPageIndex(page - 1)}
+            onPageSizeChange={size => table.setPageSize(size)}
+            itemName="receipts"
           />
         </Suspense>
       </div>

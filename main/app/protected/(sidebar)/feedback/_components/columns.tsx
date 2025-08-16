@@ -3,18 +3,8 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ArrowUpDown, MoreHorizontal } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { DataTableColumnHeader } from "./data-table-column-header"
 import { Checkbox } from "@/components/ui/checkbox"
+import { DataTableColumnHeader } from "./data-table-column-header"
 import { DataTableRowActions } from "./data-table-row-actions"
 
 export  interface Feedback {

@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Star, Calendar, Building2, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import SubscriptionNotice from "@/app/(previews)/_components/SubscriptionNotice";
 
 interface Question {
   id: string
@@ -57,6 +58,7 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [blockedReason, setBlockedReason] = useState<string | null>(null)
 
   useEffect(() => {
     fetchFeedbackData()
@@ -75,7 +77,12 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
         setAnswers(initialAnswers)
       }
     } catch (error: any) {
-      setError(error.response?.data?.error || "Failed to load feedback form")
+      if (error?.response?.status === 403) {
+        setBlockedReason(error.response?.data?.reason || null)
+        setError(null)
+      } else {
+        setError(error.response?.data?.error || "Failed to load feedback form")
+      }
     } finally {
       setLoading(false)
     }
@@ -272,6 +279,10 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
         </div>
       </div>
     )
+  }
+
+  if (blockedReason) {
+    return <SubscriptionNotice reason={blockedReason} />
   }
 
   if (error) {

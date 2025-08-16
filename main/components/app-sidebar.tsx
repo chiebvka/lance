@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   BadgeHelp,
   BookOpen,
+  BrickWall,
   ChartNoAxesCombined,
   Cog,
   Contact,
@@ -21,6 +22,7 @@ import {
   Receipt,
   ReceiptText,
   Siren,
+  Split,
   StopCircle,
   Vault,
 } from "lucide-react"
@@ -48,7 +50,7 @@ const data = {
 
   teams: [
     {
-      name: "Ndi Enugu Scotland",
+      name: "Bexforte",
       logo: GalleryVerticalEnd,
       plan: "Enterprise",
     },
@@ -87,14 +89,14 @@ const data = {
       icon: MessagesSquare,
     },
     {
-      title: "Links",
-      url: "/protected/links",
-      icon: LinkIcon,
+      title: "Walls",
+      url: "/protected/walls",
+      icon: BrickWall ,
     },
     {
-      title: "Vault",
-      url: "/protected/vault",
-      icon: Vault,
+      title: "Path",
+      url: "/protected/paths",
+      icon: Split ,
     },
     {
       title: "Settings",

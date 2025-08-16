@@ -4,6 +4,8 @@ import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import type { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/seo'
 
 export default async function Login(props: { searchParams: Promise<Message> }) {
   const searchParams = await props.searchParams;
@@ -42,3 +44,9 @@ export default async function Login(props: { searchParams: Promise<Message> }) {
     </form>
   );
 }
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Sign in',
+  description: 'Access your BexForte workspace.',
+  path: '/sign-in',
+});

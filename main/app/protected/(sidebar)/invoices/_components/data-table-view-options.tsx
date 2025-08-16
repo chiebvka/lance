@@ -20,7 +20,7 @@ interface DataTableViewOptionsProps<TData> {
 
 const columnLabels: Record<string, string> = {
   invoiceNumber: "Invoice Number",
-  recepientName: "Recipient Name",
+  recepientName: "Customer",
   totalAmount: "Total Amount",
   state: "State",
   issueDate: "Issue Date",

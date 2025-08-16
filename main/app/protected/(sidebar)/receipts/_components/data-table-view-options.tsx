@@ -1,6 +1,5 @@
 "use client"
 
-import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu"
 import { SlidersHorizontal } from "lucide-react"
 import { Table } from "@tanstack/react-table"
 
@@ -11,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
 
@@ -21,6 +21,7 @@ interface DataTableViewOptionsProps<TData> {
 const columnLabels: Record<string, string> = {
   receiptNumber: "Receipt Number",
   creationMethod: "Creation Method",
+  recepientName: "Customer",
   totalAmount: "Total Amount",
   state: "State",
   issueDate: "Issue Date",

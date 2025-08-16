@@ -4,6 +4,7 @@ import { invoiceEditSchema } from "@/validation/invoice"
 import { render } from "@react-email/components";
 import sendgrid from "@sendgrid/mail";
 import IssueInvoice from '../../../../emails/IssueInvoice';
+import { ratelimit } from '@/utils/rateLimit';
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
@@ -154,6 +155,24 @@ export async function PUT(
 
   if (!user) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 })
+  }
+
+  // Rate limiting
+  const ip = request.headers.get('x-forwarded-for') ?? 
+    request.headers.get('x-real-ip') ?? 
+    '127.0.0.1';
+  const { success, limit, reset, remaining } = await ratelimit.limit(ip);
+
+  if (!success) {
+    return NextResponse.json(
+      { 
+        error: 'Too many requests. Please try again later.',
+        limit,
+        reset,
+        remaining
+      }, 
+      { status: 429 }
+    );
   }
 
   const { params } = context;
@@ -372,6 +391,24 @@ export async function DELETE(
 
   if (!user) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 })
+  }
+
+  // Rate limiting
+  const ip = request.headers.get('x-forwarded-for') ?? 
+    request.headers.get('x-real-ip') ?? 
+    '127.0.0.1';
+  const { success, limit, reset, remaining } = await ratelimit.limit(ip);
+
+  if (!success) {
+    return NextResponse.json(
+      { 
+        error: 'Too many requests. Please try again later.',
+        limit,
+        reset,
+        remaining
+      }, 
+      { status: 429 }
+    );
   }
 
   const { params } = context;

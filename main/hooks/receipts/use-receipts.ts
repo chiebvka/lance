@@ -3,8 +3,20 @@ import axios from 'axios'
 
 export interface Receipt {
     id: string
-    customerId: string | null
-    projectId: string | null
+    organizationId: {
+        id: string
+        name: string
+        email: string
+        logoUrl: string
+    } | null
+    customerId: {
+        id: string
+        name: string
+    } | null
+    projectId: {
+        id: string
+        name: string
+    } | null
     organizationName: string | null
     organizationLogo: string | null
     organizationLogoUrl: string | null // From organization table
@@ -33,7 +45,6 @@ export interface Receipt {
     sentViaEmail: boolean | null
     emailSentAt: string | null
     createdBy: string | null
-    organizationId: string | null
     created_at: string | null
     updatedAt: string | null
     paymentConfirmedAt: string | null
@@ -82,17 +93,18 @@ export interface Receipt {
 }
 
 export async function fetchReceipts(): Promise<Receipt[]> {
-    const { data } = await axios.get<{ success: boolean; receipts: Receipt[] }>('/api/receipts')
-    if (!data.success) throw new Error('Error fetching receipts')
-    return data.receipts
+  const { data } = await axios.get<{ success: boolean; receipts: Receipt[] }>('/api/receipts')
+  if (!data.success) throw new Error('Error fetching receipts')
+  return data.receipts
 }
 
 export function useReceipts(initialData?: Receipt[]) {
-    return useQuery<Receipt[]>({
-      queryKey: ['receipts'],
-      queryFn: fetchReceipts,
-      initialData,
-    })
+  return useQuery<Receipt[]>({
+    queryKey: ['receipts'],
+    queryFn: fetchReceipts,
+    initialData,
+    staleTime: 5 * 60 * 1000, // 5 minutes caching to reduce refetches
+  })
 }
 
 export function useCreateReceipt() {

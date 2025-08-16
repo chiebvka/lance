@@ -1,6 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { PricingForm } from "./_components/pricing-form";
 import { getUserOrganization, userHasActiveSubscription } from "@/utils/user-profile";
+import type { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/seo'
 
 export default async function PricingPage() {
   const supabase = await createClient();
@@ -37,3 +39,9 @@ export default async function PricingPage() {
     </div>
   );
 }
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Pricing',
+  description: 'Simple pricing with a free 7‑day trial. Choose a plan that fits your client operations workflow.',
+  path: '/pricing',
+});

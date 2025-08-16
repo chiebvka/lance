@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
+import { isOrgSubscriptionActive, deriveInactiveReason } from "@/utils/subscription";
 
 export async function GET(
   request: Request,
@@ -20,9 +21,12 @@ export async function GET(
       .select(`
         *,
         organization:organizationId (
+          id,
           logoUrl,
           name,
-          email
+          email,
+          subscriptionstatus,
+          trialEndsAt
         ),
         customer:customerId (
           id,
@@ -35,6 +39,20 @@ export async function GET(
 
     if (invoiceError || !invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    // Gate by organization subscription (non-auth public preview)
+    const orgStatus = (invoice as any)?.organization?.subscriptionstatus ?? null;
+    const orgTrialEndsAt = (invoice as any)?.organization?.trialEndsAt ?? null;
+    if (!isOrgSubscriptionActive(orgStatus, orgTrialEndsAt)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Organization subscription inactive",
+          reason: deriveInactiveReason(orgStatus, orgTrialEndsAt),
+        },
+        { status: 403 }
+      );
     }
 
     // Process JSON fields

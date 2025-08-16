@@ -11,6 +11,7 @@ const DEFAULT_COLUMNS: Record<string, string[]> = {
   feedbacks: ['name', 'recepientName', 'recipientEmail', 'state', 'dueDate', 'filledOn'],
   invoices: ['invoiceNumber', 'recepientName', 'totalAmount', 'state', 'issueDate', 'dueDate'],
   receipts: ['receiptNumber', 'creationMethod', 'totalAmount', 'state', 'issueDate', 'paymentConfirmedAt'],
+  walls: ['name', 'description', 'state', 'issueDate', 'private'],
   // Add more tables as needed
 };
 

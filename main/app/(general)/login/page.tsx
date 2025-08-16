@@ -4,6 +4,8 @@ import { GalleryVerticalEnd } from 'lucide-react';
 import { Toaster } from "sonner";
 import Link from 'next/link';
 import { LoginForm } from './_components/Loginform';
+import type { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/seo'
 
 type Props = {}
 
@@ -73,3 +75,9 @@ export default async function page({}: Props) {
     </div>
   )
 }
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Login',
+  description: 'Sign in to your BexForte workspace to manage customers, walls, projects, invoices and more.',
+  path: '/login',
+});
