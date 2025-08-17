@@ -168,11 +168,14 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
         receiptId: receipt.id,
         receiptData: {
             state: 'cancelled',
+            customerId: null, // Unassign customer when cancelling
+            recepientName: null, // Clear recipient name
+            recepientEmail: null, // Clear recipient email
         }
         });
-        toast.success("Receipt cancelled successfully!");
+        toast.success("Receipt cancelled and unassigned successfully!");
     } catch (error) {
-        console.error('Error cancelling invoice:', error);
+        console.error('Error cancelling receipt:', error);
         toast.error("Failed to cancel receipt");
     }
     };
@@ -188,7 +191,7 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
           await updateReceiptMutation.mutateAsync({
             receiptId: receipt.id,
             receiptData: {
-              state: 'draft',
+              state: 'draft', // Reset to draft when reassigning (including from cancelled)
               customerId: customerId,
               recepientName: selectedCustomer.name,
               recepientEmail: selectedCustomer.email,
@@ -227,7 +230,7 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
         case 'unassigned':
             return ['cancel', 'settle', 'delete', 'assign', 'create_receipt'];
         case 'cancelled':
-            return ['unassigned', 'delete'];
+            return ['assign', 'delete']; // Allow direct assignment since cancelled receipts are now unassigned
         case 'settled':
             return ['unassigned', 'delete', 'create_receipt'];
         default:

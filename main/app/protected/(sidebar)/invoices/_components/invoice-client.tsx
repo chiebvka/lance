@@ -1298,6 +1298,7 @@ export default function InvoiceClient({ initialInvoices }: Props) {
                   </DropdownMenu>
                 )}
 
+              </div>
                 {selectedInvoiceId && sheetType === 'details' && (
                   <Button
                     variant="outline"
@@ -1310,7 +1311,6 @@ export default function InvoiceClient({ initialInvoices }: Props) {
                     Delete Invoice
                   </Button>
                 )}
-              </div>
             </div>
           </SheetHeader>
           <ScrollArea className="flex-grow">

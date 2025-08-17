@@ -188,9 +188,12 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
         invoiceId: invoice.id,
         invoiceData: {
           state: 'cancelled',
+          customerId: null, // Unassign customer when cancelling
+          recepientName: null, // Clear recipient name
+          recepientEmail: null, // Clear recipient email
         }
       });
-      toast.success("Invoice cancelled successfully!");
+      toast.success("Invoice cancelled and unassigned successfully!");
     } catch (error) {
       console.error('Error cancelling invoice:', error);
       toast.error("Failed to cancel invoice");
@@ -208,7 +211,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       await updateInvoiceMutation.mutateAsync({
         invoiceId: invoice.id,
         invoiceData: {
-          state: 'draft',
+          state: 'draft', // Reset to draft when reassigning (including from cancelled)
           customerId: customerId,
           recepientName: selectedCustomer.name,
           recepientEmail: selectedCustomer.email,
@@ -256,7 +259,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       case 'unassigned':
         return ['cancel', 'settle', 'delete', 'assign', 'create_receipt'];
       case 'cancelled':
-        return ['unassigned', 'delete'];
+        return ['assign', 'delete']; // Allow direct assignment since cancelled invoices are now unassigned
       case 'settled':
         return ['unassigned', 'delete', 'create_receipt'];
       default:

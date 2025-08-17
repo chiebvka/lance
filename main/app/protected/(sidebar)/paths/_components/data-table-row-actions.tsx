@@ -19,7 +19,8 @@ import {
 
 import { MoreHorizontal, Loader2, Edit, Copy, ExternalLink, Trash } from "lucide-react"
 import ConfirmModal from "@/components/modal/confirm-modal"
-import { Wall } from "@/hooks/walls/use-walls"
+import { Path } from "@/hooks/paths/use-paths"
+
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>
@@ -36,24 +37,24 @@ export function DataTableRowActions<TData>({
   const [isUpdating, setIsUpdating] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
-  const wall = row.original as Wall
+  const path = row.original as Path
 
   const handleEdit = () => {
-    router.push(`/protected/walls/${wall.id}`)
+    router.push(`/protected/paths/${path.id}`)
   }
 
-  // Delete wall mutation
-  const deleteWallMutation = useMutation({
-    mutationFn: async (wallId: string) => {
-      return axios.delete(`/api/walls/${wallId}`);
+  // Delete path mutation
+  const deletePathMutation = useMutation({
+    mutationFn: async (pathId: string) => {
+      return axios.delete(`/api/paths/${pathId}`);
     },
     onSuccess: () => {
-      toast.success("Wall deleted successfully!");
-      queryClient.invalidateQueries({ queryKey: ['walls'] });
+      toast.success("Path deleted successfully!");
+      queryClient.invalidateQueries({ queryKey: ['paths'] });
     },
     onError: (error: any) => {
-      console.error("Delete wall error:", error.response?.data);
-      const errorMessage = error.response?.data?.error || "Failed to delete wall";
+      console.error("Delete path error:", error.response?.data);
+      const errorMessage = error.response?.data?.error || "Failed to delete path";
       toast.error(errorMessage);
     },
   })
@@ -63,51 +64,44 @@ export function DataTableRowActions<TData>({
   }
 
   const handleConfirmDelete = () => {
-    if (wall.id) {
-      deleteWallMutation.mutate(wall.id)
+    if (path.id) {
+      deletePathMutation.mutate(path.id)
     }
     setIsDeleteModalOpen(false)
   }
 
-  // Duplicate wall mutation
-  const duplicateWallMutation = useMutation({
-    mutationFn: async (wallData: any) => {
-      const { data } = await axios.post('/api/walls/create', {
-        ...wallData,
-        name: `${wallData.name} (Copy)`,
+  // Duplicate path mutation
+  const duplicatePathMutation = useMutation({
+    mutationFn: async (pathData: any) => {
+      const { data } = await axios.post('/api/paths/create', {
+        ...pathData,
+        name: `${pathData.name} (Copy)`,
       })
       return data
     },
     onSuccess: () => {
-      toast.success("Wall duplicated successfully!");
-      queryClient.invalidateQueries({ queryKey: ['walls'] });
+      toast.success("Path duplicated successfully!");
+      queryClient.invalidateQueries({ queryKey: ['paths'] });
     },
     onError: (error: any) => {
-      console.error("Duplicate wall error:", error.response?.data);
-      const errorMessage = error.response?.data?.error || "Failed to duplicate wall";
+      console.error("Duplicate path error:", error.response?.data);
+      const errorMessage = error.response?.data?.error || "Failed to duplicate path";
       toast.error(errorMessage);
     },
   })
 
   const handleDuplicate = () => {
-    if (wall) {
-      duplicateWallMutation.mutate({
-        name: wall.name,
-        description: wall.description,
-        content: wall.content,
-        notes: wall.notes,
-        private: wall.private,
+    if (path) {
+      duplicatePathMutation.mutate({
+        name: path.name,
+        description: path.description,
+        content: path.content,
+        private: path.private,
       })
     }
   }
 
-  const handlePreview = () => {
-    if (wall.id) {
-      window.open(`/w/${wall.id}`, '_blank')
-    } else {
-      toast.error("Wall must be published to preview")
-    }
-  }
+
 
   return (
     <>
@@ -126,25 +120,21 @@ export function DataTableRowActions<TData>({
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handlePreview}>
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Preview Wall
-          </DropdownMenuItem>
           <DropdownMenuItem 
             onClick={handleDuplicate}
-            disabled={duplicateWallMutation.isPending}
+            disabled={duplicatePathMutation.isPending}
           >
             <Copy className="h-4 w-4 mr-2" />
-            {duplicateWallMutation.isPending ? 'Duplicating...' : 'Duplicate Wall'}
+            {duplicatePathMutation.isPending ? 'Duplicating...' : 'Duplicate Path'}
           </DropdownMenuItem>
           
           <DropdownMenuSeparator />
           <DropdownMenuItem 
             onClick={handleDelete} 
             className="text-red-600"
-            disabled={deleteWallMutation.isPending}
+            disabled={deletePathMutation.isPending}
           >
-            {deleteWallMutation.isPending ? (
+            {deletePathMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Deleting...
@@ -164,9 +154,9 @@ export function DataTableRowActions<TData>({
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        itemName={wall.name || "Untitled Wall"}
-        itemType="Wall"
-        isLoading={deleteWallMutation.isPending}
+        itemName={path.name || "Untitled Path"}
+        itemType="Path"
+        isLoading={deletePathMutation.isPending}
       />
     </>
   )

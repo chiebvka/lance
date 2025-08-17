@@ -173,7 +173,7 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
 
   return (
     <div className="min-h-screen  md:p-6">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <Card className="shadow-xl min-h-screen shadow-black/10 border-0 overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary to-bexoni/60 p-6 text-white">
@@ -253,19 +253,19 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-medium ">Description</th>
-                        <th className="text-right py-3 px-4 font-medium ">Quantity</th>
-                        <th className="text-right py-3 px-4 font-medium ">Price</th>
-                        <th className="text-right py-3 px-4 font-medium ">Total</th>
+                        <th className="text-left py-3 px-4 text-sm text-primary md:text-base font-medium ">Description</th>
+                        <th className="text-right py-3 px-4 text-sm text-primary md:text-base font-medium ">Quantity</th>
+                        <th className="text-right py-3 px-4 text-sm text-primary md:text-base font-medium ">Price</th>
+                        <th className="text-right py-3 px-4 text-sm text-primary md:text-base font-medium ">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                        {invoiceData.invoiceDetails.map((item, index) => (
                          <tr key={index} className="border-b border-gray-100">
-                           <td className="py-3 px-4">{item.description}</td>
-                           <td className="py-3 px-4 text-right">{item.quantity}</td>
-                           <td className="py-3 px-4 text-right">{formatCurrency(item.unitPrice, invoiceData.currency)}</td>
-                           <td className="py-3 px-4 text-right font-medium">{formatCurrency(item.total, invoiceData.currency)}</td>
+                           <td className="py-3 text-sm md:text-base px-4">{item.description}</td>
+                           <td className="py-3 text-sm md:text-base px-4 text-right">{item.quantity}</td>
+                           <td className="py-3 text-sm md:text-base px-4 text-right">{formatCurrency(item.unitPrice, invoiceData.currency)}</td>
+                           <td className="py-3 text-sm md:text-base px-4 text-right font-medium">{formatCurrency(item.total, invoiceData.currency)}</td>
                          </tr>
                        ))}
                     </tbody>
@@ -278,35 +278,35 @@ export default function InvoicePreview({ invoiceId }: InvoicePreviewProps) {
             <div className="flex justify-end">
               <div className="w-full md:w-80 space-y-2">
                 <div className="flex justify-between">
-                  <span className="">Subtotal:</span>
-                  <span className="font-medium">{formatCurrency(invoiceData.subTotalAmount, invoiceData.currency)}</span>
+                  <span className="text-sm md:text-base font-semibold">Subtotal:</span>
+                  <span className="text-sm md:text-base font-medium">{formatCurrency(invoiceData.subTotalAmount, invoiceData.currency)}</span>
                 </div>
                 
                 {invoiceData.hasDiscount && invoiceData.discount > 0 && (
                   <div className="flex justify-between">
-                    <span className="">Discount ({invoiceData.discount}%):</span>
-                    <span className="font-medium text-green-600">-{formatCurrency((invoiceData.subTotalAmount * invoiceData.discount) / 100, invoiceData.currency)}</span>
+                    <span className="text-sm md:text-base font-semibold">Discount ({invoiceData.discount}%):</span>
+                    <span className="text-sm md:text-base font-medium text-green-600">-{formatCurrency((invoiceData.subTotalAmount * invoiceData.discount) / 100, invoiceData.currency)}</span>
                   </div>
                 )}
                 
                 {invoiceData.hasVat && invoiceData.vatRate > 0 && (
                   <div className="flex justify-between">
-                    <span className="">VAT ({invoiceData.vatRate}%):</span>
-                    <span className="font-medium">{formatCurrency((invoiceData.subTotalAmount * invoiceData.vatRate) / 100, invoiceData.currency)}</span>
+                    <span className="text-sm md:text-base font-semibold">VAT ({invoiceData.vatRate}%):</span>
+                    <span className="text-sm md:text-base font-medium">{formatCurrency((invoiceData.subTotalAmount * invoiceData.vatRate) / 100, invoiceData.currency)}</span>
                   </div>
                 )}
                 
                 {invoiceData.hasTax && invoiceData.taxRate > 0 && (
                   <div className="flex justify-between">
-                    <span className="">Tax ({invoiceData.taxRate}%):</span>
-                    <span className="font-medium">{formatCurrency((invoiceData.subTotalAmount * invoiceData.taxRate) / 100, invoiceData.currency)}</span>
+                    <span className="text-sm md:text-base font-semibold">Tax ({invoiceData.taxRate}%):</span>
+                    <span className="text-sm md:text-base font-medium">{formatCurrency((invoiceData.subTotalAmount * invoiceData.taxRate) / 100, invoiceData.currency)}</span>
                   </div>
                 )}
                 
                 <div className="border-t border-gray-200 pt-2">
                   <div className="flex justify-between">
-                    <span className="text-lg font-semibold">Total:</span>
-                    <span className="text-lg font-bold">{formatCurrency(invoiceData.totalAmount, invoiceData.currency)}</span>
+                    <span className="text-sm md:text-base font-semibold">Total:</span>
+                    <span className="text-sm md:text-base font-bold">{formatCurrency(invoiceData.totalAmount, invoiceData.currency)}</span>
                   </div>
                 </div>
               </div>

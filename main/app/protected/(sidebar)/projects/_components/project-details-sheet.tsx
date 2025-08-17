@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { CalendarDays, ClipboardCopy, DollarSign, FileEdit, FileText, User, Tag, HardDriveDownload, Bell, ExternalLink, Grip, UserPlus, X, Ban, Check } from 'lucide-react'
+import { CalendarDays, ClipboardCopy, DollarSign, FileEdit, FileText, User, Tag, HardDriveDownload, Bell, ExternalLink, Grip, UserPlus, X, Ban, Check, Trash2 } from 'lucide-react'
 import { format, differenceInDays, isBefore } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,13 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import ConfirmModal from '@/components/modal/confirm-modal'
 import ProjectConfirmModal from './project-confirm-modal'
+import { 
+  useAssignProject, 
+  useUnassignProject, 
+  useCancelProject, 
+  useMarkProjectCompleted, 
+  useDeleteProject 
+} from '@/hooks/projects/use-projects'
 
 type ProjectDetails = {
   id: string
@@ -72,6 +79,7 @@ export default function ProjectDetailsSheet({ project }: Props) {
   const queryClient = useQueryClient()
   const { data: customers = [] } = useCustomers()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [selectedAssignCustomerId, setSelectedAssignCustomerId] = useState<string | null>(null)
 
   const state = (project.state ?? 'draft').toLowerCase()
   const status = (project.status ?? 'pending').toLowerCase()
@@ -122,67 +130,33 @@ export default function ProjectDetailsSheet({ project }: Props) {
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false)
 
   // --- Mutations ---
-  const cancelMutation = useMutation({
-    mutationFn: async () => {
-      return axios.patch(`/api/projects/${project.id}`, { action: 'cancel' })
-    },
-    onSuccess: () => {
-      toast.success('Project cancelled successfully!')
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Failed to cancel project')
-  })
+  const cancelMutation = useCancelProject()
+  const unassignMutation = useUnassignProject()
+  const assignMutation = useAssignProject()
+  const completeMutation = useMarkProjectCompleted()
+  const deleteMutation = useDeleteProject()
 
-  const unassignMutation = useMutation({
-    mutationFn: async () => {
-      return axios.patch(`/api/projects/${project.id}`, { action: 'unassign' })
-    },
-    onSuccess: () => {
-      toast.success('Project unassigned successfully!')
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Failed to unassign project')
-  })
+  const handleAssignToCustomer = (customerId: string, emailToCustomer: boolean) => {
+    assignMutation.mutate({ projectId: project.id, customerId, emailToCustomer })
+  }
 
-  const assignMutation = useMutation({
-    mutationFn: async (customerId: string) => {
-      return axios.patch(`/api/projects/${project.id}`, { action: 'assign', customerId, emailToCustomer: true })
-    },
-    onSuccess: () => {
-      toast.success('Project assigned to customer! Email sent.')
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Failed to assign project')
-  })
+  // Add effect to handle assign mutation success and reset selection
+  useEffect(() => {
+    if (assignMutation.isSuccess) {
+      setSelectedAssignCustomerId(null) // Reset selection after successful assignment
+    }
+  }, [assignMutation.isSuccess])
 
-  const completeMutation = useMutation({
-    mutationFn: async (completedDate: Date) => {
-      return axios.patch(`/api/projects/${project.id}`, { action: 'mark_completed', completedDate: completedDate.toISOString() })
-    },
-    onSuccess: () => {
-      toast.success('Project marked as completed!')
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Failed to mark as completed')
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: async () => axios.delete(`/api/projects/${project.id}`),
-    onSuccess: () => {
-      toast.success('Project deleted successfully!')
-      queryClient.invalidateQueries({ queryKey: ['projects'] })
+  // Add effect to handle delete mutation success and close sheet
+  useEffect(() => {
+    if (deleteMutation.isSuccess) {
       // Close the sheet by removing projectId from URL
       const params = new URLSearchParams(window.location.search)
       params.delete('projectId')
       params.delete('type')
       router.push(`${window.location.pathname}?${params.toString()}`)
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.error || 'Failed to delete project')
-  })
-
-  const handleAssignToCustomer = (customerId: string) => {
-    assignMutation.mutate(customerId)
-  }
+    }
+  }, [deleteMutation.isSuccess, router])
 
   const getAvailableActions = (status: string) => {
     const s = status.toLowerCase()
@@ -230,7 +204,9 @@ export default function ProjectDetailsSheet({ project }: Props) {
                     <CalendarComponent
                       mode="single"
                       selected={new Date()}
-                      onSelect={(date) => { if (date) completeMutation.mutate(date) }}
+                      onSelect={(date) => { 
+                        if (date) completeMutation.mutate({ projectId: project.id, completedDate: date }) 
+                      }}
                       initialFocus
                       className="h-full"
                     />
@@ -245,35 +221,56 @@ export default function ProjectDetailsSheet({ project }: Props) {
                     Assign to customer
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-64 h-[350px] p-0">
-                    <Command className="h-full">
-                      <CommandInput placeholder="Search customers..." />
-                      <CommandList className="h-full max-h-none">
-                        <CommandEmpty>No customers found.</CommandEmpty>
-                        <CommandGroup>
-                          {customers.map((c) => (
-                            <CommandItem key={c.id} value={c.name}
-                              onSelect={() => handleAssignToCustomer(c.id)}
-                              className="cursor-pointer">
-                              <Check className="mr-2 h-4 w-4 opacity-0" />
-                              {c.name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
+                    <div className="flex flex-col h-full">
+                      <Command className="h-full">
+                        <CommandInput placeholder="Search customers..." />
+                        <CommandList className="h-full max-h-none">
+                          <CommandEmpty>No customers found.</CommandEmpty>
+                          <CommandGroup>
+                            {customers.map((c) => (
+                              <CommandItem key={c.id} value={c.name}
+                                onSelect={() => setSelectedAssignCustomerId(c.id)}
+                                className={`cursor-pointer ${selectedAssignCustomerId === c.id ? 'bg-muted' : ''}`}>
+                                <Check className={`mr-2 h-4 w-4 ${selectedAssignCustomerId === c.id ? 'opacity-100' : 'opacity-0'}`} />
+                                {c.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                      <div className="p-2 border-t flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 rounded-none"
+                          disabled={!selectedAssignCustomerId}
+                          onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
+                        >
+                          Assign only
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 rounded-none"
+                          disabled={!selectedAssignCustomerId}
+                          onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
+                        >
+                          Assign & Email
+                        </Button>
+                      </div>
+                    </div>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
               )}
 
               {getAvailableActions(status).includes('unassign' as any) && (
-                <DropdownMenuItem onClick={() => unassignMutation.mutate()}>
+                <DropdownMenuItem onClick={() => unassignMutation.mutate(project.id)}>
                   <X className="w-4 h-4 mr-2" />
                   Use personal (unassign)
                 </DropdownMenuItem>
               )}
 
               {getAvailableActions(status).includes('cancel' as any) && (
-                <DropdownMenuItem onClick={() => cancelMutation.mutate()}>
+                <DropdownMenuItem onClick={() => cancelMutation.mutate(project.id)}>
                   <Ban className="w-4 h-4 mr-2" />
                   Cancel
                 </DropdownMenuItem>
@@ -283,7 +280,7 @@ export default function ProjectDetailsSheet({ project }: Props) {
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-red-600">
-                    <X className="w-4 h-4 mr-2 rotate-45" />
+                    <Trash2 className="w-4 h-4 mr-2 " />
                     Delete
                   </DropdownMenuItem>
                 </>
@@ -501,7 +498,7 @@ export default function ProjectDetailsSheet({ project }: Props) {
       <ConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={() => deleteMutation.mutate()}
+        onConfirm={() => deleteMutation.mutate(project.id)}
         title="Delete Project"
         itemName={project.name || project.id.slice(0,8)}
         itemType="project"

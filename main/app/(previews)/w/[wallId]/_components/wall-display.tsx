@@ -70,7 +70,7 @@ export default function WallDisplay({ wall, hideSectionHeaders = false }: Props)
       case 'heading':
         return (
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold ">
+            <h2 className="md:text-2xl text-lg font-bold ">
               {block.props?.text || 'Heading'}
             </h2>
           </div>
@@ -80,7 +80,7 @@ export default function WallDisplay({ wall, hideSectionHeaders = false }: Props)
         return (
           <div className="space-y-2">
             <div className="prose prose-gray max-w-none">
-              <p className=" leading-relaxed whitespace-pre-wrap">
+              <p className=" leading-relaxed md:text-base text-sm whitespace-pre-wrap">
                 {block.props?.markdown || 'Text content'}
               </p>
             </div>
@@ -478,12 +478,12 @@ export default function WallDisplay({ wall, hideSectionHeaders = false }: Props)
 
               <div className="flex items-center gap-1">
                 <BrickWall className="w-4 h-4" />
-                <span>Display Wall</span>
+                <span className="text-xs md:text-sm">Display Wall</span>
               </div>
 
               <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                <span>Created: {new Date(wall.created_at as string).toLocaleDateString()}</span>
+                <span className="text-xs md:text-sm">Created: {new Date(wall.created_at as string).toLocaleDateString()}</span>
               </div>
             
             </div>
@@ -491,7 +491,7 @@ export default function WallDisplay({ wall, hideSectionHeaders = false }: Props)
           <CardContent className="md:p-8 p-4 space-y-6">
             <div>
               <h3 className="font-semibold text-primary mb-2">About Wall:</h3>
-              <p className="">{wall.description || "Collection of important links"}</p>
+              <p className="md:text-base text-sm">{wall.description || "Collection of important links"}</p>
             </div>
             {timeline.length > 0 ? (
               <div className="space-y-6">

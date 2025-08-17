@@ -1194,6 +1194,7 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
+              </div>
                 {params.receiptId && params.type === 'details' && (
                   <Button
                     variant="outline"
@@ -1206,7 +1207,6 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
                     Delete Receipt
                   </Button>
                 )}
-              </div>
             </div>
           </SheetHeader>
           <ScrollArea className="flex-grow">

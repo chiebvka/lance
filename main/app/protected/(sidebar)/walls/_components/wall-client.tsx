@@ -21,8 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { columns } from "./columns";
-import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload } from "lucide-react"
-import { FilterTag } from '@/components/filtering/search-filter'
+import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload } from "lucide-react";
+import { FilterTag } from '@/components/filtering/search-filter';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -440,7 +440,7 @@ export default function WallClient({ initialWalls, userEmail }: Props) {
 
   const filterContent = (
     <div className="p-2">
-      <DropdownMenuLabel>Filter receipts</DropdownMenuLabel>
+      <DropdownMenuLabel>Filter walls</DropdownMenuLabel>
       <DropdownMenuSeparator />
       
       <DropdownMenuSub>
@@ -573,7 +573,7 @@ export default function WallClient({ initialWalls, userEmail }: Props) {
           <SheetHeader className="p-4 border-b">
             <div className="flex justify-between items-center">
               <SheetTitle>Wall Details</SheetTitle>
-              <div className="flex items-center fixed right-20 gap-2">              
+            
                 <Button
                   variant="outline"
                   size="sm"
@@ -585,7 +585,7 @@ export default function WallClient({ initialWalls, userEmail }: Props) {
                   Delete Wall
                 </Button>
                
-              </div>
+         
             </div>
           </SheetHeader>
           <ScrollArea className="flex-grow">

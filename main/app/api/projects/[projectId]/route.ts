@@ -461,6 +461,8 @@ export async function PATCH(
           recepientName: customer.name,
           recepientEmail: customer.email,
           token: newToken,
+          status: 'pending', // Reset status to pending when reassigning
+          state: 'published', // Set to published when assigning to customer
           updatedOn: new Date().toISOString(),
         })
         .eq('id', projectId)
@@ -479,15 +481,11 @@ export async function PATCH(
           .maybeSingle()
 
         const fromEmail = 'no_reply@projects.bexforte.com'
-        let fromName = 'Bexforte Projects'
-        if (organization?.name) {
-          fromName = organization.name
-        } else if (profile?.email) {
-          fromName = profile.email.split('@')[0]
-        }
+        let fromName = 'Bexbot'
+        
         const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico"
         const projectLink = `${baseUrl}/p/${updatedProject.id}?token=${newToken}`
-
+        const fromField = `${fromName} <${fromEmail}>`;
         const emailHtml = await render(IssueProject({
           projectId: updatedProject.id,
           clientName: customer.name || '',
@@ -500,8 +498,8 @@ export async function PATCH(
         try {
           await sendgrid.send({
             to: customer.email,
-            from: { email: fromEmail, name: fromName },
-            subject: `Project ${updatedProject.name} Updated`,
+            from: fromField,
+            subject: `Project ${updatedProject.name} is ready`,
             html: emailHtml,
             customArgs: {
               projectId: updatedProject.id,

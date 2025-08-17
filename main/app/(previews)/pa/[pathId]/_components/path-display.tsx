@@ -83,12 +83,12 @@ export default function PathDisplay({ path }: PathDisplayProps) {
 
               <div className="flex items-center gap-1">
                 <Split className="w-4 h-4" />
-                <span>Paths Directory</span>
+                <span className="text-xs md:text-sm">Paths Directory</span>
               </div>
 
               <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                <span>Created: {new Date(path.created_at).toLocaleDateString()}</span>
+                <span className="text-xs md:text-sm">Created: {new Date(path.created_at).toLocaleDateString()}</span>
               </div>
              
      
@@ -98,7 +98,7 @@ export default function PathDisplay({ path }: PathDisplayProps) {
           <CardContent className="md:p-8 p-4 space-y-6">
             <div>
               <h3 className="font-semibold text-primary mb-2">About Path:</h3>
-              <p className="">{path.description || "Collection of important links"}</p>
+              <p className="md:text-base text-sm">{path.description || "Collection of important links"}</p>
             </div>
             <div className="space-y-3">
             {entries.map((entry: any) => (

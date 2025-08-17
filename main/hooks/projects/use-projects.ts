@@ -1,6 +1,7 @@
 import { Project } from '@/validation/forms/project';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import { toast } from 'sonner'
 
 // Extended Project interface with relations for individual project fetching
 export interface ProjectWithRelations extends Project {
@@ -166,10 +167,100 @@ export function useDeleteProject() {
       if (!data.success) throw new Error('Error deleting project')
       return data
     },
-    onSuccess: (data, projectId) => {
-      // Remove from cache and invalidate projects list
-      queryClient.removeQueries({ queryKey: ['project', projectId] })
+    onSuccess: () => {
+      toast.success('Project deleted successfully!')
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to delete project')
+    },
+  })
+}
+
+// Project action mutations for the details sheet
+export function useAssignProject() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ projectId, customerId, emailToCustomer }: { projectId: string; customerId: string; emailToCustomer: boolean }) => {
+      const { data } = await axios.patch(`/api/projects/${projectId}`, { 
+        action: 'assign', 
+        customerId, 
+        emailToCustomer 
+      })
+      if (!data.success) throw new Error('Error assigning project')
+      return data
+    },
+    onSuccess: (_, { projectId, emailToCustomer }) => {
+      toast.success(emailToCustomer ? 'Project assigned to customer! Email sent.' : 'Project assigned to customer successfully!')
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to assign project')
+    },
+  })
+}
+
+export function useUnassignProject() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (projectId: string) => {
+      const { data } = await axios.patch(`/api/projects/${projectId}`, { action: 'unassign' })
+      if (!data.success) throw new Error('Error unassigning project')
+      return data
+    },
+    onSuccess: (_, projectId) => {
+      toast.success('Project unassigned successfully!')
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to unassign project')
+    },
+  })
+}
+
+export function useCancelProject() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (projectId: string) => {
+      const { data } = await axios.patch(`/api/projects/${projectId}`, { action: 'cancel' })
+      if (!data.success) throw new Error('Error cancelling project')
+      return data
+    },
+    onSuccess: (_, projectId) => {
+      toast.success('Project cancelled successfully!')
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to cancel project')
+    },
+  })
+}
+
+export function useMarkProjectCompleted() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ projectId, completedDate }: { projectId: string; completedDate: Date }) => {
+      const { data } = await axios.patch(`/api/projects/${projectId}`, { 
+        action: 'mark_completed', 
+        completedDate: completedDate.toISOString() 
+      })
+      if (!data.success) throw new Error('Error marking project as completed')
+      return data
+    },
+    onSuccess: (_, { projectId }) => {
+      toast.success('Project marked as completed!')
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to mark project as completed')
     },
   })
 }

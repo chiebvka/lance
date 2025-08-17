@@ -16,8 +16,8 @@ type Props = {
     wall: WallType
 }
 
-const getStatusColor = (status: string) => {
-  switch (status.toLowerCase()) {
+const getStatusColor = (state: string) => {
+  switch (state.toLowerCase()) {
     case "draft":
       return "bg-blue-100 text-blue-800";
     case "published":

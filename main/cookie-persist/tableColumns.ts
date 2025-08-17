@@ -12,6 +12,7 @@ const DEFAULT_COLUMNS: Record<string, string[]> = {
   invoices: ['invoiceNumber', 'recepientName', 'totalAmount', 'state', 'issueDate', 'dueDate'],
   receipts: ['receiptNumber', 'creationMethod', 'totalAmount', 'state', 'issueDate', 'paymentConfirmedAt'],
   walls: ['name', 'description', 'state', 'issueDate', 'private'],
+  paths: ['name', 'description', 'state', 'created_at', 'private'],
   // Add more tables as needed
 };
 
