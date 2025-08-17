@@ -294,12 +294,8 @@ export async function PUT(
           .maybeSingle();
 
         const fromEmail = 'no_reply@projects.bexforte.com';
-        let fromName = 'Bexforte Projects';
-        if (organization?.name) {
-          fromName = organization?.name;
-        } else if (profile?.email) {
-          fromName = profile.email.split('@')[0];
-        }
+        let fromName = 'Bexbot';
+       
         const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
 
         const tokenForEmail = updatedProject.token as string | null;
@@ -314,13 +310,12 @@ export async function PUT(
           projectLink,
         }));
 
+        const fromField = `${fromName} <${fromEmail}>`;
+
         try {
           await sendgrid.send({
             to: customer.email,
-            from: {
-              email: fromEmail,
-              name: fromName
-            },
+            from: fromField,
             subject: `Project ${updatedProject.name} Updated`,
             html: emailHtml,
             customArgs: {

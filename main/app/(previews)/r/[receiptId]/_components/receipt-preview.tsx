@@ -6,7 +6,7 @@ import { formatDistanceToNow, isPast } from 'date-fns';
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Building2, Calendar, Clock, AlertCircle, Download, FileText, DollarSign, Receipt, Copy, Ban, SquareDashedKanban, Ungroup } from "lucide-react";
+import { Building2, Calendar, Clock, AlertCircle, HardDriveDownload, FileText, DollarSign, Receipt, Copy, Ban, SquareDashedKanban, Ungroup } from "lucide-react";
 import { toast } from "sonner";
 import { downloadReceiptAsPDF, ReceiptPDFData } from '@/utils/receipt-pdf';
 import SubscriptionNotice from "@/app/(previews)/_components/SubscriptionNotice";
@@ -160,7 +160,7 @@ export default function ReceiptPreview({ receiptId }: ReceiptPreviewProps) {
   return (
     <div className="min-h-screen  md:p-6">
       <div className="max-w-3xl mx-auto">
-        <Card className="shadow-xl shadow-black/10 border-0 overflow-hidden">
+        <Card className="shadow-xl min-h-screen shadow-black/10 border-0 overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary to-bexoni/60 p-6 text-white">
             <div className="flex items-center justify-between mb-4">
@@ -365,7 +365,7 @@ export default function ReceiptPreview({ receiptId }: ReceiptPreviewProps) {
                 title="Download Receipt PDF"
                 className=" space-x-3 flex items-center "
               >
-                <Download className="w-4 h-4" />
+                <HardDriveDownload className="w-4 h-4" />
                 Download Receipt
               </Button>
             </div>

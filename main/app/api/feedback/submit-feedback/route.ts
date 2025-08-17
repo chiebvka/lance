@@ -116,10 +116,13 @@ export async function GET(request: Request) {
         dueDate,
         filledOn,
         organizationName,
-        organizationLogoUrl,
+        organizationLogo,
         organizationEmail,
         organization:organizationId (
           id,
+          name,
+          email,
+          logoUrl,
           subscriptionstatus,
           trialEndsAt
         ),

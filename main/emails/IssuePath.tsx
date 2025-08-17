@@ -1,94 +1,94 @@
 import {
-    Body,
-    Button,
-    Container,
-    Column,
-    Head,
-    Heading,
-    Html,
-    Img,
-    Preview,
-    Row,
-    Section,
-    Text,
-  } from "@react-email/components"
-  import * as React from "react";
-  import { baseUrl } from "@/utils/universal";
-  
-  interface IssueWallEmailProps {
-    senderName?: string
-    clientName?: string
-    linkName?: string
-    projectName?: string
-    projectId?: string
-    linkId?: string
-    logoUrl?: string
-    linkLink?: string
+  Body,
+  Button,
+  Container,
+  Column,
+  Head,
+  Heading,
+  Html,
+  Img,
+  Preview,
+  Row,
+  Section,
+  Text,
+  Tailwind,
+} from "@react-email/components";
+import * as React from "react";
+import { baseUrl } from "@/utils/universal";
+
+interface IssuePathEmailProps {
+  pathId?: string;
+  clientName?: string;
+  pathName?: string;
+  senderName?: string;
+  logoUrl?: string;
+  pathLink?: string;
+}
+
+
+export default function IssuePath ({
+  pathId = "path123",
+  clientName = "Valued Customer",
+  pathName = "Path Links",
+  senderName = "Your Business",
+  logoUrl = "https://www.bexoni.com/favicon.ico",
+  pathLink = `${baseUrl}/pa/${pathId}`,
+}: IssuePathEmailProps) {
+
+  const previewText = ` ${pathName} is ready.`
+
+  const finalPathLink = pathLink || `${baseUrl}/pa/${pathId}`;
+
+  const logoStyle = {
+    width: "48px",
+    height: "48px",
+    border: "2px solid #faf8f5",
+    backgroundColor: "#faf8f5",
+    borderRadius: "0px",
+    display: "block",
   }
-  
-  export default function IssueWall({
-    senderName = "Bexforte ",
-    clientName = "Valued Customer",
-    projectName,
-    linkName = "Your Link",
-    linkId = "123",
-    logoUrl = "https://www.bexoni.com/favicon.ico",
-    linkLink, // Use the provided feedbackLink prop
-  }: IssueWallEmailProps) {
-    const previewText = ` ${linkName} is ready.`
-    
-    // Use the provided feedbackLink or fall back to the old method (but this should always be provided now)
-    const finallinkLink = linkLink || `${baseUrl}/w/${linkId}`;
 
+  return (
+  <Html>
+    <Head>
+      <meta name="color-scheme" content="light dark" />
+      <meta name="supported-color-schemes" content="light dark" />
+      <style>{`
+        @media (prefers-color-scheme: dark) {
+          .dark-mode-bg { background-color: #1f2937 !important; }
+          .dark-mode-text { color: #f9fafb !important; }
+          .dark-mode-border { border-color: #374151 !important; }
+        }
+      `}</style>
+    </Head>
+    <Preview>
+      {previewText}
+    </Preview>
 
-    const logoStyle = {
-      width: "48px",
-      height: "48px",
-      border: "2px solid #faf8f5",
-      backgroundColor: "#faf8f5",
-      borderRadius: "0px",
-      display: "block",
-    }
-  
-    return (
-      <Html>
-        <Head>
-          <meta name="color-scheme" content="light dark" />
-          <meta name="supported-color-schemes" content="light dark" />
-          <style>{`
-            @media (prefers-color-scheme: dark) {
-              .dark-mode-bg { background-color: #1f2937 !important; }
-              .dark-mode-text { color: #f9fafb !important; }
-              .dark-mode-border { border-color: #374151 !important; }
-            }
-          `}</style>
-        </Head>
-        <Preview>{previewText}</Preview>
-        <Body style={main}>
-          <Container style={container}>
-            {/* Header */}
-            <Section style={headerStyle}>
-              <Row>
-                <Column style={{ width: "48px", verticalAlign: "top" }}>
-                  <Img
-                    src={logoUrl}
-                    alt={`${senderName} logo`}
-                    style={logoStyle}
-                    width="48"
-                    height="48"
-                  />
-                </Column>
-                <Column style={{ paddingLeft: "20px", verticalAlign: "top" }}>
+      <Body style={main}>
+        <Container style={container}>
+          <Section  style={headerStyle}>
+            <Row>
+              <Column style={{ width: "48px", verticalAlign: "top" }}>
+                <Img
+                  src={logoUrl}
+                  alt={`${senderName} logo`}
+                  style={logoStyle}
+                  width="48"
+                  height="48"
+                />
+              </Column>
+              <Column style={{ paddingLeft: "20px", verticalAlign: "top" }}>
                   <Heading as="h1" style={headerTitleStyle}>
-                    You've got a link!
+                    Your Paths Page Is Ready!
                   </Heading>
                   <Text style={headerSubtitleStyle}>
-                    {projectName ?? linkName} • From {senderName}
+                    {pathName} • From {senderName}
                   </Text>
                 </Column>
-              </Row>
-            </Section>
-  
+            </Row>
+          </Section>
+     
             {/* Content */}
             <Section style={contentStyle}>
               <Text style={greetingStyle}>Hello {clientName},</Text>
@@ -98,12 +98,12 @@ import {
                 <Text style={codeLineStyle}>
                   {"We have the information you're looking for " +
                     (clientName) +
-                    " It's all here for you to go through just by clicking the button below "}
+                    " This page contains important links and contact information. Click the button below to access it "}
                 </Text>
               </Section>
   
-              <Button href={finallinkLink} style={buttonStyle}>
-                View Wall
+              <Button href={finalPathLink} style={buttonStyle}>
+                View Links Page
               </Button>
   
               <Text style={signatureStyle}>
@@ -112,18 +112,19 @@ import {
                 From your friends at {senderName}
               </Text>
             </Section>
-  
+
             {/* Footer */}
             <Section style={footerStyle}>
               <Text style={footerTextStyle}>Powered by © Bexforte 2025</Text>
               <Text style={footerTextStyle}>RPO University Avenue Charlottetown PE C1A 9H6</Text>
             </Section>
-          </Container>
-        </Body>
-      </Html>
-    )
-  }
-  
+        </Container>
+      </Body>
+  </Html>
+  )
+}
+
+
   // Styles
   const main = {
     backgroundColor: "#faf8f5",
@@ -282,3 +283,4 @@ import {
     lineHeight: "1.4",
   }
     
+

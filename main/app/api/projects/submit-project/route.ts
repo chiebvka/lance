@@ -27,7 +27,14 @@ export async function GET(request: Request) {
             .from('projects')
             .select(`
               id,
-              organization:organization!projects_organizationId_fkey (subscriptionstatus, trialEndsAt)
+                organization:organizationId (
+                  id,
+                  logoUrl,
+                  name,
+                  email,
+                  subscriptionstatus,
+                  trialEndsAt
+                ),
             `)
             .eq('id', projectId)
             .maybeSingle();
@@ -61,7 +68,14 @@ export async function GET(request: Request) {
           .from('projects')
           .select(`
             id,
-            organization:organization!projects_organizationId_fkey (subscriptionstatus, trialEndsAt)
+            organization:organizationId (
+              id,
+              logoUrl,
+              name,
+              email,
+              subscriptionstatus,
+              trialEndsAt
+            ),
           `)
           .eq('id', projectId)
           .maybeSingle();

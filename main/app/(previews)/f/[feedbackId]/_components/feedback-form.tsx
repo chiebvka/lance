@@ -1,4 +1,4 @@
-"use client"
+ "use client"
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -35,11 +35,23 @@ interface FeedbackData {
   questions: Question[]
   dueDate: string | null
   filledOn: string | null
+  
   organizationName: string | null
-  organizationLogoUrl: string | null
+  organizationLogo: string | null
   organizationEmail: string | null
+  organizationLogoUrl: string | null
+  organizationNameFromOrg: string | null
+  organizationEmailFromOrg: string | null
   message: string | null
   created_at: string
+  organization?: {
+    id: string
+    name: string
+    email: string
+    logoUrl: string
+    subscriptionstatus: string
+    trialEndsAt: string
+  }
 }
 
 interface Answer {
@@ -327,17 +339,22 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
   const isOverdue = feedbackData.dueDate && isPast(new Date(feedbackData.dueDate))
   const daysOverdue = feedbackData.dueDate ? formatDistanceToNow(new Date(feedbackData.dueDate)) : null
 
+  // Prioritize relation data over fallback fields
+  const organizationName = feedbackData?.organization?.name || feedbackData?.organizationNameFromOrg || feedbackData?.organizationName
+  const organizationLogo = feedbackData?.organization?.logoUrl || feedbackData?.organizationLogoUrl || feedbackData?.organizationLogo
+  const organizationEmail = feedbackData?.organization?.email || feedbackData?.organizationEmailFromOrg || feedbackData?.organizationEmail
+
   return (
     <div className="min-h-screen  md:p-6 ">
-      <div className="max-w-2xl mx-auto">
-        <Card className="shadow-xl shadow-black/10 border-0 overflow-hidden">
+      <div className="max-w-4xl mx-auto">
+        <Card className="shadow-xl  min-h-screen shadow-black/10 border-0 overflow-hidden">
           <div className="bg-gradient-to-r from-primary to-bexoni/60 p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center md:gap-3 gap-1">
-                {feedbackData.organizationLogoUrl ? (
+                {organizationLogo ? (
                   <img
-                    src={feedbackData.organizationLogoUrl}
-                    alt={feedbackData.organizationName || "Company"}
+                    src={organizationLogo}
+                    alt={organizationName || "Company"}
                     className="md:w-12 md:h-12 w-8 h-8 rounded-lg bg-white/20 p-2 object-contain"
                   />
                 ) : (
@@ -346,7 +363,7 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
                   </div>
                 )}
                 <div>
-                  <h3 className="font-semibold text-xs md:text-base">{feedbackData.organizationName || "Company"}</h3>
+                  <h3 className="font-semibold text-xs md:text-base">{organizationName || "Company"}</h3>
                   <p className="text-blue-100 text-xs md:text-sm">Feedback Request</p>
                 </div>
               </div>

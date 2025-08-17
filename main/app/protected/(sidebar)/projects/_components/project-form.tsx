@@ -220,7 +220,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
         { id: uuidv4(), name: "Final Payment", percentage: 0, amount: 0, dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), description: null, status: null, type: 'milestone', hasPaymentTerms: false, deliverableId: null },
       ],
       hasServiceAgreement: false,
-      serviceAgreement: "<p>Standard service agreement terms...</p>",
+      serviceAgreement: "",
       agreementTemplate: "standard",
       hasAgreedToTerms: false,
       isPublished: false,
@@ -276,6 +276,103 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
       form.setValue('currency', organization.baseCurrency)
     }
   }, [organization, form])
+
+  // Initialize standard agreement template when form loads
+  React.useEffect(() => {
+    if (agreementTemplate === "standard" && !form.getValues("serviceAgreement")) {
+      const currentDate = format(new Date(), "PPP 'at' p z");
+      const customerName = selectedCustomer?.name || "[Client Name]";
+      const projectName = form.getValues("name") || "[Project Name]";
+      const projectDescription = form.getValues("description") || "[Project Description]";
+      const startDate = form.getValues("startDate");
+      const endDate = form.getValues("endDate");
+      const deliverables = form.getValues("deliverables") || [];
+      const deliverablesEnabled = form.getValues("deliverablesEnabled");
+      const paymentStructure = form.getValues("paymentStructure");
+      const paymentMilestones = form.getValues("paymentMilestones") || [];
+      const budget = form.getValues("budget") || 0;
+      const currency = form.getValues("currencyEnabled") ? form.getValues("currency") : "$";
+      
+      const deliverablesList = deliverablesEnabled && deliverables.length > 0
+        ? deliverables.map(d => `<li><strong>${d.name || 'Untitled Deliverable'}:</strong> ${d.description || 'No description.'} (Due: ${d.dueDate ? format(new Date(d.dueDate), 'PPP') : 'Not set'})</li>`).join('')
+        : '<li>No deliverables have been specified for this project.</li>';
+        
+      let paymentTermsSection = '';
+      switch (paymentStructure) {
+        case 'fullDownPayment':
+          paymentTermsSection = `<p>Full payment of ${currency}${budget.toLocaleString()} is due upon the signing of this Agreement.</p>`;
+          break;
+        case 'paymentOnCompletion':
+          paymentTermsSection = `<p>Full payment of ${currency}${budget.toLocaleString()} is due upon successful completion and delivery of all project deliverables.</p>`;
+          break;
+        case 'milestonePayment':
+        case 'deliverablePayment':
+          const milestonesList = paymentMilestones.length > 0
+            ? paymentMilestones.map(m => `<li><strong>${m.name || 'Untitled Milestone'}:</strong> ${m.percentage}% of the total budget (${currency}${m.amount?.toLocaleString() || 'N/A'}) is due on or before ${m.dueDate ? format(new Date(m.dueDate), 'PPP') : 'Not set'}.</li>`).join('')
+            : '<li>No payment milestones have been specified.</li>';
+          paymentTermsSection = `
+            <p>Payment will be made according to the following milestones, based on a total project budget of ${currency}${budget.toLocaleString()}:</p>
+            <ul>${milestonesList}</ul>`;
+          break;
+        default: // 'noPayment' or other cases
+          paymentTermsSection = '<p>No payment is required for this project.</p>';
+          break;
+      }
+
+      const standardAgreement = `
+        <h2>Standard Service Agreement</h2>
+        <p>This Service Agreement ("Agreement") is made and entered into as of ${currentDate} ("Effective Date"), by and between <strong>${organization?.name || '[Your Company Name]'}</strong> ("Provider") and <strong>${customerName}</strong> ("Client").</p>
+        
+        <h3>1. Services</h3>
+        <p>Provider agrees to perform services ("Services") for the project known as <strong>${projectName}</strong>, described as: ${projectDescription}.</p>
+        
+        <h3>2. Project Deliverables</h3>
+        <p>The Provider will deliver the following items:</p>
+        <ul>${deliverablesList}</ul>
+        
+        <h3>3. Term of Agreement</h3>
+        <p>This Agreement will begin on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} and will continue until ${endDate ? format(new Date(endDate), "PPP") : 'the completion of the Services'}, unless terminated earlier.</p>
+        
+        <h3>4. Payment Terms</h3>
+        ${paymentTermsSection}
+        
+        <h3>5. Confidentiality</h3>
+        <p>Each party agrees to keep confidential all non-public information obtained from the other party.</p>
+        
+        <h3>6. Ownership of Work Product</h3>
+        <p>Upon full payment, the Client will own all rights to the final deliverables. The Provider retains ownership of all pre-existing code and tools used in the project.</p>
+        
+        <h3>7. Independent Contractor</h3>
+        <p>The Provider is an independent contractor, not an employee of the Client.</p>
+        
+        <h3>8. Termination</h3>
+        <p>Either party may terminate this Agreement with 30 days written notice. The Client agrees to pay for all Services performed up to the date of termination.</p>
+        
+        <h3>9. Governing Law</h3>
+        <p>This Agreement shall be governed by the laws of [Your State/Jurisdiction].</p>
+        
+        <h3>10. Signatures</h3>
+        <p>IN WITNESS WHEREOF, the Parties have executed this Agreement as of the Effective Date.</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 2rem;">
+          <tbody>
+            <tr>
+              <td style="width: 50%; vertical-align: top; padding-right: 1rem;">
+                <p><strong>The Client:</strong> ${customerName}</p>
+                <p style="margin-top: 2rem;"><strong>Date:</strong> ____________________</p>
+                <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
+              </td>
+              <td style="width: 50%; vertical-align: top; padding-left: 1rem;">
+                <p><strong>The Provider:</strong> ${organization?.name || '[Your Company Name]'}</p>
+                <p style="margin-top: 2rem;"><strong>Date:</strong> ${currentDate}</p>
+                <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>`;
+
+      form.setValue("serviceAgreement", standardAgreement);
+    }
+  }, [agreementTemplate, organization, form, selectedCustomer]);
 
   // UI State - Updated to open first 3 sections by default
   const [openSections, setOpenSections] = useState({
@@ -2398,7 +2495,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
                                                     <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
                                                   </td>
                                                   <td style="width: 50%; vertical-align: top; padding-left: 1rem;">
-                                                    <p><strong>The Provider:</strong> {organization?.name || '[Your Company Name]'}</p>
+                                                    <p><strong>The Provider:</strong> ${organization?.name || '[Your Company Name]'}</p>
                                                     <p style="margin-top: 2rem;"><strong>Date:</strong> ${currentDate}</p>
                                                     <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
                                                   </td>
@@ -2411,16 +2508,53 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
                                               newContent = `
                                                 <h2>Standard Service Agreement</h2>
                                                 <p>This Service Agreement ("Agreement") is made and entered into as of ${currentDate} ("Effective Date"), by and between <strong>${organization?.name || '[Your Company Name]'}</strong> ("Provider") and <strong>${customerName}</strong> ("Client").</p>
-                                                <h3>1. Services</h3><p>Provider agrees to perform services ("Services") for the project known as <strong>${projectName}</strong>, described as: ${projectDescription}.</p>
-                                                <h3>2. Project Deliverables</h3><p>The Provider will deliver the following items:</p><ul>${deliverablesList}</ul>
-                                                <h3>3. Term of Agreement</h3><p>This Agreement will begin on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} and will continue until ${endDate ? format(new Date(endDate), "PPP") : 'the completion of the Services'}, unless terminated earlier.</p>
-                                                <h3>4. Payment Terms</h3>${paymentTermsSection}
-                                                <h3>5. Confidentiality</h3><p>Each party agrees to keep confidential all non-public information obtained from the other party.</p>
-                                                <h3>6. Ownership of Work Product</h3><p>Upon full payment, the Client will own all rights to the final deliverables. The Provider retains the right to use the work for portfolio purposes.</p>
-                                                <h3>7. Independent Contractor</h3><p>The Provider is an independent contractor, not an employee of the Client.</p>
-                                                <h3>8. Termination</h3><p>Either party may terminate this Agreement with 30 days written notice. The Client agrees to pay for all Services performed up to the date of termination.</p>
-                                                <h3>9. Governing Law</h3><p>This Agreement shall be governed by the laws of [Your State/Jurisdiction].</p>
-                                                ${signatureBlock}`;
+                                                
+                                                <h3>1. Services</h3>
+                                                <p>Provider agrees to perform services ("Services") for the project known as <strong>${projectName}</strong>, described as: ${projectDescription}.</p>
+                                                
+                                                <h3>2. Project Deliverables</h3>
+                                                <p>The Provider will deliver the following items:</p>
+                                                <ul>${deliverablesList}</ul>
+                                                
+                                                <h3>3. Term of Agreement</h3>
+                                                <p>This Agreement will begin on ${startDate ? format(new Date(startDate), "PPP") : 'the Effective Date'} and will continue until ${endDate ? format(new Date(endDate), "PPP") : 'the completion of the Services'}, unless terminated earlier.</p>
+                                                
+                                                <h3>4. Payment Terms</h3>
+                                                ${paymentTermsSection}
+                                                
+                                                <h3>5. Confidentiality</h3>
+                                                <p>Each party agrees to keep confidential all non-public information obtained from the other party.</p>
+                                                
+                                                <h3>6. Ownership of Work Product</h3>
+                                                <p>Upon full payment, the Client will own all rights to the final deliverables. The Provider retains ownership of all pre-existing code and tools used in the project.</p>
+                                                
+                                                <h3>7. Independent Contractor</h3>
+                                                <p>The Provider is an independent contractor, not an employee of the Client.</p>
+                                                
+                                                <h3>8. Termination</h3>
+                                                <p>Either party may terminate this Agreement with 30 days written notice. The Client agrees to pay for all Services performed up to the date of termination.</p>
+                                                
+                                                <h3>9. Governing Law</h3>
+                                                <p>This Agreement shall be governed by the laws of [Your State/Jurisdiction].</p>
+                                                
+                                                <h3>10. Signatures</h3>
+                                                <p>IN WITNESS WHEREOF, the Parties have executed this Agreement as of the Effective Date.</p>
+                                                <table style="width: 100%; border-collapse: collapse; margin-top: 2rem;">
+                                                  <tbody>
+                                                    <tr>
+                                                      <td style="width: 50%; vertical-align: top; padding-right: 1rem;">
+                                                        <p><strong>The Client:</strong> ${customerName}</p>
+                                                        <p style="margin-top: 2rem;"><strong>Date:</strong> ____________________</p>
+                                                        <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
+                                                      </td>
+                                                      <td style="width: 50%; vertical-align: top; padding-left: 1rem;">
+                                                        <p><strong>The Provider:</strong> ${organization?.name || '[Your Company Name]'}</p>
+                                                        <p style="margin-top: 2rem;"><strong>Date:</strong> ${currentDate}</p>
+                                                        <p style="margin-top: 2rem;"><strong>Signature:</strong> ____________________</p>
+                                                      </td>
+                                                    </tr>
+                                                  </tbody>
+                                                </table>`;
                                               break;
                                             case "consulting":
                                               newContent = `

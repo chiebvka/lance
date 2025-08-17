@@ -6,7 +6,7 @@ const feedbackCreateSchema = z.object({
   projectId: z.string().nullable().optional(),
   organizationId: z.string().uuid().nullable().optional(),
   organizationName: z.string().nullable().optional(),
-  organizationLogoUrl: z.string().nullable().optional(),
+  organizationLogo: z.string().nullable().optional(),
   organizationEmail: z.string().nullable().optional(),
   templateId: z.string().nullable().optional(), // Made optional
   dueDate: z.coerce.date().optional().nullable(),

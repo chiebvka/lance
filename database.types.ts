@@ -34,6 +34,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string | null
+          day_key: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["event_entity_enum"]
+          event_type: Database["public"]["Enums"]["event_type_enum"]
+          id: string
+          is_bot: boolean | null
+          metadata: Json | null
+          referrer: string | null
+          region: string | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          viewer_hash: string | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          day_key?: string | null
+          entity_id: string
+          entity_type: Database["public"]["Enums"]["event_entity_enum"]
+          event_type: Database["public"]["Enums"]["event_type_enum"]
+          id?: string
+          is_bot?: boolean | null
+          metadata?: Json | null
+          referrer?: string | null
+          region?: string | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          viewer_hash?: string | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          day_key?: string | null
+          entity_id?: string
+          entity_type?: Database["public"]["Enums"]["event_entity_enum"]
+          event_type?: Database["public"]["Enums"]["event_type_enum"]
+          id?: string
+          is_bot?: boolean | null
+          metadata?: Json | null
+          referrer?: string | null
+          region?: string | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          viewer_hash?: string | null
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string | null
@@ -786,6 +843,50 @@ export type Database = {
           },
         ]
       }
+      link_items: {
+        Row: {
+          click_count: number | null
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          page_id: string
+          position: number | null
+          title: string
+          url: string
+        }
+        Insert: {
+          click_count?: number | null
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          page_id: string
+          position?: number | null
+          title: string
+          url: string
+        }
+        Update: {
+          click_count?: number | null
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          page_id?: string
+          position?: number | null
+          title?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "link_items_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "paths"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           addedBy: string | null
@@ -1036,6 +1137,87 @@ export type Database = {
           },
         ]
       }
+      paths: {
+        Row: {
+          analytics: Json | null
+          content: Json | null
+          created_at: string
+          createdBy: string | null
+          customerId: string | null
+          description: string | null
+          id: string
+          name: string | null
+          organizationEmail: string | null
+          organizationId: string | null
+          organizationLogo: string | null
+          organizationName: string | null
+          private: boolean | null
+          recepientEmail: string | null
+          recepientName: string | null
+          state: string | null
+          token: string | null
+          type: string | null
+          updatedAt: string | null
+        }
+        Insert: {
+          analytics?: Json | null
+          content?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          description?: string | null
+          id?: string
+          name?: string | null
+          organizationEmail?: string | null
+          organizationId?: string | null
+          organizationLogo?: string | null
+          organizationName?: string | null
+          private?: boolean | null
+          recepientEmail?: string | null
+          recepientName?: string | null
+          state?: string | null
+          token?: string | null
+          type?: string | null
+          updatedAt?: string | null
+        }
+        Update: {
+          analytics?: Json | null
+          content?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          description?: string | null
+          id?: string
+          name?: string | null
+          organizationEmail?: string | null
+          organizationId?: string | null
+          organizationLogo?: string | null
+          organizationName?: string | null
+          private?: boolean | null
+          recepientEmail?: string | null
+          recepientName?: string | null
+          state?: string | null
+          token?: string | null
+          type?: string | null
+          updatedAt?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "links_customerId_fkey"
+            columns: ["customerId"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "links_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paymentTerms: {
         Row: {
           amount: number | null
@@ -1260,20 +1442,29 @@ export type Database = {
           hasPaymentTerms: boolean | null
           hasServiceAgreement: boolean | null
           id: string
+          invoiceId: string | null
           isArchived: boolean | null
           isPublished: boolean | null
           name: string | null
           notes: string | null
+          organizationEmail: string | null
           organizationId: string | null
+          organizationLogo: string | null
+          organizationName: string | null
           paymentMilestones: Json | null
           paymentStructure: string | null
           projectTypeId: string | null
+          recepientEmail: string | null
+          recepientName: string | null
           serviceAgreement: Json | null
+          signatureDetails: Json | null
+          signatureType: string | null
           signedOn: string | null
           signedStatus: string | null
           startDate: string | null
           state: string | null
           status: string | null
+          token: string | null
           type: string | null
           updatedOn: string | null
         }
@@ -1299,20 +1490,29 @@ export type Database = {
           hasPaymentTerms?: boolean | null
           hasServiceAgreement?: boolean | null
           id?: string
+          invoiceId?: string | null
           isArchived?: boolean | null
           isPublished?: boolean | null
           name?: string | null
           notes?: string | null
+          organizationEmail?: string | null
           organizationId?: string | null
+          organizationLogo?: string | null
+          organizationName?: string | null
           paymentMilestones?: Json | null
           paymentStructure?: string | null
           projectTypeId?: string | null
+          recepientEmail?: string | null
+          recepientName?: string | null
           serviceAgreement?: Json | null
+          signatureDetails?: Json | null
+          signatureType?: string | null
           signedOn?: string | null
           signedStatus?: string | null
           startDate?: string | null
           state?: string | null
           status?: string | null
+          token?: string | null
           type?: string | null
           updatedOn?: string | null
         }
@@ -1338,20 +1538,29 @@ export type Database = {
           hasPaymentTerms?: boolean | null
           hasServiceAgreement?: boolean | null
           id?: string
+          invoiceId?: string | null
           isArchived?: boolean | null
           isPublished?: boolean | null
           name?: string | null
           notes?: string | null
+          organizationEmail?: string | null
           organizationId?: string | null
+          organizationLogo?: string | null
+          organizationName?: string | null
           paymentMilestones?: Json | null
           paymentStructure?: string | null
           projectTypeId?: string | null
+          recepientEmail?: string | null
+          recepientName?: string | null
           serviceAgreement?: Json | null
+          signatureDetails?: Json | null
+          signatureType?: string | null
           signedOn?: string | null
           signedStatus?: string | null
           startDate?: string | null
           state?: string | null
           status?: string | null
+          token?: string | null
           type?: string | null
           updatedOn?: string | null
         }
@@ -1400,8 +1609,9 @@ export type Database = {
           notes: string | null
           organizationEmail: string | null
           organizationId: string | null
+          organizationLogo: string | null
           organizationName: string | null
-          paymentConfirmedat: string | null
+          paymentConfirmedAt: string | null
           paymentDetails: Json | null
           paymentLink: string | null
           paymentType: string | null
@@ -1411,10 +1621,11 @@ export type Database = {
           recepientEmail: string | null
           recepientName: string | null
           sentViaEmail: boolean | null
-          status: string | null
+          state: string | null
           subTotalAmount: number | null
           taxAmount: number | null
-          totalamount: number | null
+          taxRate: number | null
+          totalAmount: number | null
           updatedAt: string | null
           vatRate: number | null
         }
@@ -1438,8 +1649,9 @@ export type Database = {
           notes?: string | null
           organizationEmail?: string | null
           organizationId?: string | null
+          organizationLogo?: string | null
           organizationName?: string | null
-          paymentConfirmedat?: string | null
+          paymentConfirmedAt?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
           paymentType?: string | null
@@ -1449,10 +1661,11 @@ export type Database = {
           recepientEmail?: string | null
           recepientName?: string | null
           sentViaEmail?: boolean | null
-          status?: string | null
+          state?: string | null
           subTotalAmount?: number | null
           taxAmount?: number | null
-          totalamount?: number | null
+          taxRate?: number | null
+          totalAmount?: number | null
           updatedAt?: string | null
           vatRate?: number | null
         }
@@ -1476,8 +1689,9 @@ export type Database = {
           notes?: string | null
           organizationEmail?: string | null
           organizationId?: string | null
+          organizationLogo?: string | null
           organizationName?: string | null
-          paymentConfirmedat?: string | null
+          paymentConfirmedAt?: string | null
           paymentDetails?: Json | null
           paymentLink?: string | null
           paymentType?: string | null
@@ -1487,10 +1701,11 @@ export type Database = {
           recepientEmail?: string | null
           recepientName?: string | null
           sentViaEmail?: boolean | null
-          status?: string | null
+          state?: string | null
           subTotalAmount?: number | null
           taxAmount?: number | null
-          totalamount?: number | null
+          taxRate?: number | null
+          totalAmount?: number | null
           updatedAt?: string | null
           vatRate?: number | null
         }
@@ -1696,11 +1911,135 @@ export type Database = {
           },
         ]
       }
+      walls: {
+        Row: {
+          analytics: Json | null
+          content: Json | null
+          created_at: string
+          createdBy: string | null
+          customerId: string | null
+          description: string | null
+          id: string
+          issueDate: string | null
+          name: string | null
+          notes: string | null
+          organizationEmail: string | null
+          organizationId: string | null
+          organizationLogo: string | null
+          organizationName: string | null
+          private: boolean | null
+          projectId: string | null
+          recepientEmail: string | null
+          recepientName: string | null
+          slug: string | null
+          state: string | null
+          token: string | null
+          type: string | null
+          updatedAt: string | null
+        }
+        Insert: {
+          analytics?: Json | null
+          content?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          description?: string | null
+          id?: string
+          issueDate?: string | null
+          name?: string | null
+          notes?: string | null
+          organizationEmail?: string | null
+          organizationId?: string | null
+          organizationLogo?: string | null
+          organizationName?: string | null
+          private?: boolean | null
+          projectId?: string | null
+          recepientEmail?: string | null
+          recepientName?: string | null
+          slug?: string | null
+          state?: string | null
+          token?: string | null
+          type?: string | null
+          updatedAt?: string | null
+        }
+        Update: {
+          analytics?: Json | null
+          content?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          description?: string | null
+          id?: string
+          issueDate?: string | null
+          name?: string | null
+          notes?: string | null
+          organizationEmail?: string | null
+          organizationId?: string | null
+          organizationLogo?: string | null
+          organizationName?: string | null
+          private?: boolean | null
+          projectId?: string | null
+          recepientEmail?: string | null
+          recepientName?: string | null
+          slug?: string | null
+          state?: string | null
+          token?: string | null
+          type?: string | null
+          updatedAt?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "walls_customerId_fkey"
+            columns: ["customerId"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walls_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walls_projectId_fkey"
+            columns: ["projectId"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      citext: {
+        Args: { "": boolean } | { "": string } | { "": unknown }
+        Returns: string
+      }
+      citext_hash: {
+        Args: { "": string }
+        Returns: number
+      }
+      citextin: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      citextout: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      citextrecv: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      citextsend: {
+        Args: { "": string }
+        Returns: string
+      }
       generate_invoice_number: {
         Args: { org_id: string }
         Returns: string
@@ -1713,10 +2052,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           category: string
+          created_at: string
           id: string
           name: string
           type: string
-          created_at: string
         }[]
       }
       handle_bank_deletion: {
@@ -1739,13 +2078,13 @@ export type Database = {
         Args: { search_term: string }
         Returns: {
           category: string
+          customerId: string
           id: string
           name: string
-          type: string
+          projectId: string
           rank: number
           related_category: string
-          customerId: string
-          projectId: string
+          type: string
         }[]
       }
       update_default_bank: {
@@ -1787,6 +2126,8 @@ export type Database = {
         | "feedback_sent"
         | "feedback_reminder"
         | "feedback_overdue"
+      event_entity_enum: "wall" | "links_page" | "link_item" | "file"
+      event_type_enum: "page_view" | "click" | "download" | "share"
       plan_type_enum: "starter" | "pro" | "corporate"
       subscription_status_enum:
         | "trial"
@@ -1960,6 +2301,8 @@ export const Constants = {
         "feedback_reminder",
         "feedback_overdue",
       ],
+      event_entity_enum: ["wall", "links_page", "link_item", "file"],
+      event_type_enum: ["page_view", "click", "download", "share"],
       plan_type_enum: ["starter", "pro", "corporate"],
       subscription_status_enum: [
         "trial",

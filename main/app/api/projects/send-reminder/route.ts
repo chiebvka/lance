@@ -66,11 +66,12 @@ export async function POST(request: Request) {
     const orgName = organizationRel?.name || 'Bexforte Projects'
     const logoUrl = organizationRel?.logoUrl || 'https://www.bexoni.com/favicon.ico'
     const fromEmail = 'no_reply@projects.bexforte.com'
-
+    const fromName = 'Bexbot';
     const projectLink = project.token
       ? `${baseUrl}/p/${project.id}?token=${project.token}`
       : `${baseUrl}/p/${project.id}`
 
+      const fromField = `${fromName} <${fromEmail}>`;
     const emailHtml = await render(ProjectReminder({
       senderName: orgName,
       clientName: customerName || '',
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
 
     await sendgrid.send({
       to: customerEmail,
-      from: { email: fromEmail, name: orgName },
+      from: fromField,
       subject: `Reminder: ${project.name}`,
       html: emailHtml,
       customArgs: {

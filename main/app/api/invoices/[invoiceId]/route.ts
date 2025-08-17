@@ -17,23 +17,21 @@ async function sendInvoiceEmail(supabase: any, user: any, invoice: any, recipien
       .single();
 
     const fromEmail = 'no_reply@invoices.bexforte.com';
-    let fromName = organizationName || 'Bexforte Invoices';
+    const fromName = 'Bexbot';
+    const senderName = organizationName || 'Bexforte';
     
     const emailHtml = await render(IssueInvoice({
       invoiceId: invoice.id,
       clientName: recipientName || recipientEmail.split('@')[0],
       invoiceName: `Invoice #${invoice.invoiceNumber}`,
-      senderName: fromName,
+      senderName: senderName,
       logoUrl: logoUrl || "https://www.bexoni.com/favicon.ico",
     }));
 
     await sendgrid.send({
       to: recipientEmail,
-      from: {
-        email: fromEmail,
-        name: fromName
-      },
-      subject: `Invoice #${invoice.invoiceNumber} Updated`,
+      from: `${fromName} <${fromEmail}>`,
+      subject: `${senderName} sent you an invoice`,
       html: emailHtml,
       customArgs: {
         invoiceId: invoice.id,

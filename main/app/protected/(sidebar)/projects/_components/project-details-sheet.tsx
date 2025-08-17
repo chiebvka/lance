@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { baseUrl } from '@/utils/universal'
 import { downloadProjectAsPDF, type ProjectPDFData } from '@/utils/project-pdf'
 import axios from 'axios'
+import { useProject } from '@/hooks/projects/use-projects'
 import { useCustomers } from '@/hooks/customers/use-customers'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu'
@@ -36,6 +37,8 @@ type ProjectDetails = {
   endDate?: string | null
   created_at?: string | null
   token?: string | null
+  serviceAgreement?: string | null
+  deliverables?: Array<{ name?: string | null; description?: string | null; dueDate?: string | null }>
 }
 
 type Props = {
@@ -63,6 +66,9 @@ const getStateColor = (status: string) => {
 
 export default function ProjectDetailsSheet({ project }: Props) {
   const router = useRouter()
+  
+  // Fetch full project details with deliverables and service agreement
+  const { data: fullProject, isLoading: isLoadingFullProject } = useProject(project.id)
   const queryClient = useQueryClient()
   const { data: customers = [] } = useCustomers()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -413,26 +419,25 @@ export default function ProjectDetailsSheet({ project }: Props) {
               title="Download Project PDF"
               onClick={async () => {
                 try {
-                  const { data } = await axios.get(`/api/projects/${project.id}`)
-                  const p = data?.project || {}
+                  // Use full project data if available, otherwise fall back to basic project data
+                  const projectData = fullProject || project;
+                  
                   const pdfData: ProjectPDFData = {
-                    id: project.id,
-                    name: p.name ?? project.name ?? 'Project',
-                    description: p.description ?? project.description ?? '',
-                    type: (p.type ?? project.type ?? 'personal') as any,
-                    customerName: p.customer?.name ?? project.customerName ?? undefined,
-                    organizationName: p.organizationName ?? undefined,
-                    organizationLogoUrl: p.organizationLogoUrl ?? undefined,
-                    budget: p.budget ?? project.budget ?? 0,
-                    currency: p.currency ?? project.currency ?? 'USD',
-                    startDate: p.startDate ?? project.startDate ?? undefined,
-                    endDate: p.endDate ?? project.endDate ?? undefined,
-                    deliverables: (p.deliverables || [])?.map((d: any) => ({
+                    id: projectData.id,
+                    name: projectData.name ?? 'Project',
+                    description: projectData.description ?? '',
+                    type: (projectData.type ?? 'personal') as any,
+                    customerName: projectData.customerName ?? undefined,
+                    budget: projectData.budget ?? 0,
+                    currency: projectData.currency ?? 'USD',
+                    startDate: projectData.startDate ?? undefined,
+                    endDate: projectData.endDate ?? undefined,
+                    deliverables: (projectData as any).deliverables?.map((d: any) => ({
                       name: d.name ?? null,
                       description: d.description ?? null,
                       dueDate: d.dueDate ?? null,
-                    })),
-                    serviceAgreement: p.serviceAgreement ?? null,
+                    })) || [],
+                    serviceAgreement: (projectData as any).serviceAgreement ?? null,
                   }
                   await downloadProjectAsPDF(pdfData, `${(pdfData.name || 'project')}.pdf`)
                 } catch (err) {

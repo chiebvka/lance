@@ -121,7 +121,7 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
   // Show subscription management for active users
   if (hasActiveSubscription) {
     return (
-      <div className="w-full max-w-4xl mx-auto px-4">
+      <div className="w-full ">
         <div className="space-y-6">
           {/* Current Subscription */}
           <Card>

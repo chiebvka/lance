@@ -294,7 +294,7 @@ export async function POST(request: Request) {
           .single();
           if (customer?.email) {
             const fromEmail = 'no_reply@projects.bexforte.com';
-            const fromName = 'Bexforte';
+            const fromName = 'Bexbot';
             const sendName = project.organizationName || 'Bexforte';
             const logoUrl = project.organizationLogo || "https://www.bexoni.com/favicon.ico";
             
@@ -331,6 +331,11 @@ export async function POST(request: Request) {
   
             } catch (emailError: any) {
                 console.error("SendGrid Error:", emailError);
+                if (emailError.response) {
+                    console.error("SendGrid Error Response:", emailError.response.body);
+                    console.error("SendGrid Error Status:", emailError.response.statusCode);
+                }
+                console.error("Full Error Details:", JSON.stringify(emailError, null, 2));
             }
           }
         }

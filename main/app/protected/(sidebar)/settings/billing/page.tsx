@@ -20,7 +20,7 @@ export default async function page({}: Props) {
   }
 
   return (
-    <div>
+    <div className="max-w-4xl p-6 space-y-6">
       <SubscribeForm
         user={user}
         userOrganization={userOrganization}

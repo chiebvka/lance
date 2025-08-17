@@ -18,7 +18,7 @@ export default async function page({}: Props) {
     return redirect('/error')
   }
 
-  console.log(initialInvoices)
+  // console.log(initialInvoices)
 
   return (
     <div className='w-full py-4 px-6 border border-bexoni'>

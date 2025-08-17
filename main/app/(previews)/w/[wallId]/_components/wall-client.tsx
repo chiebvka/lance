@@ -3,6 +3,7 @@
 import React from 'react'
 import { usePublicWall } from '@/hooks/walls/use-public-wall'
 import WallDisplay from './wall-display'
+import { Bubbles } from 'lucide-react'
 
 interface Props {
   wallId: string
@@ -15,8 +16,9 @@ export default function WallClient({ wallId, token }: Props) {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+        <div className="text-center flex flex-col items-center justify-center">
+        <Bubbles className="mr-2 h-4 w-4 text-primary animate-spin [animation-duration:0.5s]" />
+          {/* <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div> */}
           <p className="text-gray-600">Loading wall...</p>
         </div>
       </div>
@@ -32,7 +34,7 @@ export default function WallClient({ wallId, token }: Props) {
             {error?.message || 'The requested wall could not be found or may be private.'}
           </p>
           <p className="text-sm text-gray-500">
-            If you have a token, make sure it's included in the URL.
+            This wall is a private wall that has some missing requirements to be viewed, please contact whoever sent you this link to get access
           </p>
         </div>
       </div>

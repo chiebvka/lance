@@ -882,61 +882,7 @@ export type Database = {
             foreignKeyName: "link_items_page_id_fkey"
             columns: ["page_id"]
             isOneToOne: false
-            referencedRelation: "links"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      links: {
-        Row: {
-          analytics: Json | null
-          content: Json | null
-          created_at: string
-          createdBy: string | null
-          customerId: string | null
-          id: string
-          organizationId: string | null
-          private: boolean | null
-          state: string | null
-          type: string | null
-        }
-        Insert: {
-          analytics?: Json | null
-          content?: Json | null
-          created_at?: string
-          createdBy?: string | null
-          customerId?: string | null
-          id?: string
-          organizationId?: string | null
-          private?: boolean | null
-          state?: string | null
-          type?: string | null
-        }
-        Update: {
-          analytics?: Json | null
-          content?: Json | null
-          created_at?: string
-          createdBy?: string | null
-          customerId?: string | null
-          id?: string
-          organizationId?: string | null
-          private?: boolean | null
-          state?: string | null
-          type?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "links_customerId_fkey"
-            columns: ["customerId"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "links_organizationId_fkey"
-            columns: ["organizationId"]
-            isOneToOne: false
-            referencedRelation: "organization"
+            referencedRelation: "paths"
             referencedColumns: ["id"]
           },
         ]
@@ -1188,6 +1134,87 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      paths: {
+        Row: {
+          analytics: Json | null
+          content: Json | null
+          created_at: string
+          createdBy: string | null
+          customerId: string | null
+          description: string | null
+          id: string
+          name: string | null
+          organizationEmail: string | null
+          organizationId: string | null
+          organizationLogo: string | null
+          organizationName: string | null
+          private: boolean | null
+          recepientEmail: string | null
+          recepientName: string | null
+          state: string | null
+          token: string | null
+          type: string | null
+          updatedAt: string | null
+        }
+        Insert: {
+          analytics?: Json | null
+          content?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          description?: string | null
+          id?: string
+          name?: string | null
+          organizationEmail?: string | null
+          organizationId?: string | null
+          organizationLogo?: string | null
+          organizationName?: string | null
+          private?: boolean | null
+          recepientEmail?: string | null
+          recepientName?: string | null
+          state?: string | null
+          token?: string | null
+          type?: string | null
+          updatedAt?: string | null
+        }
+        Update: {
+          analytics?: Json | null
+          content?: Json | null
+          created_at?: string
+          createdBy?: string | null
+          customerId?: string | null
+          description?: string | null
+          id?: string
+          name?: string | null
+          organizationEmail?: string | null
+          organizationId?: string | null
+          organizationLogo?: string | null
+          organizationName?: string | null
+          private?: boolean | null
+          recepientEmail?: string | null
+          recepientName?: string | null
+          state?: string | null
+          token?: string | null
+          type?: string | null
+          updatedAt?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "links_customerId_fkey"
+            columns: ["customerId"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "links_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
           },
         ]
       }

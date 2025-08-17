@@ -246,7 +246,7 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
 
     // Get organization information when sending feedback (not for drafts)
     let organizationName = null;
-    let organizationLogoUrl = null;
+    let organizationLogo = null;
     let organizationEmail = null;
 
     if (action === "send_feedback") {
@@ -269,25 +269,25 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
                 if (organization) {
                     // Set organization fields with fallbacks
                     organizationName = organization.name || (profile.email ? profile.email.split('@')[0] : null);
-                    organizationLogoUrl = organization.logoUrl || null; // Empty fallback as requested
+                    organizationLogo = organization.logoUrl || null; // Empty fallback as requested
                     organizationEmail = organization.email || profile.email;
                 } else {
                     // Organization not found, use profile fallbacks
                     organizationName = profile.email ? profile.email.split('@')[0] : null;
-                    organizationLogoUrl = null;
+                    organizationLogo = null;
                     organizationEmail = profile.email;
                 }
             } else {
                 // No organization linked, use profile fallbacks
                 organizationName = profile.email ? profile.email.split('@')[0] : null;
-                organizationLogoUrl = null;
+                organizationLogo = null;
                 organizationEmail = profile.email;
             }
         }
 
         console.log("Organization data retrieved:", {
             organizationName,
-            organizationLogoUrl,
+            organizationLogo,
             organizationEmail
         });
     }
@@ -320,7 +320,7 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
             // Add organization fields only when sending feedback
             ...(action === "send_feedback" && {
                 organizationName,
-                organizationLogoUrl,
+                organizationLogo,
                 organizationEmail
             })
         })

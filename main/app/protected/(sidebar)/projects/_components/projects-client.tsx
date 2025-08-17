@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useMemo, useRef, useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { parseAsArrayOf, parseAsIsoDateTime, parseAsString, useQueryStates } from 'nuqs'
 import axios from 'axios'
 import { format, parseISO, isWithinInterval, isSameDay } from "date-fns"
 import { type DateRange } from "react-day-picker"
@@ -52,7 +52,9 @@ import { projectCreateSchema } from '@/validation/projects'
 import deliverableSchema from '@/validation/deliverables'
 import paymentTermSchema from '@/validation/payment'
 import { Project } from '@/validation/forms/project'
-import { useProjects } from '@/hooks/projects/use-projects'
+import { useProjects, useDeleteProject, fetchProject } from '@/hooks/projects/use-projects'
+import { useCustomers } from '@/hooks/customers/use-customers'
+import { useOrganization } from '@/hooks/organizations/use-organization'
 import ProjectClientSkeleton from './project-client-skeleton'
 import Pagination from '@/components/pagination'
 import JSZip from 'jszip'
@@ -128,30 +130,80 @@ export default function ProjectsClient({ initialProjects }: Props) {
   const editCloseRef = useRef<HTMLButtonElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
-  const [filterTags, setFilterTags] = useState<FilterTag[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-  
-  const [activeFilters, setActiveFilters] = useState<{
-    state: string[];
-    paymentType: string[];
-    hasServiceAgreement: string[];
-    type: string[];
-    date?: DateRange;
-  }>({
-    state: [],
-    paymentType: [],
-    hasServiceAgreement: [],
-    type: [],
-    date: undefined,
-  });
+  // nuqs for URL params (replaces useSearchParams, big useEffect, updateURL)
+  const [params, setParams] = useQueryStates({
+    query: parseAsString.withDefault(''),
+    projectId: parseAsString.withOptions({ clearOnDefault: true }), // null to remove
+    type: parseAsString.withDefault('details'),
+    state: parseAsArrayOf(parseAsString).withDefault([]),
+    paymentType: parseAsArrayOf(parseAsString).withDefault([]),
+    hasServiceAgreement: parseAsArrayOf(parseAsString).withDefault([]),
+    projectType: parseAsArrayOf(parseAsString).withDefault([]),
+    dateFrom: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    dateTo: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+  }, { history: 'push' }); // Push to URL on change
+
+  // Derive activeFilters from params
+  const activeFilters = useMemo(() => ({
+    state: params.state,
+    paymentType: params.paymentType,
+    hasServiceAgreement: params.hasServiceAgreement,
+    type: params.projectType,
+    date: params.dateFrom ? { from: params.dateFrom, to: params.dateTo ?? undefined } : undefined,
+  }), [params]);
+
+  // Build filterTags from activeFilters
+  const filterTags = useMemo(() => {
+    const tags: FilterTag[] = [];
+
+    if (activeFilters.date?.from) {
+      let label = format(activeFilters.date.from, 'PPP');
+      if (activeFilters.date.to) {
+        label = `${format(activeFilters.date.from, 'PPP')} - ${format(activeFilters.date.to, 'PPP')}`;
+      }
+      tags.push({ key: 'date-range', label: 'Date', value: label });
+    }
+
+    activeFilters.state.forEach(value => {
+      tags.push({ 
+        key: `state-${value}`, 
+        label: 'State', 
+        value: value.charAt(0).toUpperCase() + value.slice(1) 
+      });
+    });
+
+    activeFilters.type.forEach(value => {
+      tags.push({ 
+        key: `type-${value}`, 
+        label: 'Type', 
+        value: value.charAt(0).toUpperCase() + value.slice(1) 
+      });
+    });
+
+    activeFilters.paymentType.forEach(value => {
+      const label = paymentTypeOptions.find(p => p.value === value)?.label || value;
+      tags.push({ 
+        key: `paymentType-${value}`, 
+        label: 'Payment Type', 
+        value: label 
+      });
+    });
+
+    activeFilters.hasServiceAgreement.forEach(value => {
+      const label = value === 'true' ? 'Yes' : 'No';
+      tags.push({ 
+        key: `hasServiceAgreement-${value}`, 
+        label: 'Service Agreement', 
+        value: label 
+      });
+    });
+
+    return tags;
+  }, [activeFilters]);
 
   const { 
     data: projects = [], 
@@ -159,6 +211,10 @@ export default function ProjectsClient({ initialProjects }: Props) {
     isError, 
     error 
   } = useProjects(initialProjects);
+
+  // Load customers and organization data for forms
+  const { data: customers = [] } = useCustomers();
+  const { data: organization } = useOrganization();
 
   // --- Table State ---
   const [rowSelection, setRowSelection] = useState({})
@@ -180,89 +236,9 @@ export default function ProjectsClient({ initialProjects }: Props) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
 
-  // Single comprehensive useEffect to handle all initialization
+  // Simple hydration effect
   useEffect(() => {
-    // Mark as hydrated
     setIsHydrated(true);
-
-    // Extract URL parameters
-    const query = searchParams.get('query') || '';
-    const projectId = searchParams.get('projectId');
-    const stateFilters = searchParams.getAll('state');
-    const paymentTypeFilters = searchParams.getAll('paymentType');
-    const agreementFilters = searchParams.getAll('hasServiceAgreement');
-    const typeFilters = searchParams.getAll('projectType');
-    const dateFrom = searchParams.get('dateFrom');
-    const dateTo = searchParams.get('dateTo');
-
-    // Update state from URL
-    setSearchQuery(query);
-    setSelectedProjectId(projectId);
-
-    // Build date range
-    let dateRange: DateRange | undefined = undefined;
-    if (dateFrom) {
-      dateRange = { from: parseISO(dateFrom) };
-      if (dateTo) {
-        dateRange.to = parseISO(dateTo);
-      }
-    }
-
-    // Update active filters
-    setActiveFilters({
-      state: stateFilters,
-      paymentType: paymentTypeFilters,
-      hasServiceAgreement: agreementFilters,
-      type: typeFilters,
-      date: dateRange,
-    });
-
-    // Build filter tags array
-    const tags: FilterTag[] = [];
-
-    if (dateRange?.from) {
-      let label = format(dateRange.from, 'PPP');
-      if (dateRange.to) {
-        label = `${format(dateRange.from, 'PPP')} - ${format(dateRange.to, 'PPP')}`;
-      }
-      tags.push({ key: 'date-range', label: 'Date', value: label });
-    }
-
-    stateFilters.forEach(value => {
-      tags.push({ 
-        key: `state-${value}`, 
-        label: 'State', 
-        value: value.charAt(0).toUpperCase() + value.slice(1) 
-      });
-    });
-
-    typeFilters.forEach(value => {
-      tags.push({ 
-        key: `type-${value}`, 
-        label: 'Type', 
-        value: value.charAt(0).toUpperCase() + value.slice(1) 
-      });
-    });
-
-    paymentTypeFilters.forEach(value => {
-      const label = paymentTypeOptions.find(p => p.value === value)?.label || value;
-      tags.push({ 
-        key: `paymentType-${value}`, 
-        label: 'Payment Type', 
-        value: label 
-      });
-    });
-
-    agreementFilters.forEach(value => {
-      const label = value === 'true' ? 'Yes' : 'No';
-      tags.push({ 
-        key: `hasServiceAgreement-${value}`, 
-        label: 'Service Agreement', 
-        value: label 
-      });
-    });
-
-    setFilterTags(tags);
 
     // Load saved column visibility after hydration
     if (typeof window !== 'undefined') {
@@ -276,7 +252,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
       
       setColumnVisibility(newState);
     }
-  }, [searchParams]);
+  }, []);
 
   // Persist column visibility to cookie on change (only after hydration)
   useEffect(() => {
@@ -292,12 +268,12 @@ export default function ProjectsClient({ initialProjects }: Props) {
     let filtered = [...projects];
 
     // Apply search query - search in name, description, customer name, and type
-    if (searchQuery) {
+    if (params.query) {
       filtered = filtered.filter(project => 
-        project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.type?.toLowerCase().includes(searchQuery.toLowerCase())
+        project.name?.toLowerCase().includes(params.query.toLowerCase()) ||
+        project.description?.toLowerCase().includes(params.query.toLowerCase()) ||
+        project.customerName?.toLowerCase().includes(params.query.toLowerCase()) ||
+        project.type?.toLowerCase().includes(params.query.toLowerCase())
       );
     }
 
@@ -347,31 +323,13 @@ export default function ProjectsClient({ initialProjects }: Props) {
     }
 
     return filtered;
-  }, [projects, searchQuery, activeFilters]);
+  }, [projects, params.query, activeFilters]);
 
   const projectBeingEdited = useMemo(() => {
-    return projects.find(p => p.id === selectedProjectId)
-  }, [projects, selectedProjectId])
+    return projects.find(p => p.id === params.projectId)
+  }, [projects, params.projectId])
 
-  const deleteProjectMutation = useMutation({
-    mutationFn: async (projectId: string) => {
-      return axios.delete(`/api/projects/${projectId}`);
-    },
-    onSuccess: () => {
-      toast.success("Project deleted successfully!");
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      
-      const currentParams = new URLSearchParams(searchParams.toString());
-      currentParams.delete('projectId');
-      const newUrl = currentParams.toString() ? `${pathname}?${currentParams.toString()}` : pathname;
-      router.replace(newUrl);
-    },
-    onError: (error: any) => {
-      console.error("Delete project error:", error.response?.data);
-      const errorMessage = error.response?.data?.error || "Failed to delete project";
-      toast.error(errorMessage);
-    },
-  });
+  const deleteProjectMutation = useDeleteProject();
 
   const table = useReactTable({
     data: filteredProjects,
@@ -430,15 +388,31 @@ export default function ProjectsClient({ initialProjects }: Props) {
     try {
       if (selectedProjects.length === 1) {
         const project = selectedProjects[0]
+        
+        // Fetch full project details with deliverables and service agreement
+        let fullProject;
+        try {
+          fullProject = await fetchProject(project.id);
+        } catch (error) {
+          console.warn(`Failed to fetch full details for project ${project.id}, using basic data`);
+          fullProject = project;
+        }
+
         const projectData: ProjectPDFData = {
-          id: project.id,
-          name: project.name,
-          description: project.description,
-          type: (project.type as any) || null,
-          customerName: project.customerName,
-          budget: project.budget,
-          currency: project.currency,
-          endDate: project.endDate,
+          id: fullProject.id,
+          name: fullProject.name,
+          description: fullProject.description,
+          type: (fullProject.type as any) || null,
+          customerName: fullProject.customerName,
+          budget: fullProject.budget,
+          currency: fullProject.currency,
+          endDate: fullProject.endDate,
+          deliverables: (fullProject as any).deliverables?.map((d: any) => ({
+            name: d.name ?? null,
+            description: d.description ?? null,
+            dueDate: d.dueDate ?? null,
+          })) || [],
+          serviceAgreement: (fullProject as any).serviceAgreement ?? null,
         }
 
         const filename = project.name ? `${sanitizeFilename(project.name)}.pdf` : `project-${project.id}.pdf`
@@ -488,15 +462,30 @@ export default function ProjectsClient({ initialProjects }: Props) {
             { id: loadingToast, duration: Infinity, className: 'w-[380px] p-4' }
           )
 
+          // Fetch full project details with deliverables and service agreement
+          let fullProject;
+          try {
+            fullProject = await fetchProject(project.id);
+          } catch (error) {
+            console.warn(`Failed to fetch full details for project ${project.id}, using basic data`);
+            fullProject = project;
+          }
+
           const projectData: ProjectPDFData = {
-            id: project.id,
-            name: project.name,
-            description: project.description,
-            type: (project.type as any) || null,
-            customerName: project.customerName,
-            budget: project.budget,
-            currency: project.currency,
-            endDate: project.endDate,
+            id: fullProject.id,
+            name: fullProject.name,
+            description: fullProject.description,
+            type: (fullProject.type as any) || null,
+            customerName: fullProject.customerName,
+            budget: fullProject.budget,
+            currency: fullProject.currency,
+            endDate: fullProject.endDate,
+            deliverables: (fullProject as any).deliverables?.map((d: any) => ({
+              name: d.name ?? null,
+              description: d.description ?? null,
+              dueDate: d.dueDate ?? null,
+            })) || [],
+            serviceAgreement: (fullProject as any).serviceAgreement ?? null,
           }
 
           let baseName = project.name || `project-${project.id}`
@@ -599,108 +588,29 @@ export default function ProjectsClient({ initialProjects }: Props) {
     )
   }
 
-  const updateURL = (newFilters: typeof activeFilters, search?: string) => {
-    const params = new URLSearchParams(searchParams);
-    
-    // Update search query
-    if (search !== undefined) {
-      if (search) {
-        params.set('query', search);
-      } else {
-        params.delete('query');
-      }
-    }
-
-    // Clear existing filter params
-    params.delete('state');
-    params.delete('projectType');
-    params.delete('paymentType');
-    params.delete('hasServiceAgreement');
-    params.delete('dateFrom');
-    params.delete('dateTo');
-
-    // Add new filter params
-    if (newFilters.date?.from) {
-      params.append('dateFrom', newFilters.date.from.toISOString());
-      if (newFilters.date.to) {
-        params.append('dateTo', newFilters.date.to.toISOString());
-      }
-    }
-    newFilters.state.forEach(value => params.append('state', value));
-    newFilters.type.forEach(value => params.append('projectType', value));
-    newFilters.paymentType.forEach(value => params.append('paymentType', value));
-    newFilters.hasServiceAgreement.forEach(value => params.append('hasServiceAgreement', value));
-
-    router.replace(`${pathname}?${params.toString()}`);
-  };
-
   const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    updateURL(activeFilters, value);
+    setParams({ query: value || null });
   };
 
   const handleDateChange = (date: DateRange | undefined) => {
-    const newFilters = { ...activeFilters, date };
-    setActiveFilters(newFilters);
-    updateURL(newFilters);
-    updateFilterTags('date', date, !!date);
+    setParams({ 
+      dateFrom: date?.from || null,
+      dateTo: date?.to || null,
+    });
   }
 
   const handleFilterChange = (filterType: 'state' | 'paymentType' | 'hasServiceAgreement' | 'type', value: string, checked: boolean) => {
-    const newFilters = { ...activeFilters };
+    const currentValues = params[filterType === 'type' ? 'projectType' : filterType];
+    let newValues: string[];
+    
     if (checked) {
-      newFilters[filterType] = [...newFilters[filterType], value];
+      newValues = [...currentValues, value];
     } else {
-      newFilters[filterType] = newFilters[filterType].filter(item => item !== value);
+      newValues = currentValues.filter(item => item !== value);
     }
     
-    setActiveFilters(newFilters);
-    updateURL(newFilters);
-    updateFilterTags(filterType, value, checked);
-  };
-
-  const updateFilterTags = (filterType: 'state' | 'paymentType' | 'hasServiceAgreement' | 'type' | 'date', value: string | DateRange | undefined, checked: boolean) => {
-    setFilterTags(prev => {
-      if (filterType === 'date') {
-        const existingTagIndex = prev.findIndex(tag => tag.key === 'date-range');
-        if (checked && value && typeof value !== 'string') {
-          const date = value as DateRange;
-          let dateLabel = format(date.from!, "PPP");
-          if (date.to) {
-            dateLabel = `${format(date.from!, "PPP")} - ${format(date.to, "PPP")}`;
-          }
-          const newTag = { key: 'date-range', label: 'Date', value: dateLabel, className: 'w-auto' };
-          if (existingTagIndex > -1) {
-            const newTags = [...prev];
-            newTags[existingTagIndex] = newTag;
-            return newTags;
-          }
-          return [...prev, newTag];
-        }
-        return prev.filter(tag => tag.key !== 'date-range');
-      }
-      
-      const key = `${filterType}-${value}`;
-      if (checked && typeof value === 'string') {
-        let label = '';
-        if (filterType === 'state') label = 'State';
-        if (filterType === 'type') label = 'Type';
-        if (filterType === 'paymentType') label = 'Payment Type';
-        if (filterType === 'hasServiceAgreement') label = 'Service Agreement';
-        
-        let displayValue = '';
-        if (filterType === 'paymentType') {
-          displayValue = paymentTypeOptions.find(p => p.value === value)?.label || value as string;
-        } else if (filterType === 'hasServiceAgreement') {
-          displayValue = value === 'true' ? 'Yes' : 'No';
-        } else {
-          displayValue = value.charAt(0).toUpperCase() + value.slice(1);
-        }
-        
-        return [...prev, { key, label, value: displayValue }];
-      } else {
-        return prev.filter(tag => tag.key !== key);
-      }
+    setParams({ 
+      [filterType === 'type' ? 'projectType' : filterType]: newValues.length > 0 ? newValues : null 
     });
   };
 
@@ -714,33 +624,28 @@ export default function ProjectsClient({ initialProjects }: Props) {
   };
 
   const handleClearAllFilters = () => {
-    setActiveFilters({ state: [], paymentType: [], hasServiceAgreement: [], type: [], date: undefined });
-    setFilterTags([]);
-    updateURL({ state: [], paymentType: [], hasServiceAgreement: [], type: [], date: undefined });
+    setParams({
+      state: null,
+      paymentType: null,
+      hasServiceAgreement: null,
+      projectType: null,
+      dateFrom: null,
+      dateTo: null,
+    });
   };
 
   const handleProjectSelect = (projectId: string) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('projectId', projectId);
-    router.push(`${pathname}?${params.toString()}`);
+    setParams({ projectId, type: 'details' });
   };
 
   const handleCreateSuccess = () => {
     closeRef.current?.click();
-    // Remove createProject param
-    const params = new URLSearchParams(searchParams);
-    params.delete('createProject');
-    router.replace(`${pathname}?${params.toString()}`);
     queryClient.invalidateQueries({ queryKey: ['projects'] });
   };
 
   const handleEditSuccess = () => {
     editCloseRef.current?.click();
-    setSelectedProjectId(null);
-    // Remove projectId param
-    const params = new URLSearchParams(searchParams);
-    params.delete('projectId');
-    router.replace(`${pathname}?${params.toString()}`);
+    setParams({ projectId: null });
     queryClient.invalidateQueries({ queryKey: ['projects'] });
   };
 
@@ -770,24 +675,29 @@ export default function ProjectsClient({ initialProjects }: Props) {
   };
 
   const handleCloseSheet = () => {
-    router.push("/protected/projects");
-    setSelectedProjectId(null);
+    setParams({ projectId: null });
   };
 
   const handleCreateCancel = () => {
     closeRef.current?.click();
-    const params = new URLSearchParams(searchParams);
-    params.delete('createProject');
-    router.replace(`${pathname}?${params.toString()}`);
   }
 
   const handleDeleteFromSheet = () => {
     setDeleteModalOpen(true)
   }
 
-  const handleConfirmDelete = () => {
-    if (selectedProjectId) {
-      deleteProjectMutation.mutate(selectedProjectId)
+  const handleConfirmDelete = async () => {
+    if (params.projectId) {
+      try {
+        await deleteProjectMutation.mutateAsync(params.projectId)
+        toast.success("Project deleted successfully!")
+        
+        setParams({ projectId: null });
+      } catch (error: any) {
+        console.error("Delete project error:", error.response?.data);
+        const errorMessage = error.response?.data?.error || "Failed to delete project";
+        toast.error(errorMessage);
+      }
     }
     setDeleteModalOpen(false)
   }
@@ -1033,8 +943,8 @@ export default function ProjectsClient({ initialProjects }: Props) {
     return <div className="p-8">Error fetching projects: {(error as Error).message}</div>;
   }
 
-  // Get the sheet type from URL
-  const sheetType = searchParams.get('type') || 'details';
+  // Get the sheet type from params
+  const sheetType = params.type;
 
   return (
     <>
@@ -1074,7 +984,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
       />
 
       {/* Project Sheets */}
-      <Sheet open={!!selectedProjectId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
+      <Sheet open={!!params.projectId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
         <SheetContent 
           side="right" 
           bounce="right" 
@@ -1090,7 +1000,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
               <SheetTitle>
                 {sheetType === 'details' ? 'Project Details' : 'Edit Project'}
               </SheetTitle>
-              {selectedProjectId && sheetType === 'details' && (
+              {params.projectId && sheetType === 'details' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1105,14 +1015,14 @@ export default function ProjectsClient({ initialProjects }: Props) {
             </div>
           </SheetHeader>
           <ScrollArea className="flex-grow">
-            {selectedProjectId && projectBeingEdited && (
+            {params.projectId && projectBeingEdited && (
               sheetType === 'details' ? (
                 <ProjectDetailsSheet project={projectBeingEdited} />
               ) : (
                 <div className="p-4">
                   <EditProjectForm 
                     ref={editFormRef}
-                    projectId={selectedProjectId} 
+                    projectId={params.projectId} 
                     onSuccess={handleEditSuccess} 
                     onLoadingChange={setIsSubmitting} 
                     onCancel={handleCloseSheet}
@@ -1142,12 +1052,9 @@ export default function ProjectsClient({ initialProjects }: Props) {
           <DataTable 
             table={table} 
             onProjectSelect={(projectId: string) => {
-              const params = new URLSearchParams(searchParams);
-              params.set('projectId', projectId);
-              params.set('type', 'details');
-              router.push(`${pathname}?${params.toString()}`);
+              setParams({ projectId, type: 'details' });
             }} 
-            searchQuery={searchQuery}
+            searchQuery={params.query}
           />
           <Pagination
             currentPage={table.getState().pagination.pageIndex + 1}

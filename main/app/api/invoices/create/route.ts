@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
 async function sendInvoiceEmail(supabase: any, user: any, invoice: any, recipientEmail: string, recepientName: string | null, organizationName: string, logoUrl: string) {
   try {
     const fromEmail = 'no_reply@invoices.bexforte.com';
-    const fromName = 'Bexforte';
+    const fromName = 'Bexbot';
     const senderName = organizationName || 'Bexforte';
 
     const finalLogoUrl = logoUrl || "https://www.bexoni.com/favicon.ico";
