@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import { toast } from 'sonner'
 
 /* ─────────────────────────────
  * Bexforte Paths (aka Links) – content model stored in links.content
@@ -157,7 +158,7 @@ export function useDeletePath() {
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: async (pathId: string) => {
-            const { data } = await axios.delete<{ success: boolean }>(`/api/paths/${pathId}`)
+            const { data } = await axios.delete(`/api/paths/${pathId}`)
             if (!data.success) throw new Error('Error deleting path')
             return data
         },
@@ -165,6 +166,119 @@ export function useDeletePath() {
             queryClient.invalidateQueries({ queryKey: ['paths'] })
         },
     })
+}
+
+// Path action mutations for the details sheet
+export function usePublishPath() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ pathId, isPrivate, customerId, emailToCustomer }: { 
+      pathId: string; 
+      isPrivate: boolean; 
+      customerId?: string | null; 
+      emailToCustomer?: boolean 
+    }) => {
+      const { data } = await axios.put(`/api/paths/${pathId}`, { 
+        action: 'publish',
+        protect: isPrivate,
+        customerId: customerId || null,
+        emailToCustomer: emailToCustomer || false
+      })
+      if (!data.success) throw new Error('Error publishing path')
+      return data
+    },
+    onSuccess: (_, { pathId }) => {
+      toast.success('Path published successfully!')
+      queryClient.invalidateQueries({ queryKey: ['paths'] })
+      queryClient.invalidateQueries({ queryKey: ['path', pathId] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to publish path')
+    },
+  })
+}
+
+export function useUnpublishPath() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (pathId: string) => {
+      const { data } = await axios.put(`/api/paths/${pathId}`, { 
+        action: 'save_draft',
+        protect: false,
+        customerId: null
+      })
+      if (!data.success) throw new Error('Error unpublishing path')
+      return data
+    },
+    onSuccess: (_, pathId) => {
+      toast.success('Path unpublished successfully!')
+      queryClient.invalidateQueries({ queryKey: ['paths'] })
+      queryClient.invalidateQueries({ queryKey: ['path', pathId] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to unpublish path')
+    },
+  })
+}
+
+export function useChangePathPrivacy() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ pathId, isPrivate, customerId, emailToCustomer }: { 
+      pathId: string; 
+      isPrivate: boolean; 
+      customerId?: string | null; 
+      emailToCustomer?: boolean 
+    }) => {
+      const { data } = await axios.put(`/api/paths/${pathId}`, { 
+        action: 'save_draft',
+        protect: isPrivate,
+        customerId: customerId || null,
+        emailToCustomer: emailToCustomer || false
+      })
+      if (!data.success) throw new Error('Error changing path privacy')
+      return data
+    },
+    onSuccess: (_, { pathId }) => {
+      toast.success('Path privacy updated successfully!')
+      queryClient.invalidateQueries({ queryKey: ['paths'] })
+      queryClient.invalidateQueries({ queryKey: ['path', pathId] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to change path privacy')
+    },
+  })
+}
+
+export function useAssignPathToCustomer() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ pathId, customerId, emailToCustomer }: { 
+      pathId: string; 
+      customerId: string; 
+      emailToCustomer: boolean 
+    }) => {
+      const { data } = await axios.put(`/api/paths/${pathId}`, { 
+        action: 'send_path',
+        protect: true,
+        customerId,
+        emailToCustomer
+      })
+      if (!data.success) throw new Error('Error assigning path to customer')
+      return data
+    },
+    onSuccess: (_, { emailToCustomer }) => {
+      toast.success(emailToCustomer ? 'Path assigned and email sent!' : 'Path assigned to customer successfully!')
+      queryClient.invalidateQueries({ queryKey: ['paths'] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to assign path to customer')
+    },
+  })
 }
 
 /* ─────────────────────────────

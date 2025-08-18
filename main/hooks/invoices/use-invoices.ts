@@ -3,8 +3,20 @@ import axios from 'axios'
 
 export interface Invoice {
   id: string
-  customerId: string | null
-  projectId: string | null
+  organizationId: {
+      id: string
+      name: string
+      email: string
+      logoUrl: string
+  } | null
+  customerId: {
+      id: string
+      name: string
+  } | null
+  projectId: {
+      id: string
+      name: string
+  } | null
   // Organization data from organization table (most up-to-date)
   organizationLogoUrl: string | null
   organizationNameFromOrg: string | null
@@ -34,7 +46,6 @@ export interface Invoice {
   sentViaEmail: boolean | null
   emailSentAt: string | null
   createdBy: string | null
-  organizationId: string | null
   created_at: string | null
   updatedAt: string | null
   invoiceNumber: string | null
@@ -45,6 +56,11 @@ export interface Invoice {
   projectName: string | null
   allowReminders: boolean | null
   fts: any | null
+  customerName?: string
+  issueDateFormatted?: string
+  dueDateFormatted?: string
+  paidOnFormatted?: string
+  totalAmountFormatted?: string
 }
 
 export interface CreateInvoiceData {
@@ -77,6 +93,11 @@ export interface CreateInvoiceData {
   state?: "draft" | "unassigned" | "sent" | "settled" | "overdue" | "cancelled"
   emailToCustomer?: boolean
   paidOn?: string | null
+  customerName?: string
+  issueDateFormatted?: string
+  dueDateFormatted?: string
+  paidOnFormatted?: string
+  totalAmountFormatted?: string
 }
 
 export async function fetchInvoices(): Promise<Invoice[]> {
@@ -90,6 +111,7 @@ export function useInvoices(initialData?: Invoice[]) {
     queryKey: ['invoices'],
     queryFn: fetchInvoices,
     initialData,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

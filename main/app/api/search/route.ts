@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { ratelimit } from '@/utils/rateLimit';
 import NodeCache from 'node-cache';
 
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 120 });
@@ -36,18 +37,59 @@ export type SearchItem = {
 export async function GET(request: NextRequest) {
     try {
         const supabase = await createClient();
-        const { searchParams } = new URL(request.url);
-        const searchQuery = searchParams.get('searchQuery');
 
-        const cacheKey = searchQuery ? `search_${searchQuery}` : 'recent_default';
+        // Auth check
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Rate limit by IP
+        // const ip = request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? '127.0.0.1';
+        // const { success } = await ratelimit.limit(ip);
+        // if (!success) {
+        //     return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
+        // }
+
+        // Profile/org check
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('organizationId')
+            .eq('profile_id', user.id)
+            .single();
+        if (profileError || !profile?.organizationId) {
+            return NextResponse.json({ error: 'You must be part of an organization to search.' }, { status: 403 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const searchQuery = searchParams.get('searchQuery')?.trim();
+
+        const cacheKey = searchQuery ? `search_${searchQuery}_${profile.organizationId}` : `recent_${profile.organizationId}`;
         const cachedResult = cache.get(cacheKey);
         if (cachedResult) {
-            return Response.json(cachedResult);
+            return NextResponse.json(cachedResult);
+        }
+
+        const userKey = user.id;
+        const orgId = profile.organizationId as string;
+        const q = (searchQuery ?? '').trim();
+        
+        // Better key (user+org+query head) so it scales across orgs
+        const rateKey = `${userKey}:${orgId}:${q.slice(0, 32) || 'recent'}`;
+        
+        // Only enforce in prod, and only for real queries (≥3 chars)
+        // const isProd = process.env.NODE_ENV === 'production';
+        const isProd = process.env.NODE_ENV === 'development';
+        if (isProd && q.length >= 3) {
+          const { success } = await ratelimit.limit(rateKey);
+          if (!success) {
+            return NextResponse.json({ error: 'Too many requests. Slow down a bit.' }, { status: 429 });
+          }
         }
 
         let results: SearchCategory[] = [];
 
-        if (searchQuery && searchQuery.trim() !== '') {
+        if (searchQuery && searchQuery !== '') {
             const { data, error } = await supabase.rpc('smart_universal_search', { search_term: searchQuery });
             if (error) throw error;
             results = formatResults(data);
@@ -58,14 +100,14 @@ export async function GET(request: NextRequest) {
         }
 
         cache.set(cacheKey, results);
-        return Response.json(results, {
+        return NextResponse.json(results, {
             headers: {
                 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120'
             }
         });
     } catch (error: any) {
         console.error('Search API Error:', error);
-        return Response.json(
+        return NextResponse.json(
             { error: 'Internal Server Error', details: error.message },
             { status: 500 }
         );
@@ -113,6 +155,14 @@ function formatResults(data: any[] | null): SearchCategory[] {
         case 'Receipts':
           url += 'receipts';
           idParam = `receiptId=${row.id}`;
+          break;
+        case 'Walls':
+          url += 'walls';
+          idParam = `wallId=${row.id}`;
+          break;
+        case 'Paths':
+          url += 'paths';
+          idParam = `pathId=${row.id}`;
           break;
         default:
           url += categoryTitle.toLowerCase();

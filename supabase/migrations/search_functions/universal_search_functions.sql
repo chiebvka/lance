@@ -39,13 +39,20 @@ WITH direct_matches AS (
     p.id::text                      AS id,
     p.name                          AS name,
     p.status                        AS type,
-    ts_rank(p.fts, websearch_to_tsquery('simple', search_term)) AS rank,
+    CASE 
+      WHEN p.name ILIKE '%' || search_term || '%' THEN 0.9
+      WHEN p."recepientName" ILIKE '%' || search_term || '%' THEN 0.8
+      WHEN p."recepientEmail" ILIKE '%' || search_term || '%' THEN 0.8
+      ELSE ts_rank(p.fts, websearch_to_tsquery('simple', search_term))
+    END AS rank,
     NULL::text                      AS related_category,
     p."customerId"::text            AS customer_id,
     p.id::text                      AS project_id
   FROM projects p
   WHERE p.fts @@ websearch_to_tsquery('simple', search_term)
      OR p.name ILIKE '%' || search_term || '%'
+     OR p."recepientName" ILIKE '%' || search_term || '%'
+     OR p."recepientEmail" ILIKE '%' || search_term || '%'
 
   UNION ALL
   -- Direct invoice hits
@@ -54,13 +61,20 @@ WITH direct_matches AS (
     i.id::text                      AS id,
     i."invoiceNumber"               AS name,
     i.status                        AS type,
-    ts_rank(i.fts, websearch_to_tsquery('simple', search_term)) AS rank,
+    CASE 
+      WHEN i."invoiceNumber" ILIKE '%' || search_term || '%' THEN 0.95
+      WHEN i."recepientName" ILIKE '%' || search_term || '%' THEN 0.8
+      WHEN i."recepientEmail" ILIKE '%' || search_term || '%' THEN 0.8
+      ELSE ts_rank(i.fts, websearch_to_tsquery('simple', search_term))
+    END AS rank,
     NULL::text                      AS related_category,
     i."customerId"::text            AS customer_id,
     i."projectId"::text             AS project_id
   FROM invoices i
   WHERE i.fts @@ websearch_to_tsquery('simple', search_term)
      OR i."invoiceNumber" ILIKE '%' || search_term || '%'
+     OR i."recepientName" ILIKE '%' || search_term || '%'
+     OR i."recepientEmail" ILIKE '%' || search_term || '%'
 
   UNION ALL
   -- Direct feedback hits
@@ -69,13 +83,20 @@ WITH direct_matches AS (
     f.id::text                      AS id,
     (f.questions->>'title')::text   AS name,
     f.state                         AS type,
-    ts_rank(f.fts, websearch_to_tsquery('simple', search_term)) AS rank,
+    CASE 
+      WHEN (f.questions->>'title') ILIKE '%' || search_term || '%' THEN 0.9
+      WHEN f."recepientName" ILIKE '%' || search_term || '%' THEN 0.8
+      WHEN f."recepientEmail" ILIKE '%' || search_term || '%' THEN 0.8
+      ELSE ts_rank(f.fts, websearch_to_tsquery('simple', search_term))
+    END AS rank,
     NULL::text                      AS related_category,
     f."customerId"::text            AS customer_id,
     f."projectId"::text             AS project_id
   FROM feedbacks f
   WHERE f.fts @@ websearch_to_tsquery('simple', search_term)
      OR (f.questions->>'title') ILIKE '%' || search_term || '%'
+     OR f."recepientName" ILIKE '%' || search_term || '%'
+     OR f."recepientEmail" ILIKE '%' || search_term || '%'
 
   UNION ALL
   -- Direct receipt hits
@@ -84,13 +105,64 @@ WITH direct_matches AS (
     r.id::text                      AS id,
     r."receiptNumber"               AS name,
     r.status                        AS type,
-    ts_rank(r.fts, websearch_to_tsquery('simple', search_term)) AS rank,
+    CASE 
+      WHEN r."receiptNumber" ILIKE '%' || search_term || '%' THEN 0.95
+      WHEN r."recepientName" ILIKE '%' || search_term || '%' THEN 0.8
+      WHEN r."recepientEmail" ILIKE '%' || search_term || '%' THEN 0.8
+      ELSE ts_rank(r.fts, websearch_to_tsquery('simple', search_term))
+    END AS rank,
     NULL::text                      AS related_category,
     r."customerId"::text            AS customer_id,
     r."projectId"::text             AS project_id
   FROM receipts r
   WHERE r.fts @@ websearch_to_tsquery('simple', search_term)
      OR r."receiptNumber" ILIKE '%' || search_term || '%'
+     OR r."recepientName" ILIKE '%' || search_term || '%'
+     OR r."recepientEmail" ILIKE '%' || search_term || '%'
+
+  UNION ALL
+  -- Direct walls hits
+  SELECT
+    'walls'                         AS category,
+    w.id::text                      AS id,
+    w.name                          AS name,
+    w.type                          AS type,
+    CASE 
+      WHEN w.name ILIKE '%' || search_term || '%' THEN 0.9
+      WHEN w."recepientName" ILIKE '%' || search_term || '%' THEN 0.8
+      WHEN w."recepientEmail" ILIKE '%' || search_term || '%' THEN 0.8
+      ELSE ts_rank(w.fts, websearch_to_tsquery('simple', search_term))
+    END AS rank,
+    NULL::text                      AS related_category,
+    w."customerId"::text            AS customer_id,
+    w."projectId"::text             AS project_id
+  FROM walls w
+  WHERE w.fts @@ websearch_to_tsquery('simple', search_term)
+     OR w.name ILIKE '%' || search_term || '%'
+     OR w."recepientName" ILIKE '%' || search_term || '%'
+     OR w."recepientEmail" ILIKE '%' || search_term || '%'
+
+  UNION ALL
+  -- Direct paths hits
+  SELECT
+    'paths'                         AS category,
+    pa.id::text                     AS id,
+    pa.name                         AS name,
+    pa.type                         AS type,
+    CASE 
+      WHEN pa.name ILIKE '%' || search_term || '%' THEN 0.9
+      WHEN pa."recepientName" ILIKE '%' || search_term || '%' THEN 0.8
+      WHEN pa."recepientEmail" ILIKE '%' || search_term || '%' THEN 0.8
+      ELSE ts_rank(pa.fts, websearch_to_tsquery('simple', search_term))
+    END AS rank,
+    NULL::text                      AS related_category,
+    pa."customerId"::text           AS customer_id,
+    NULL::text                      AS project_id
+  FROM paths pa
+  WHERE pa.fts @@ websearch_to_tsquery('simple', search_term)
+     OR pa.name ILIKE '%' || search_term || '%'
+     OR pa."recepientName" ILIKE '%' || search_term || '%'
+     OR pa."recepientEmail" ILIKE '%' || search_term || '%'
 ),
 customer_matches AS (
   SELECT customer_id
@@ -99,7 +171,7 @@ customer_matches AS (
   UNION
   SELECT customer_id
   FROM direct_matches
-  WHERE customer_id IS NOT NULL AND category IN ('projects','invoices','feedbacks','receipts')
+  WHERE customer_id IS NOT NULL AND category IN ('projects','invoices','feedbacks','receipts','walls','paths')
 ),
 project_matches AS (
   SELECT project_id
@@ -108,7 +180,7 @@ project_matches AS (
   UNION
   SELECT project_id
   FROM direct_matches
-  WHERE project_id IS NOT NULL AND category IN ('invoices','receipts','feedbacks')
+  WHERE project_id IS NOT NULL AND category IN ('invoices','receipts','feedbacks','walls')
 ),
 related_matches AS (
   -- Projects related to found customers
@@ -234,6 +306,60 @@ related_matches AS (
   WHERE NOT EXISTS (
     SELECT 1 FROM direct_matches dm 
     WHERE dm.category = 'feedbacks' AND dm.id = f.id::text
+  )
+
+  UNION ALL
+  -- Walls related to found customers
+  SELECT
+    'walls'                         AS category,
+    w.id::text                      AS id,
+    w.name                          AS name,
+    w.type                          AS type,
+    0.6                             AS rank,
+    'customers'                     AS related_category,
+    w."customerId"::text            AS customer_id,
+    w."projectId"::text             AS project_id
+  FROM walls w
+  JOIN customer_matches cm ON w."customerId"::text = cm.customer_id
+  WHERE NOT EXISTS (
+    SELECT 1 FROM direct_matches dm 
+    WHERE dm.category = 'walls' AND dm.id = w.id::text
+  )
+
+  UNION ALL
+  -- Walls related to found projects
+  SELECT
+    'walls'                         AS category,
+    w.id::text                      AS id,
+    w.name                          AS name,
+    w.type                          AS type,
+    0.5                             AS rank,
+    'projects'                      AS related_category,
+    w."customerId"::text            AS customer_id,
+    w."projectId"::text             AS project_id
+  FROM walls w
+  JOIN project_matches pm ON w."projectId"::text = pm.project_id
+  WHERE NOT EXISTS (
+    SELECT 1 FROM direct_matches dm 
+    WHERE dm.category = 'walls' AND dm.id = w.id::text
+  )
+
+  UNION ALL
+  -- Paths related to found customers
+  SELECT
+    'paths'                         AS category,
+    pa.id::text                     AS id,
+    pa.name                         AS name,
+    pa.type                         AS type,
+    0.6                             AS rank,
+    'customers'                     AS related_category,
+    pa."customerId"::text           AS customer_id,
+    NULL::text                      AS project_id
+  FROM paths pa
+  JOIN customer_matches cm ON pa."customerId"::text = cm.customer_id
+  WHERE NOT EXISTS (
+    SELECT 1 FROM direct_matches dm 
+    WHERE dm.category = 'paths' AND dm.id = pa.id::text
   )
 )
 

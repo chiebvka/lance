@@ -1,9 +1,10 @@
 import { getAuthenticatedUser } from '@/utils/auth';
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
-import React from 'react'
+import React, { Suspense } from 'react'
 import InvoiceClient from './_components/invoice-client';
-import { getInvoicesWithDetails } from '@/lib/invoice';
+import { getOrganizationInvoices } from '@/lib/invoice';
+
 
 type Props = {}
 
@@ -13,7 +14,7 @@ export default async function page({}: Props) {
 
   let initialInvoices = []
   try {
-    initialInvoices = await getInvoicesWithDetails(supabase, user.id)
+    initialInvoices = await getOrganizationInvoices(supabase)
   } catch {
     return redirect('/error')
   }
@@ -22,7 +23,9 @@ export default async function page({}: Props) {
 
   return (
     <div className='w-full py-4 px-6 border border-bexoni'>
-      <InvoiceClient initialInvoices={initialInvoices} />
+      <Suspense fallback={<div>Loading invoices...</div>}>
+        <InvoiceClient initialInvoices={initialInvoices} userEmail={user?.email ?? null} />
+      </Suspense>
     </div>
   )
 }

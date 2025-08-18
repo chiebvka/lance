@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import { toast } from 'sonner'
 
 export type WallContent = {
     version: number
@@ -153,7 +154,7 @@ export function useDeleteWall() {
     
     return useMutation({
         mutationFn: async (wallId: string) => {
-            const { data } = await axios.delete<{ success: boolean }>(`/api/walls/${wallId}`)
+            const { data } = await axios.delete(`/api/walls/${wallId}`)
             if (!data.success) throw new Error('Error deleting wall')
             return data
         },
@@ -162,6 +163,119 @@ export function useDeleteWall() {
             queryClient.invalidateQueries({ queryKey: ['walls'] })
         },
     })
+}
+
+// Wall action mutations for the details sheet
+export function usePublishWall() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ wallId, isPrivate, customerId, emailToCustomer }: { 
+      wallId: string; 
+      isPrivate: boolean; 
+      customerId?: string | null; 
+      emailToCustomer?: boolean 
+    }) => {
+      const { data } = await axios.put(`/api/walls/${wallId}`, { 
+        action: 'publish',
+        protect: isPrivate,
+        customerId: customerId || null,
+        emailToCustomer: emailToCustomer || false
+      })
+      if (!data.success) throw new Error('Error publishing wall')
+      return data
+    },
+    onSuccess: (_, { wallId }) => {
+      toast.success('Wall published successfully!')
+      queryClient.invalidateQueries({ queryKey: ['walls'] })
+      queryClient.invalidateQueries({ queryKey: ['wall', wallId] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to publish wall')
+    },
+  })
+}
+
+export function useUnpublishWall() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (wallId: string) => {
+      const { data } = await axios.put(`/api/walls/${wallId}`, { 
+        action: 'save_draft',
+        protect: false,
+        customerId: null
+      })
+      if (!data.success) throw new Error('Error unpublishing wall')
+      return data
+    },
+    onSuccess: (_, wallId) => {
+      toast.success('Wall unpublished successfully!')
+      queryClient.invalidateQueries({ queryKey: ['walls'] })
+      queryClient.invalidateQueries({ queryKey: ['wall', wallId] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to unpublish wall')
+    },
+  })
+}
+
+export function useChangeWallPrivacy() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ wallId, isPrivate, customerId, emailToCustomer }: { 
+      wallId: string; 
+      isPrivate: boolean; 
+      customerId?: string | null; 
+      emailToCustomer?: boolean 
+    }) => {
+      const { data } = await axios.put(`/api/walls/${wallId}`, { 
+        action: 'save_draft',
+        protect: isPrivate,
+        customerId: customerId || null,
+        emailToCustomer: emailToCustomer || false
+      })
+      if (!data.success) throw new Error('Error changing wall privacy')
+      return data
+    },
+    onSuccess: (_, { wallId }) => {
+      toast.success('Wall privacy updated successfully!')
+      queryClient.invalidateQueries({ queryKey: ['walls'] })
+      queryClient.invalidateQueries({ queryKey: ['wall', wallId] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to change wall privacy')
+    },
+  })
+}
+
+export function useAssignWallToCustomer() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ wallId, customerId, emailToCustomer }: { 
+      wallId: string; 
+      customerId: string; 
+      emailToCustomer: boolean 
+    }) => {
+      const { data } = await axios.put(`/api/walls/${wallId}`, { 
+        action: 'send_wall',
+        protect: true,
+        customerId,
+        emailToCustomer
+      })
+      if (!data.success) throw new Error('Error assigning wall to customer')
+      return data
+    },
+    onSuccess: (_, { emailToCustomer }) => {
+      toast.success(emailToCustomer ? 'Wall assigned and email sent!' : 'Wall assigned to customer successfully!')
+      queryClient.invalidateQueries({ queryKey: ['walls'] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to assign wall to customer')
+    },
+  })
 }
 
 

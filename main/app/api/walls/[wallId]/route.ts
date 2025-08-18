@@ -230,7 +230,7 @@ export async function PUT(
     // Verify wall exists and belongs to user's organization
     const { data: existingWall, error: wallError } = await supabase
       .from('walls')
-      .select('id, content, state, token, issueDate')
+      .select('id, content, state, token, issueDate, type')
       .eq('id', wallId)
       .eq('organizationId', profile.organizationId)
       .single();
@@ -383,14 +383,23 @@ export async function PUT(
     let state = existingWall.state || "draft";
     if (action === "publish" || action === "send_wall") {
       state = "published";
+    } else if (action === "unpublish") {
+      state = "draft";
     }
 
-    let type = protect || customerId || recipientEmail ? "private" : "public";
+    let type = existingWall.type ?? "public";
+    if (protect !== undefined) {
+      type = protect ? "private" : "public";
+    } else if (customerId || recipientEmail) {
+      type = "private";
+    }
     
-    // Generate token if needed
+    // Generate or delete token based on privacy
     let token = existingWall.token;
-    if ((protect || action === "send_wall" || customerId || recipientEmail) && !token) {
+    if (type === "private" && !token) {
       token = crypto.randomUUID();
+    } else if (type === "public" && token) {
+      token = null;
     }
 
     // Process content to ensure URLs are properly stored

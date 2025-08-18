@@ -39,6 +39,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import { Invoice as InvoiceType } from '@/hooks/invoices/use-invoices'
 
 type Invoice = {
   id: string
@@ -78,7 +79,7 @@ type Invoice = {
 }
 
 type Props = {
-  invoice: Invoice
+  invoice: InvoiceType
 }
 
 const getStateColor = (state: string) => {

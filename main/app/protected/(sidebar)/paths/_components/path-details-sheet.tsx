@@ -4,13 +4,37 @@ import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, Copy, Edit, ExternalLink, FileText, Mail, MessageSquareShare, User } from 'lucide-react';
+import { Calendar, Clock, Copy, Edit, ExternalLink, FileText, Mail, MessageSquareShare, User, Grip, Trash2, UserPlus, X, Check, Ban, Globe, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { baseUrl } from '@/utils/universal';
 import { Path as PathType } from '@/hooks/paths/use-paths';
+import { useCustomers, type Customer } from '@/hooks/customers/use-customers';
+import { useUpdatePath, useDeletePath } from '@/hooks/paths/use-paths';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubTrigger,
+    DropdownMenuSubContent
+} from '@/components/ui/dropdown-menu';
+import ConfirmModal from '@/components/modal/confirm-modal';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+  } from "@/components/ui/command"
+import { cn } from '@/lib/utils';
 
 type Props = {
     path: PathType
@@ -34,7 +58,16 @@ const getStatusColor = (state: string) => {
 export default function PathDetailsSheet({path}: Props) {
 
     const router = useRouter();
+    const queryClient = useQueryClient();
 
+    // Hooks for data and mutations
+    const { data: customers = [] } = useCustomers();
+    const updatePathMutation = useUpdatePath();
+    const deletePathMutation = useDeletePath();
+
+    // State for UI interactions
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [selectedAssignCustomerId, setSelectedAssignCustomerId] = useState<string | null>(null);
       
   // Safety check for undefined wall
   if (!path) {
@@ -62,6 +95,173 @@ export default function PathDetailsSheet({path}: Props) {
         toast.success("Link copied to clipboard!");
       };
 
+  // State management functions
+  const handleDeletePath = async () => {
+    try {
+      await deletePathMutation.mutateAsync(path.id);
+      toast.success("Path deleted successfully!");
+      router.refresh();
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error("Delete path error:", error);
+      toast.error("Failed to delete path");
+    }
+  };
+
+  const handleUnassign = async ({ makePublic = false, unpublish = false }: { makePublic?: boolean; unpublish?: boolean }) => {
+    try {
+      const updateData: any = {
+        action: unpublish ? "unpublish" : "save_draft",
+        name: path.name || "",
+        description: path.description,
+        content: path.content,
+        protect: !makePublic && !unpublish,
+        customerId: null,
+        recipientEmail: null,
+        recepientName: null,
+      };
+
+      await updatePathMutation.mutateAsync({
+        pathId: path.id,
+        pathData: updateData
+      });
+
+      toast.success("Path unassigned successfully!");
+    } catch (error) {
+      console.error('Error unassigning path:', error);
+      toast.error("Failed to unassign path");
+    }
+  };
+
+  const handlePublish = async (isPrivate: boolean, customerId?: string | null, emailToCustomer: boolean = false) => {
+    try {
+      const updateData: any = {
+        action: "publish",
+        name: path.name || "",
+        description: path.description,
+        content: path.content,
+        protect: isPrivate,
+        customerId: customerId || null,
+        recipientEmail: customerId ? undefined : path.recepientEmail,
+        recepientName: customerId ? undefined : path.recepientName,
+      };
+
+      await updatePathMutation.mutateAsync({
+        pathId: path.id,
+        pathData: updateData
+      });
+
+      if (emailToCustomer && customerId) {
+        toast.success("Path published and email sent!");
+      } else {
+        toast.success("Path published successfully!");
+      }
+    } catch (error) {
+      console.error('Error publishing path:', error);
+      toast.error("Failed to publish path");
+    }
+  };
+
+  const handleUnpublish = async () => {
+    try {
+      const updateData: any = {
+        action: "unpublish",
+        name: path.name || "",
+        description: path.description,
+        content: path.content,
+        protect: false,
+        customerId: null,
+        recipientEmail: null,
+        recepientName: null,
+      };
+
+      await updatePathMutation.mutateAsync({
+        pathId: path.id,
+        pathData: updateData
+      });
+
+      toast.success("Path unpublished successfully!");
+    } catch (error) {
+      console.error('Error unpublishing path:', error);
+      toast.error("Failed to unpublish path");
+    }
+  };
+
+  const handleTogglePrivacy = async (newPrivacy: boolean) => {
+    try {
+      const updateData: any = {
+        action: "save_draft",
+        name: path.name || "",
+        description: path.description,
+        content: path.content,
+        protect: newPrivacy,
+      };
+
+      if (!newPrivacy) {
+        updateData.customerId = null;
+        updateData.recipientEmail = null;
+        updateData.recepientName = null;
+      }
+
+      await updatePathMutation.mutateAsync({
+        pathId: path.id,
+        pathData: updateData
+      });
+
+      toast.success(`Path made ${newPrivacy ? 'private' : 'public'} successfully!`);
+    } catch (error) {
+      console.error('Error toggling path privacy:', error);
+      toast.error("Failed to toggle path privacy");
+    }
+  };
+
+  const handleAssignToCustomer = async (customerId: string, emailToCustomer: boolean) => {
+    const selectedCustomer = customers.find(c => c.id === customerId);
+    if (!selectedCustomer) {
+      toast.error("Selected customer not found");
+      return;
+    }
+
+    try {
+      const updateData: any = {
+        action: emailToCustomer ? "send_path" : "save_draft",
+        name: path.name || "",
+        description: path.description,
+        content: path.content,
+        protect: true,
+        customerId: customerId,
+        recipientEmail: selectedCustomer.email,
+        recepientName: selectedCustomer.name,
+      };
+
+      await updatePathMutation.mutateAsync({
+        pathId: path.id,
+        pathData: updateData
+      });
+
+      toast.success(emailToCustomer ? "Path assigned and email sent!" : "Path assigned to customer successfully!");
+    } catch (error) {
+      console.error('Error assigning path to customer:', error);
+      toast.error(emailToCustomer ? "Failed to assign and email customer" : "Failed to assign path to customer");
+    }
+  };
+
+  // Helper function to get available actions based on state and privacy
+  const getAvailableActions = (state: string, isPrivate: boolean) => {
+    const actions = [];
+    
+    if (state === 'draft') {
+      actions.push('publish_public', 'publish_private', 'delete');
+    } else if (state === 'published') {
+      actions.push('unpublish', 'toggle_privacy', 'delete');
+    }
+    
+    return actions;
+  };
+
+  const availableActions = getAvailableActions(state, path.private || false);
+  const isAssigned = path.customerId || path.recepientEmail;
+
   return (
     <div className="p-4">
     <div className="flex items-center justify-between gap-2 pt-2">
@@ -69,9 +269,201 @@ export default function PathDetailsSheet({path}: Props) {
         <span className="text-sm text-muted-foreground">State</span>
         <Badge className={getStatusColor(state)}>{state.charAt(0).toUpperCase() + state.slice(1)}</Badge>
       </span>
-      <span className='flex items-center gap-2'>
+      <div className='flex items-center gap-2'>
         <span className="text-sm text-muted-foreground">Path-{path.id.slice(0, 4)}</span>
-      </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0 border rounded-none">
+              {updatePathMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Grip size={12} />}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {/* Publish options for draft paths */}
+            {availableActions.includes('publish_public') && (
+              <DropdownMenuItem onClick={() => handlePublish(false)} disabled={updatePathMutation.isPending}>
+                <Globe className="w-4 h-4 mr-2" />
+                Publish as Public
+              </DropdownMenuItem>
+            )}
+            
+            {availableActions.includes('publish_private') && (
+              <DropdownMenuItem onClick={() => handlePublish(true)} disabled={updatePathMutation.isPending}>
+                <Lock className="w-4 h-4 mr-2" />
+                Publish as Private
+              </DropdownMenuItem>
+            )}
+            
+            {/* Unpublish for published paths */}
+            {availableActions.includes('unpublish') && (
+              <DropdownMenuItem onClick={handleUnpublish} disabled={updatePathMutation.isPending}>
+                <EyeOff className="w-4 h-4 mr-2" />
+                Unpublish
+              </DropdownMenuItem>
+            )}
+            
+            {/* Privacy toggle for published paths */}
+            {availableActions.includes('toggle_privacy') && (
+              <DropdownMenuItem onClick={() => handleTogglePrivacy(!path.private)} disabled={updatePathMutation.isPending}>
+                {path.private ? (
+                  <>
+                    <Globe className="w-4 h-4 mr-2" />
+                    Make Public
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 mr-2" />
+                    Make Private
+                  </>
+                )}
+              </DropdownMenuItem>
+            )}
+            
+            <DropdownMenuSeparator />
+
+            {isAssigned ? (
+              <>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger disabled={updatePathMutation.isPending}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Update assigned customer
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-72 p-0">
+                    <Command>
+                        <CommandInput placeholder="Search customers..." autoFocus />
+                        <CommandList>
+                        <CommandEmpty>No customers found.</CommandEmpty>
+                        <CommandGroup>
+                            {customers.map((customer) => (
+                            <CommandItem
+                                key={customer.id}
+                                value={customer.name}
+                                onSelect={() => {
+                                setSelectedAssignCustomerId(customer.id)
+                                }}
+                            >
+                                <Check
+                                className={cn(
+                                    "mr-2 h-4 w-4",
+                                    (selectedAssignCustomerId ?? path.customerId) === customer.id ? "opacity-100" : "opacity-0"
+                                )}
+                                />
+                                {customer.name}
+                            </CommandItem>
+                            ))}
+                        </CommandGroup>
+                        </CommandList>
+                    </Command>
+                    <div className="p-2 pt-1 flex gap-2 border-t">
+                        <Button
+                            size="sm"
+                            className="flex-1"
+                            disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
+                            onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
+                        >
+                            {path.customerId ? 'Update only' : 'Assign only'}
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
+                            onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
+                        >
+                            {path.customerId ? 'Update & Email' : 'Assign & Email'}
+                        </Button>
+                    </div>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+                <DropdownMenuSub>
+                    <DropdownMenuSubTrigger disabled={updatePathMutation.isPending}>
+                        <X className="w-4 h-4 mr-2" />
+                        Unassign Customer
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={() => handleUnassign({})} disabled={updatePathMutation.isPending}>
+                            Unassign (keep private)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleUnassign({ makePublic: true })} disabled={updatePathMutation.isPending}>
+                            Unassign & Make Public
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleUnassign({ unpublish: true })} disabled={updatePathMutation.isPending}>
+                            Unassign & Unpublish
+                        </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </>
+            ) : (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger disabled={updatePathMutation.isPending}>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Assign to customer
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-72 p-0">
+                    <Command>
+                        <CommandInput placeholder="Search customers..." autoFocus />
+                        <CommandList>
+                        <CommandEmpty>No customers found.</CommandEmpty>
+                        <CommandGroup>
+                            {customers.map((customer) => (
+                            <CommandItem
+                                key={customer.id}
+                                value={customer.name}
+                                onSelect={() => {
+                                setSelectedAssignCustomerId(customer.id)
+                                }}
+                            >
+                                <Check
+                                className={cn(
+                                    "mr-2 h-4 w-4",
+                                    (selectedAssignCustomerId ?? path.customerId) === customer.id ? "opacity-100" : "opacity-0"
+                                )}
+                                />
+                                {customer.name}
+                            </CommandItem>
+                            ))}
+                        </CommandGroup>
+                        </CommandList>
+                    </Command>
+                    <div className="p-2 pt-1 flex gap-2 border-t">
+                        <Button
+                            size="sm"
+                            className="flex-1"
+                            disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
+                            onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
+                        >
+                            {path.customerId ? 'Update only' : 'Assign only'}
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
+                            onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
+                        >
+                            {path.customerId ? 'Update & Email' : 'Assign & Email'}
+                        </Button>
+                    </div>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+            
+            {/* Delete with separator */}
+            {availableActions.includes('delete') && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="text-red-600"
+                  disabled={updatePathMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
     <Separator />
 
@@ -125,7 +517,7 @@ export default function PathDetailsSheet({path}: Props) {
 
       {/* Wall Link - Always show regardless of state */}
       <div className="space-y-2">
-        <h3 className="font-semibold text-base">Wall Link</h3>
+        <h3 className="font-semibold text-base">Path Link</h3>
         <div className="flex items-center gap-2 p-3 border">
           <Input
             type="text"
@@ -146,7 +538,7 @@ export default function PathDetailsSheet({path}: Props) {
             variant="ghost"
             className="h-7 w-7 p-0"
             onClick={() => window.open(pathLink, "_blank")}
-            title="Open wall"
+            title="Open path"
           >
             <ExternalLink className="w-3 h-3" />
           </Button>
@@ -157,7 +549,7 @@ export default function PathDetailsSheet({path}: Props) {
       <div className="space-y-3">
         <Button 
           className="w-full h-11 text-base"
-          onClick={() => router.push(`/protected/walls/${path.id}`)}
+          onClick={() => router.push(`/protected/paths/${path.id}`)}
         >
           <Edit className="w-4 h-4 mr-2" />
           Edit Path
@@ -187,6 +579,18 @@ export default function PathDetailsSheet({path}: Props) {
         </div>
       </div>
     </div>
+
+    {/* Delete Confirmation Modal */}
+    <ConfirmModal
+      isOpen={isDeleteModalOpen}
+      onClose={() => setIsDeleteModalOpen(false)}
+      onConfirm={handleDeletePath}
+      title="Delete Path"
+      itemName={path.name || path.id.slice(0, 8)}
+      itemType="path"
+      description="This action cannot be undone."
+      isLoading={deletePathMutation.isPending}
+    />
   </div>
   )
 }

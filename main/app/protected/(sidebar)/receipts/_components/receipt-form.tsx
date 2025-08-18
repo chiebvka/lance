@@ -110,8 +110,10 @@ const ReceiptForm = forwardRef<ReceiptFormRef, Props>(({
   
   // Currency state
   const [selectedCurrency, setSelectedCurrency] = useState<Currency>(() => {
+    // Use prop if available, otherwise default to organization's base currency or CAD
     if (propSelectedCurrency) return propSelectedCurrency
-    return currencies[0]
+    const orgCurrency = organization?.baseCurrency || 'CAD'
+    return currencies.find(c => c.code === orgCurrency) || currencies.find(c => c.code === 'CAD')!
   })
 
   // Update local state when prop changes

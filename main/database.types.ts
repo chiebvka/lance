@@ -603,7 +603,7 @@ export type Database = {
           name: string | null
           organizationEmail: string | null
           organizationId: string | null
-          organizationLogoUrl: string | null
+          organizationLogo: string | null
           organizationName: string | null
           projectId: string | null
           questions: Json | null
@@ -629,7 +629,7 @@ export type Database = {
           name?: string | null
           organizationEmail?: string | null
           organizationId?: string | null
-          organizationLogoUrl?: string | null
+          organizationLogo?: string | null
           organizationName?: string | null
           projectId?: string | null
           questions?: Json | null
@@ -655,7 +655,7 @@ export type Database = {
           name?: string | null
           organizationEmail?: string | null
           organizationId?: string | null
-          organizationLogoUrl?: string | null
+          organizationLogo?: string | null
           organizationName?: string | null
           projectId?: string | null
           questions?: Json | null

@@ -139,9 +139,10 @@ export async function PUT(
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
+    // Verify path exists and belongs to user's organization
     const { data: existingPath, error: pathError } = await supabase
       .from('paths')
-      .select('id, state, token')
+      .select('id, state, token, type')
       .eq('id', pathId)
       .eq('organizationId', profile.organizationId)
       .single();
@@ -179,15 +180,26 @@ export async function PUT(
     }
 
     let state = existingPath.state || "draft";
-    if (action === "publish" || action === "send_path") {
-      state = "published";
+    if (action) {
+      if (action === "publish" || action === "send_path") {
+        state = "published";
+      } else if (action === "unpublish") {
+        state = "draft";
+      }
     }
 
-    let type = protect || customerId || recipientEmail ? "private" : "public";
+    let type = existingPath.type ?? "public";
+    if (protect !== undefined) {
+      type = protect ? "private" : "public";
+    } else if (customerId || recipientEmail) {
+      type = "private";
+    }
     
     let token = existingPath.token;
-    if ((protect || action === "send_path" || customerId || recipientEmail) && !token) {
+    if (type === "private" && !token) {
       token = crypto.randomUUID();
+    } else if (type === "public" && token) {
+      token = null;
     }
 
     const updatePayload = {
@@ -265,14 +277,29 @@ export async function DELETE(
       return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("organizationId")
       .eq("profile_id", user.id)
       .single();
 
-    if (!profile?.organizationId) {
+    if (profileError || !profile?.organizationId) {
       return NextResponse.json({ error: "Organization not found" }, { status: 400 });
+    }
+
+    // Check if path exists and belongs to the user's organization
+    const { data: existingPath, error: checkError } = await supabase
+      .from("paths")
+      .select("organizationId")
+      .eq("id", pathId)
+      .single();
+
+    if (checkError || !existingPath) {
+      return NextResponse.json({ error: "Path not found" }, { status: 404 });
+    }
+
+    if (existingPath.organizationId !== profile.organizationId) {
+      return NextResponse.json({ error: "Unauthorized to delete this path" }, { status: 403 });
     }
 
     const { error: deleteError } = await supabase

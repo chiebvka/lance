@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useGlobalSearch } from "@/hooks/search/use-global-search";
 import {
   Folder,
   Users,
@@ -13,6 +13,8 @@ import {
   ArrowRight,
   Loader2,
   FolderSearch2,
+  ExternalLink,
+  Link,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -54,70 +56,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-const fetchSearchResults = async (query: string): Promise<SearchCategory[]> => {
-  const response = await fetch(`/api/search?searchQuery=${encodeURIComponent(query)}`);
-  if (!response.ok) throw new Error("Failed to fetch search results");
-  return response.json();
-};
 
-function formatResults(data: any[] | null): SearchCategory[] {
-    if (!data) return [];
-  
-    const grouped = data.reduce((acc, row) => {
-      const categoryTitle = row.category.charAt(0).toUpperCase() + row.category.slice(1);
-      if (!acc[categoryTitle]) {
-        acc[categoryTitle] = {
-          title: categoryTitle,
-          items: [],
-        };
-      }
-      
-      // Build clean URLs without extra parameters
-      let url = '/protected/';
-      let idParam = '';
-      
-      switch (categoryTitle) {
-        case 'Projects':
-          url += 'projects';
-          idParam = `projectId=${row.id}`;
-          break;
-        case 'Customers':
-          url += 'customers';
-          idParam = `customerId=${row.id}`;
-          break;
-        case 'Invoices':
-          url += 'invoices';
-          idParam = `invoiceId=${row.id}`;
-          break;
-        case 'Feedbacks':
-          url += 'feedback';
-          idParam = `feedbackId=${row.id}`;
-          break;
-        case 'Receipts':
-          url += 'receipts';
-          idParam = `receiptId=${row.id}`;
-          break;
-        default:
-          url += categoryTitle.toLowerCase();
-          idParam = `${categoryTitle.toLowerCase()}Id=${row.id}`;
-      }
-      
-      url += `?${idParam}`;
-  
-      acc[categoryTitle].items.push({
-        id: row.id,
-        name: row.name || 'Unnamed',
-        type: row.type,
-        url,
-        relatedCategory: row.related_category,
-        customerId: row.customerId,
-        projectId: row.projectId,
-      });
-      return acc;
-    }, {} as { [key: string]: SearchCategory });
-  
-    return Object.values(grouped);
-  }
 
 const iconMap: { [key: string]: React.ElementType } = {
   Projects: Folder,
@@ -125,6 +64,8 @@ const iconMap: { [key: string]: React.ElementType } = {
   Invoices: FileText,
   Receipts: Receipt,
   Feedbacks: MessageSquare,
+  Walls: ExternalLink,
+  Paths: Link,
 };
 
 export default function CommandFilter({
@@ -134,19 +75,22 @@ export default function CommandFilter({
   onOpenChange,
 }: SearchFilterProps) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const debouncedQuery = useDebounce(searchQuery, 250);
-  const { data: results = [], isLoading } = useQuery({
-    queryKey: ["universalSearch", debouncedQuery],
-    queryFn: () => fetchSearchResults(debouncedQuery),
-    enabled: isOpen,
-  });
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-
-  // Check if there are any results
-  const hasResults = results.some(category => category.items.length > 0);
-  const showEmptyState = !isLoading && debouncedQuery.trim() !== "" && !hasResults;
+  
+  // Use global search hooks
+  const {
+    searchQuery,
+    setSearchQuery,
+    results,
+    isLoading,
+    hasResults,
+    showEmptyState,
+    isSearchActive,
+    recentItems,
+    debouncedQuery,
+    clearSearch
+  } = useGlobalSearch();
 
   const handleSelect = (url: string) => {
     router.push(url);
@@ -160,11 +104,27 @@ export default function CommandFilter({
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setSelectedIndex((prev) => Math.min(prev + 1, flattenedItems.length - 1));
+        setSelectedIndex((prev) => {
+          const newIndex = Math.min(prev + 1, flattenedItems.length - 1);
+          // Scroll selected item into view
+          setTimeout(() => {
+            const selectedElement = document.querySelector(`[data-selected="true"]`);
+            selectedElement?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }, 0);
+          return newIndex;
+        });
         break;
       case "ArrowUp":
         e.preventDefault();
-        setSelectedIndex((prev) => Math.max(prev - 1, -1));
+        setSelectedIndex((prev) => {
+          const newIndex = Math.max(prev - 1, -1);
+          // Scroll selected item into view
+          setTimeout(() => {
+            const selectedElement = document.querySelector(`[data-selected="true"]`);
+            selectedElement?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }, 0);
+          return newIndex;
+        });
         break;
       case "Enter":
         e.preventDefault();
@@ -181,11 +141,13 @@ export default function CommandFilter({
 
   useEffect(() => {
     if (isOpen) {
-      setSearchQuery("");
       setSelectedIndex(-1);
       inputRef.current?.focus();
+    } else {
+      // Clear search query when dialog closes
+      clearSearch();
     }
-  }, [isOpen]);
+  }, [isOpen, clearSearch]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -201,7 +163,7 @@ export default function CommandFilter({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="pl-10 pr-12 border-border placeholder:text-muted-foreground text-lg h-12 bg-background"
+              className="pl-10 pr-12 border-border placeholder:text-muted-foreground text-lg h-12 bg-background focus:ring-2 focus:ring-bexoni/20"
               autoFocus
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -235,7 +197,13 @@ export default function CommandFilter({
                 </div>
               </div>
             ) : (
-              results.map((category) => {
+              <>
+                {!isSearchActive && (
+                  <div className="mb-4 pb-2 border-b">
+                    <h3 className="text-sm font-medium text-muted-foreground">Recent Items</h3>
+                  </div>
+                )}
+                {results.map((category) => {
                 const IconComponent = iconMap[category.title];
                 return (
                   <div key={category.title} className="space-y-2">
@@ -248,11 +216,12 @@ export default function CommandFilter({
                         category.items.map((item, index) => (
                           <div
                             key={index}
+                            data-selected={selectedIndex === results.flatMap((c) => c.items).indexOf(item)}
                             className={cn(
-                              "flex items-center justify-between p-2 rounded-md hover:bg-muted/50 cursor-pointer group",
+                              "relative flex items-center justify-between p-2 rounded-none hover:bg-bexoni/10 cursor-pointer group transition-colors",
                               selectedIndex === results
                                 .flatMap((c) => c.items)
-                                .indexOf(item) && "bg-accent"
+                                .indexOf(item) && "bg-bexoni/10 text-accent-foreground border-l-2 border-bexoni"
                             )}
                             onClick={() => handleSelect(item.url)}
                           >
@@ -282,7 +251,8 @@ export default function CommandFilter({
                     </div>
                   </div>
                 );
-              })
+                })}
+              </>
             )}
           </div>
         </ScrollArea>

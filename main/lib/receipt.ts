@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Receipt } from '@/hooks/receipts/use-receipts'; // Import your Receipt type
 
-export async function getOrganizationReceipts(supabase: SupabaseClient): Promise<Receipt[]> {
+export async function getOrganizationReceipts(
+  supabase: SupabaseClient): Promise<Receipt[]> {
   // Check authentication
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
@@ -50,8 +51,8 @@ export async function getOrganizationReceipts(supabase: SupabaseClient): Promise
       organizationName,
       organizationLogo,
       organizationEmail,
-      project:projectId (id, name),
       invoice:invoiceId (id, invoiceNumber),
+      project:projectId (id, name),
       customer:customerId (id, name),
       org:organizationId (id, name, email, logoUrl)
     `)

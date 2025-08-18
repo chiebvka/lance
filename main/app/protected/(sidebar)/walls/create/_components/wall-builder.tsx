@@ -747,7 +747,7 @@ export default function WallBuilder() {
             </CardHeader>
             <CardContent className="space-y-6 max-h-[80vh] overflow-y-auto">
               {/* Loading State */}
-              {(isLoadingCustomers || isLoadingProjects) && (
+              {/* {(isLoadingCustomers || isLoadingProjects) && (
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Bubbles className="h-4 w-4 animate-spin text-blue-600" />
@@ -757,7 +757,7 @@ export default function WallBuilder() {
                     This data is needed to send walls to existing customers or attach them to projects.
                   </p>
                 </div>
-              )}
+              )} */}
 
               {/* Wall Name and Description */}
               <div className="space-y-2">

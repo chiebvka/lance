@@ -21,7 +21,7 @@ import CreateSearchFilter, { DropdownOption } from "@/components/general/create-
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { columns, Invoice } from "./columns"
+import { columns } from "./columns"
 import InvoiceForm from './invoice-form';
 import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload } from "lucide-react"
 import { FilterTag } from '@/components/filtering/search-filter'
@@ -46,7 +46,7 @@ import ConfirmModal from '@/components/modal/confirm-modal'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-import { useInvoices } from '@/hooks/invoices/use-invoices'
+import { Invoice, useInvoices } from '@/hooks/invoices/use-invoices'
 import Pagination from '@/components/pagination'
 import { createClient } from '@/utils/supabase/client'
 import { currencies, type Currency } from '@/data/currency'
@@ -57,21 +57,21 @@ import CardAnalytics from './card-analytics'
 import InvoiceDetailsSheet from './invoice-details-sheet'
 import EditInvoice, { EditInvoiceRef } from './edit-invoice'
 import { generateInvoicePDFBlob, type InvoicePDFData } from '@/utils/invoice-pdf'
-import JSZip from 'jszip'
+import JSZip from 'jszip';
+import { parseAsArrayOf, parseAsIsoDateTime, parseAsString, useQueryStates } from 'nuqs'; 
 
 interface Props {
   initialInvoices: Invoice[]
+  userEmail: string | null
 }
 
-export default function InvoiceClient({ initialInvoices }: Props) {
+export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
   const queryClient = useQueryClient();
   const closeRef = useRef<HTMLButtonElement>(null);
   const editCloseRef = useRef<HTMLButtonElement>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
   const [filterTags, setFilterTags] = useState<FilterTag[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
 
@@ -89,26 +89,75 @@ export default function InvoiceClient({ initialInvoices }: Props) {
   });
 
   // Currency state
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(currencies.find(c => c.code === 'CAD')!)
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>(
+    currencies.find(c => c.code === 'CAD')!
+  )
   
   // Create a ref to the form component to call its methods
   const formRef = useRef<InvoiceFormRef>(null);
   // Create a ref to the edit component to call its methods
   const editFormRef = useRef<EditInvoiceRef>(null);
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
+  // nuqs for URL params (replaces useSearchParams, big useEffect, updateURL)
+  const [params, setParams] = useQueryStates({
+    query: parseAsString.withDefault(''),
+    invoiceId: parseAsString.withOptions({ clearOnDefault: true }), // null to remove
+    type: parseAsString.withDefault('details'),
+    state: parseAsArrayOf(parseAsString).withDefault([]),
+    issueDateFrom: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    issueDateTo: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    paidOnFrom: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    paidOnTo: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    dueDateFrom: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    dueDateTo: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+  }, { history: 'push' }); // Push to URL on change
 
-  const [activeFilters, setActiveFilters] = useState<{
-    state: string[];
-    issueDate?: DateRange;
-    dueDate?: DateRange;
-  }>({
-    state: [],
-    issueDate: undefined,
-    dueDate: undefined,
-  });
+  const activeFilters = useMemo(() => ({
+    state: params.state,
+    issueDate: params.issueDateFrom ? { from: params.issueDateFrom, to: params.issueDateTo ?? undefined } : undefined,
+    paidOn: params.paidOnFrom ? { from: params.paidOnFrom, to: params.paidOnTo ?? undefined } : undefined,
+    dueDate: params.dueDateFrom ? { from: params.dueDateFrom, to: params.dueDateTo ?? undefined } : undefined,
+  }), [params]);
+
+
+  // Build filterTags from activeFilters
+  const filterTagsMemo = useMemo<FilterTag[]>(() => {
+    const tags: FilterTag[] = [];
+
+    if (activeFilters.issueDate?.from) {
+      let label = format(activeFilters.issueDate.from, 'PPP');
+      if (activeFilters.issueDate.to) {
+        label = `${format(activeFilters.issueDate.from, 'PPP')} - ${format(activeFilters.issueDate.to, 'PPP')}`;
+      }
+      tags.push({ key: 'issue-date-range', label: 'Issue Date', value: label });
+    }
+
+    if (activeFilters.paidOn?.from) {
+      let label = format(activeFilters.paidOn.from, 'PPP');
+      if (activeFilters.paidOn.to) {
+        label = `${format(activeFilters.paidOn.from, 'PPP')} - ${format(activeFilters.paidOn.to, 'PPP')}`;
+      }
+      tags.push({ key: 'payment-date-range', label: 'Payment Date', value: label });
+    }
+    if (activeFilters.dueDate?.from) {
+      let label = format(activeFilters.dueDate.from, 'PPP');
+      if (activeFilters.dueDate.to) {
+        label = `${format(activeFilters.dueDate.from, 'PPP')} - ${format(activeFilters.dueDate.to, 'PPP')}`;
+      }
+      tags.push({ key: 'due-date-range', label: 'Due Date', value: label });
+    }
+
+    activeFilters.state.forEach(value => {
+      tags.push({ 
+        key: `state-${value}`, 
+        label: 'State', 
+        value: value.charAt(0).toUpperCase() + value.slice(1) 
+      });
+    });
+
+    return tags;
+  }, [activeFilters]);
+  
 
   const { 
     data: invoices = [], 
@@ -124,7 +173,7 @@ export default function InvoiceClient({ initialInvoices }: Props) {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
     // Use default columns for SSR to prevent hydration mismatch
     const defaultColumns = getDefaultColumns('invoices');
-    const allColumns = ['invoiceNumber', 'recepientName', 'totalAmount', 'state', 'issueDate', 'dueDate', 'taxRate', 'vatRate'];
+    const allColumns = ['invoiceNumber', 'recepientName', 'totalAmount', 'state', 'issueDate', 'dueDate', 'paidOn', 'taxRate', 'vatRate'];
     
     const state: VisibilityState = {};
     for (const col of allColumns) {
@@ -137,158 +186,92 @@ export default function InvoiceClient({ initialInvoices }: Props) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
 
-  // Single comprehensive useEffect to handle all initialization
+  // Load saved column visibility (client-only)
   useEffect(() => {
-    // Mark as hydrated
-    setIsHydrated(true);
-
-    // Extract URL parameters
-    const query = searchParams.get('query') || '';
-    const invoiceId = searchParams.get('invoiceId');
-    const sheetType = searchParams.get('type') || 'details'; // Default to details
-    const stateFilters = searchParams.getAll('state');
-    const issueDateFrom = searchParams.get('issueDateFrom');
-    const issueDateTo = searchParams.get('issueDateTo');
-    const dueDateFrom = searchParams.get('dueDateFrom');
-    const dueDateTo = searchParams.get('dueDateTo');
-
-    // Update state from URL
-    setSearchQuery(query);
-    setSelectedInvoiceId(invoiceId);
-
-    // Build date ranges
-    let issueDateRange: DateRange | undefined = undefined;
-    if (issueDateFrom) {
-      issueDateRange = { from: parseISO(issueDateFrom) };
-      if (issueDateTo) {
-        issueDateRange.to = parseISO(issueDateTo);
-      }
+    const savedColumns = getTableColumnsWithDefaults('invoices');
+    const allColumns = ['invoiceNumber', 'recepientName', 'totalAmount', 'state', 'issueDate', 'dueDate', 'paidOn', 'taxRate', 'vatRate'];
+    
+    const newState: VisibilityState = {};
+    for (const col of allColumns) {
+      newState[col] = savedColumns.includes(col);
     }
+    
+    setColumnVisibility(newState);
+  }, []);
 
-    let dueDateRange: DateRange | undefined = undefined;
-    if (dueDateFrom) {
-      dueDateRange = { from: parseISO(dueDateFrom) };
-      if (dueDateTo) {
-        dueDateRange.to = parseISO(dueDateTo);
-      }
-    }
-
-    // Update active filters
-    setActiveFilters({
-      state: stateFilters,
-      issueDate: issueDateRange,
-      dueDate: dueDateRange,
-    });
-
-    // Build filter tags array
-    const tags: FilterTag[] = [];
-
-    if (issueDateRange?.from) {
-      let label = format(issueDateRange.from, 'PPP');
-      if (issueDateRange.to) {
-        label = `${format(issueDateRange.from, 'PPP')} - ${format(issueDateRange.to, 'PPP')}`;
-      }
-      tags.push({ key: 'issue-date-range', label: 'Issue Date', value: label });
-    }
-
-    if (dueDateRange?.from) {
-      let label = format(dueDateRange.from, 'PPP');
-      if (dueDateRange.to) {
-        label = `${format(dueDateRange.from, 'PPP')} - ${format(dueDateRange.to, 'PPP')}`;
-      }
-      tags.push({ key: 'due-date-range', label: 'Due Date', value: label });
-    }
-
-    stateFilters.forEach(value => {
-      tags.push({ 
-        key: `state-${value}`, 
-        label: 'State', 
-        value: value.charAt(0).toUpperCase() + value.slice(1) 
-      });
-    });
-
-    setFilterTags(tags);
-
-    // Load saved column visibility after hydration
-    if (typeof window !== 'undefined') {
-      const savedColumns = getTableColumnsWithDefaults('invoices');
-      const allColumns = ['invoiceNumber', 'recepientName', 'totalAmount', 'state', 'issueDate', 'dueDate', 'taxRate', 'vatRate'];
-      
-      const newState: VisibilityState = {};
-      for (const col of allColumns) {
-        newState[col] = savedColumns.includes(col);
-      }
-      
-      setColumnVisibility(newState);
-    }
-  }, [searchParams]);
-
-  // Persist column visibility to cookie on change (only after hydration)
+  // Persist column visibility to cookie on change
   useEffect(() => {
-    if (isHydrated) {
-      const visibleCols = Object.entries(columnVisibility)
-        .filter(([_, v]) => v)
-        .map(([k]) => k);
-      setTableColumns('invoices', visibleCols);
-    }
-  }, [columnVisibility, isHydrated]);
+    const visibleCols = Object.entries(columnVisibility)
+      .filter(([_, v]) => v)
+      .map(([k]) => k);
+    setTableColumns('invoices', visibleCols);
+  }, [columnVisibility]);
 
   const filteredInvoices = useMemo(() => {
     let filtered = [...invoices];
 
-    // Apply search query - search in invoice number, customer name
-    if (searchQuery) {
+    // Apply search query
+    if (params.query) {
       filtered = filtered.filter(invoice => 
-        invoice.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        invoice.recepientName?.toLowerCase().includes(searchQuery.toLowerCase())
+        invoice.invoiceNumber?.toLowerCase().includes(params.query.toLowerCase()) ||
+        invoice.recepientName?.toLowerCase().includes(params.query.toLowerCase())
       );
     }
 
     // Apply issue date filter
     if (activeFilters.issueDate?.from) {
       filtered = filtered.filter(invoice => {
-        if (!invoice.issueDate || !activeFilters.issueDate?.from) return false;
-        const invoiceDate = new Date(invoice.issueDate);
-        if (isNaN(invoiceDate.getTime())) return false; // Invalid date
+      if (!invoice.issueDate) return false;
+      const rDate = new Date(invoice.issueDate);
+      if (isNaN(rDate.getTime())) return false;
+     
+      if (activeFilters?.issueDate?.to) {
+      return isWithinInterval(rDate, { start: activeFilters?.issueDate?.from!, end: activeFilters?.issueDate?.to! });
+      }
+      return isSameDay(rDate, activeFilters?.issueDate?.from!);
+      });
+      }
 
-        if (activeFilters.issueDate.to) {
-          // Range selected
-          return isWithinInterval(invoiceDate, { start: activeFilters.issueDate.from, end: activeFilters.issueDate.to });
+    // Apply payment date filter
+    if (activeFilters.paidOn?.from) {
+      filtered = filtered.filter(invoice => {
+        if (!invoice.paidOn) return false;
+        const pDate = new Date(invoice.paidOn);
+        if (isNaN(pDate.getTime())) return false;
+
+        if (activeFilters?.paidOn?.to) {
+          return isWithinInterval(pDate, { start: activeFilters?.paidOn?.from!, end: activeFilters?.paidOn?.to! });
         }
-        // Single date selected
-        return isSameDay(invoiceDate, activeFilters.issueDate.from);
+        return isSameDay(pDate, activeFilters?.paidOn?.from!);
       });
     }
-
     // Apply due date filter
     if (activeFilters.dueDate?.from) {
       filtered = filtered.filter(invoice => {
-        if (!invoice.dueDate || !activeFilters.dueDate?.from) return false;
-        const invoiceDate = new Date(invoice.dueDate);
-        if (isNaN(invoiceDate.getTime())) return false; // Invalid date
+        if (!invoice.dueDate) return false;
+        const pDate = new Date(invoice.dueDate);
+        if (isNaN(pDate.getTime())) return false;
 
-        if (activeFilters.dueDate.to) {
-          // Range selected
-          return isWithinInterval(invoiceDate, { start: activeFilters.dueDate.from, end: activeFilters.dueDate.to });
+        if (activeFilters?.dueDate?.to) {
+          return isWithinInterval(pDate, { start: activeFilters?.dueDate?.from!, end: activeFilters?.dueDate?.to! });
         }
-        // Single date selected
-        return isSameDay(invoiceDate, activeFilters.dueDate.from);
+        return isSameDay(pDate, activeFilters?.dueDate?.from!);
       });
     }
-
     // Apply state filter
     if (activeFilters.state.length > 0) {
       filtered = filtered.filter(invoice => 
         activeFilters.state.includes(invoice.state?.trim().toLowerCase() || '')
       );
     }
-
+    
+  
     return filtered;
-  }, [invoices, searchQuery, activeFilters]);
+  }, [invoices, params.query, activeFilters]);
 
   const invoiceBeingEdited = useMemo(() => {
-    return invoices.find(i => i.id === selectedInvoiceId)
-  }, [invoices, selectedInvoiceId])
+    return invoices.find(i => i.id === params.invoiceId)
+  }, [invoices, params.invoiceId])
 
   const deleteInvoiceMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
@@ -297,11 +280,7 @@ export default function InvoiceClient({ initialInvoices }: Props) {
     onSuccess: () => {
       toast.success("Invoice deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      
-      const currentParams = new URLSearchParams(searchParams.toString());
-      currentParams.delete('invoiceId');
-      const newUrl = currentParams.toString() ? `${pathname}?${currentParams.toString()}` : pathname;
-      router.replace(newUrl);
+      setParams({ invoiceId: null });
     },
     onError: (error: any) => {
       console.error("Delete invoice error:", error.response?.data);
@@ -312,7 +291,7 @@ export default function InvoiceClient({ initialInvoices }: Props) {
 
   const table = useReactTable({
     data: filteredInvoices,
-    columns,
+    columns: columns as any,
     state: {
       sorting,
       columnVisibility,
@@ -332,10 +311,11 @@ export default function InvoiceClient({ initialInvoices }: Props) {
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
+
   const selectedInvoices = useMemo(() => {
     const selectedRows = table.getFilteredSelectedRowModel().rows;
     const selected = selectedRows.map(row => row.original);
-    return selected;
+    return selected as Invoice[];
   }, [table, rowSelection]);
 
   const sanitizeFilename = (name: string): string => {
@@ -533,84 +513,71 @@ export default function InvoiceClient({ initialInvoices }: Props) {
     }
   };
 
-  const updateURL = (newFilters: typeof activeFilters, search?: string) => {
-    const params = new URLSearchParams(searchParams);
-    
-    // Update search query
-    if (search !== undefined) {
-      if (search) {
-        params.set('query', search);
-      } else {
-        params.delete('query');
-      }
-    }
 
-    // Clear existing filter params
-    params.delete('state');
-    params.delete('issueDateFrom');
-    params.delete('issueDateTo');
-    params.delete('dueDateFrom');
-    params.delete('dueDateTo');
-
-    // Add new filter params
-    if (newFilters.issueDate?.from) {
-      params.append('issueDateFrom', newFilters.issueDate.from.toISOString());
-      if (newFilters.issueDate.to) {
-        params.append('issueDateTo', newFilters.issueDate.to.toISOString());
-      }
-    }
-    if (newFilters.dueDate?.from) {
-      params.append('dueDateFrom', newFilters.dueDate.from.toISOString());
-      if (newFilters.dueDate.to) {
-        params.append('dueDateTo', newFilters.dueDate.to.toISOString());
-      }
-    }
-    newFilters.state.forEach(value => params.append('state', value));
-
-    router.replace(`${pathname}?${params.toString()}`);
-  };
 
   const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    updateURL(activeFilters, value);
+    setParams({ query: value || null });
   };
 
   const handleIssueDateChange = (date: DateRange | undefined) => {
-    const newFilters = { ...activeFilters, issueDate: date };
-    setActiveFilters(newFilters);
-    updateURL(newFilters);
-    updateFilterTags('issue-date', date, !!date);
+    setParams({
+      issueDateFrom: date?.from ? date.from : null,
+      issueDateTo: date?.to ? date.to : null,
+    });
+  }
+
+  const handlePaymentDateChange = (date: DateRange | undefined) => {
+    setParams({
+      paidOnFrom: date?.from ? date.from : null,
+      paidOnTo: date?.to ? date.to : null,
+    });
   }
 
   const handleDueDateChange = (date: DateRange | undefined) => {
-    const newFilters = { ...activeFilters, dueDate: date };
-    setActiveFilters(newFilters);
-    updateURL(newFilters);
-    updateFilterTags('due-date', date, !!date);
+    setParams({
+      dueDateFrom: date?.from ? date.from : null,
+      dueDateTo: date?.to ? date.to : null,
+    });
   }
 
-  const handleFilterChange = (filterType: 'state', value: string, checked: boolean) => {
-    const newFilters = { ...activeFilters };
-    if (checked) {
-      newFilters[filterType] = [...newFilters[filterType], value];
-    } else {
-      newFilters[filterType] = newFilters[filterType].filter(item => item !== value);
-    }
-    
-    setActiveFilters(newFilters);
-    updateURL(newFilters);
-    updateFilterTags(filterType, value, checked);
+  const handleFilterChange = (filterType: 'state'  , value: string, checked: boolean) => {
+    setParams((prev) => {
+      let newArr = [...(prev[filterType] || [])];
+      if (checked) {
+        newArr.push(value);
+      } else {
+        newArr = newArr.filter(item => item !== value);
+      }
+      return { [filterType]: newArr.length ? newArr : null };
+    });
   };
 
-  const updateFilterTags = (filterType: 'state' | 'issue-date' | 'due-date', value: string | DateRange | undefined, checked: boolean) => {
+  const handleRemoveFilter = (key: string) => {
+    if (key === 'issue-date-range') {
+      handleIssueDateChange(undefined);
+      return;
+    }
+    if (key === 'payment-date-range') {
+      handlePaymentDateChange(undefined);
+      return;
+    }
+    if (key === 'due-date-range') {
+      handleDueDateChange(undefined);
+      return;
+    }
+    const [filterType, value] = key.split('-') as ['state', string];
+    handleFilterChange(filterType, value, false);
+  };
+
+  const updateFilterTags = (filterType: 'state' | 'creationMethod' | 'issue-date' | 'payment-date', value: string | DateRange | undefined, checked: boolean) => {
     setFilterTags(prev => {
       if (filterType === 'issue-date') {
         const existingTagIndex = prev.findIndex(tag => tag.key === 'issue-date-range');
         if (checked && value && typeof value !== 'string') {
           const date = value as DateRange;
-          let dateLabel = format(date.from!, "PPP");
+          let dateLabel = format(date.from!, 'PPP');
           if (date.to) {
-            dateLabel = `${format(date.from!, "PPP")} - ${format(date.to, "PPP")}`;
+            dateLabel = `${format(date.from!, 'PPP')} - ${format(date.to, 'PPP')}`;
           }
           const newTag = { key: 'issue-date-range', label: 'Issue Date', value: dateLabel, className: 'w-auto' };
           if (existingTagIndex > -1) {
@@ -623,15 +590,15 @@ export default function InvoiceClient({ initialInvoices }: Props) {
         return prev.filter(tag => tag.key !== 'issue-date-range');
       }
       
-      if (filterType === 'due-date') {
-        const existingTagIndex = prev.findIndex(tag => tag.key === 'due-date-range');
+      if (filterType === 'payment-date') {
+        const existingTagIndex = prev.findIndex(tag => tag.key === 'payment-date-range');
         if (checked && value && typeof value !== 'string') {
           const date = value as DateRange;
-          let dateLabel = format(date.from!, "PPP");
+          let dateLabel = format(date.from!, 'PPP');
           if (date.to) {
-            dateLabel = `${format(date.from!, "PPP")} - ${format(date.to, "PPP")}`;
+            dateLabel = `${format(date.from!, 'PPP')} - ${format(date.to, 'PPP')}`;
           }
-          const newTag = { key: 'due-date-range', label: 'Due Date', value: dateLabel, className: 'w-auto' };
+          const newTag = { key: 'payment-date-range', label: 'Payment Date', value: dateLabel, className: 'w-auto' };
           if (existingTagIndex > -1) {
             const newTags = [...prev];
             newTags[existingTagIndex] = newTag;
@@ -639,13 +606,14 @@ export default function InvoiceClient({ initialInvoices }: Props) {
           }
           return [...prev, newTag];
         }
-        return prev.filter(tag => tag.key !== 'due-date-range');
+        return prev.filter(tag => tag.key !== 'payment-date-range');
       }
       
       const key = `${filterType}-${value}`;
       if (checked && typeof value === 'string') {
         let label = '';
         if (filterType === 'state') label = 'State';
+        if (filterType === 'creationMethod') label = 'Creation';
         
         let displayValue = value.charAt(0).toUpperCase() + value.slice(1);
         
@@ -656,57 +624,43 @@ export default function InvoiceClient({ initialInvoices }: Props) {
     });
   };
 
-  const handleRemoveFilter = (key: string) => {
-    if (key === 'issue-date-range') {
-      handleIssueDateChange(undefined);
-      return;
-    }
-    if (key === 'due-date-range') {
-      handleDueDateChange(undefined);
-      return;
-    }
-    const [filterType, value] = key.split('-') as ['state', string];
-    handleFilterChange(filterType, value, false);
-  };
 
   const handleClearAllFilters = () => {
-    setActiveFilters({ state: [], issueDate: undefined, dueDate: undefined });
-    setFilterTags([]);
-    updateURL({ state: [], issueDate: undefined, dueDate: undefined });
+    setParams({
+      state: null,
+      issueDateFrom: null,
+      issueDateTo: null,
+      paidOnFrom: null,
+      paidOnTo: null,
+      dueDateFrom: null,
+      dueDateTo: null,
+    });
   };
 
+
+
   const handleInvoiceSelect = (invoiceId: string) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('invoiceId', invoiceId);
-    params.set('type', 'details'); // Default to details view
-    router.push(`${pathname}?${params.toString()}`);
+    setParams({ invoiceId, type: 'details' });
   };
 
   const handleCreateSuccess = () => {
     closeRef.current?.click();
-    // Remove createInvoice param
-    const params = new URLSearchParams(searchParams);
-    params.delete('createInvoice');
-    router.replace(`${pathname}?${params.toString()}`);
     queryClient.invalidateQueries({ queryKey: ['invoices'] });
   };
 
   const handleEditSuccess = () => {
     editCloseRef.current?.click();
-    setSelectedInvoiceId(null);
-    // Remove invoiceId and type params
-    const params = new URLSearchParams(searchParams);
-    params.delete('invoiceId');
-    params.delete('type');
-    router.replace(`${pathname}?${params.toString()}`);
+    setParams({ invoiceId: null });
     queryClient.invalidateQueries({ queryKey: ['invoices'] });
   };
+
 
   const handleSaveDraftClick = () => {
     if (formRef.current) {
       formRef.current.handleSubmit(false);
     }
   };
+
 
   const handleCreateInvoiceClick = (emailToCustomer = false) => {
     if (formRef.current) {
@@ -758,15 +712,11 @@ export default function InvoiceClient({ initialInvoices }: Props) {
   };
 
   const handleCloseSheet = () => {
-    router.push("/protected/invoices");
-    setSelectedInvoiceId(null);
+    setParams({ invoiceId: null });
   };
 
   const handleCreateCancel = () => {
     closeRef.current?.click();
-    const params = new URLSearchParams(searchParams);
-    params.delete('createInvoice');
-    router.replace(`${pathname}?${params.toString()}`);
   }
 
   const handleDeleteFromSheet = () => {
@@ -774,8 +724,8 @@ export default function InvoiceClient({ initialInvoices }: Props) {
   }
 
   const handleConfirmDelete = () => {
-    if (selectedInvoiceId) {
-      deleteInvoiceMutation.mutate(selectedInvoiceId)
+    if (params.invoiceId) {
+      deleteInvoiceMutation.mutate(params.invoiceId)
     }
     setDeleteModalOpen(false)
   }
@@ -793,47 +743,7 @@ export default function InvoiceClient({ initialInvoices }: Props) {
     setIsSaving(saving); // Keep the general state for backward compatibility
   };
 
-  // Use the invoices hook
-  const { data: userEmail } = useQuery({
-    queryKey: ['userEmail'],
-    queryFn: async () => {
-      const supabase = createClient()
-      
-      try {
-        // First try to get the current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) return null
 
-        // Try to get user profile email first
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('profile_id', user.id)
-          .single()
-
-        if (profile?.email) {
-          return profile.email
-        }
-
-        // If no profile email, try to get organization email from profiles table
-        const { data: orgProfile, error: orgProfileError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('profile_id', user.id)
-          .single()
-
-        if (orgProfile?.email) {
-          return orgProfile.email
-        }
-
-        return null
-      } catch (error) {
-        console.error('Error fetching user email:', error)
-        return null
-      }
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  })
 
   // Define dropdown options for invoice layout
   const invoiceDropdownOptions: DropdownOption[] = [
@@ -1033,6 +943,25 @@ export default function InvoiceClient({ initialInvoices }: Props) {
       <DropdownMenuSeparator />
       
       <DropdownMenuSub>
+        <DropdownMenuSubTrigger>Payment Date</DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="p-0">
+          <Calendar
+            initialFocus
+            mode="range"
+            captionLayout="dropdown"
+            defaultMonth={activeFilters.paidOn?.from}
+            selected={activeFilters.paidOn}
+            onSelect={handlePaymentDateChange}
+            numberOfMonths={1}
+            fromYear={2015}
+            toYear={2045}
+          />
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+
+      <DropdownMenuSeparator />
+      
+      <DropdownMenuSub>
         <DropdownMenuSubTrigger>Due Date</DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="p-0">
           <Calendar
@@ -1093,6 +1022,9 @@ export default function InvoiceClient({ initialInvoices }: Props) {
           </DropdownMenuCheckboxItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
+
+      <DropdownMenuSeparator />
+
     </div>
   );
 
@@ -1136,19 +1068,17 @@ export default function InvoiceClient({ initialInvoices }: Props) {
     return <div className="p-8">Error fetching invoices: {(error as Error).message}</div>;
   }
 
-  // Get the sheet type from URL
-  const sheetType = searchParams.get('type') || 'details';
-
   // Update layout options when editing an invoice to reflect database values
+    
   useEffect(() => {
-    if (invoiceBeingEdited && sheetType === 'edit') {
+    if (invoiceBeingEdited && params.type === 'edit') {
       setLayoutOptions({
         hasTax: invoiceBeingEdited.hasTax ?? true,
         hasVat: invoiceBeingEdited.hasVat ?? true,
         hasDiscount: invoiceBeingEdited.hasDiscount ?? true,
       });
     }
-  }, [invoiceBeingEdited, sheetType]);
+  }, [invoiceBeingEdited, params.type]);
 
   return (
     <>
@@ -1156,7 +1086,7 @@ export default function InvoiceClient({ initialInvoices }: Props) {
         placeholder="Search invoices..." 
         onSearch={handleSearch}
         filterContent={filterContent}
-        filterTags={filterTags}
+        filterTags={filterTagsMemo}
         layoutOptions={layoutOptions}
         onLayoutOptionChange={handleLayoutOptionChange}
         onRemoveFilter={handleRemoveFilter}
@@ -1198,24 +1128,24 @@ export default function InvoiceClient({ initialInvoices }: Props) {
       />
 
       {/* Invoice Sheets */}
-      <Sheet open={!!selectedInvoiceId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
+      <Sheet open={!!params.invoiceId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
         <SheetContent 
           side="right" 
           bounce="right" 
           withGap={true} 
           className={`w-full flex flex-col p-0 ${
-            sheetType === 'details' 
-              ? 'sm:w-3/4 md:w-1/2 lg:w-[40%]' // Same width as feedback sheet
-              : 'sm:w-3/4 md:w-1/2 lg:w-[55%]' // Same width as invoice form
-          } ${sheetType === 'edit' ? '[&>button[aria-label="Close"]]:hidden' : ''}`}
+            params.type === 'details' 
+              ? 'sm:w-3/4 md:w-1/2 lg:w-[40%]' 
+              : 'sm:w-3/4 md:w-1/2 lg:w-[55%]'
+          }`}
         >
           <SheetHeader className="p-4 border-b">
             <div className="flex justify-between items-center">
               <SheetTitle>
-                {sheetType === 'details' ? 'Invoice Details' : 'Edit Invoice'}
+                {params.type === 'details' ? 'Invoice Details' : 'Edit Invoice'}
               </SheetTitle>
               <div className="flex items-center fixed right-20 gap-2">
-                {sheetType === 'edit' && (
+                {params.type === 'edit' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-none">
@@ -1299,7 +1229,7 @@ export default function InvoiceClient({ initialInvoices }: Props) {
                 )}
 
               </div>
-                {selectedInvoiceId && sheetType === 'details' && (
+                {params.invoiceId && params.type === 'details' && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -1314,8 +1244,8 @@ export default function InvoiceClient({ initialInvoices }: Props) {
             </div>
           </SheetHeader>
           <ScrollArea className="flex-grow">
-            {selectedInvoiceId && invoiceBeingEdited && (
-              sheetType === 'details' ? (
+            {params.invoiceId && invoiceBeingEdited && (
+              params.type === 'details' ? (
                 <InvoiceDetailsSheet invoice={invoiceBeingEdited} />
               ) : (
                 <EditInvoice 
@@ -1328,7 +1258,7 @@ export default function InvoiceClient({ initialInvoices }: Props) {
               )
             )}
           </ScrollArea>
-          {sheetType === 'edit' && (
+          {params.type === 'edit' && (
             <SheetFooter className="p-4 border-t">
               {editFooter}
             </SheetFooter>

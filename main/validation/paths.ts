@@ -18,12 +18,12 @@ export const pathsContentSchema = z.object({
 })
 
 export const createPathSchema = z.object({
-  action: z.enum(['save_draft', 'publish', 'send_path']).optional(),
+  action: z.enum(['save_draft', 'publish', 'send_path', 'unpublish']).optional(),
   name: z.string().min(1, 'Path name is required'),
   description: z.string().optional().nullable(),
   content: pathsContentSchema.optional().nullable(),
   customerId: z.string().uuid().optional().nullable(),
-  protect: z.boolean().optional(),
+  protect: z.boolean().optional().default(false),
   recipientEmail: z.string().email().optional().nullable(),
   recepientName: z.string().optional().nullable(),
 })

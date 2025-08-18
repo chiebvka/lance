@@ -73,7 +73,7 @@ export type Block = z.infer<typeof BlockSchema>
 
 // ---- wall payloads (forms + api) ----
 export const createWallSchema = z.object({
-  action: z.enum(["save_draft", "publish", "send_wall"]),
+  action: z.enum(["save_draft", "publish", "send_wall", "unpublish"]),
   name: z.string().min(1, "Name is required"),
   description: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),

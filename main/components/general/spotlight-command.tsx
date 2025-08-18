@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import CommandFilter from '../filtering/command-filter'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useSearchOptimization } from '@/hooks/search'
 import { Bell, StickyNote, Search, Command, Settings, ScanSearch, Archive, ArchiveX } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -21,8 +22,11 @@ type Props = {}
 export default function SpotlightCommand({}: Props) {
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
-  const trialStatus = useTrialCountdown();
-  const { notifications, archivedNotifications, unreadCount, markAsRead, markAllAsRead, archiveNotification } = useNotifications();
+      const trialStatus = useTrialCountdown();
+    const { notifications, archivedNotifications, unreadCount, markAsRead, markAllAsRead, archiveNotification } = useNotifications();
+    
+    // Initialize search optimization for prefetching
+    useSearchOptimization();
 
   useEffect(() => {
     // Add keyboard shortcut
@@ -276,7 +280,7 @@ export default function SpotlightCommand({}: Props) {
         >
           <div className="flex items-center w-full h-9 px-3 py-2 border border-input bg-background/95 backdrop-blur-sm rounded-md text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent/50 transition-colors">
             <ScanSearch className="mr-2 h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground flex-1">Search...</span>
+            <span className="text-muted-foreground flex-1">Search projects, customers, invoices...</span>
             <Badge variant="outline" className="ml-2 font-mono text-xs">
               ⌘K
             </Badge>
@@ -285,7 +289,7 @@ export default function SpotlightCommand({}: Props) {
       </div>
 
       <CommandFilter 
-        placeholder="Search projects, customers, invoices..."
+        placeholder="Search projects, customers, invoices, receipts, walls, paths..."
         isOpen={isCommandOpen}
         onOpenChange={setIsCommandOpen}
       />
