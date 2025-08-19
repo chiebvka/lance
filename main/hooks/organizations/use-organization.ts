@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import { toast } from 'sonner'
 
 export interface Organization {
   id: string
@@ -31,3 +32,156 @@ export function useOrganization(initialData?: Organization) {
     // staleTime: 1000 * 60 * 5, // 5m
   })
 } 
+
+type UpdateOrganizationInput = Partial<Pick<Organization,
+  'logoUrl' | 'name' | 'email' | 'country' | 'baseCurrency' |
+  'invoiceNotifications' | 'projectNotifications' | 'feedbackNotifications'
+>>
+
+export function useUpdateOrganization() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (updates: UpdateOrganizationInput) => {
+      const current = queryClient.getQueryData<Organization>(['organization'])
+      if (!current?.id) throw new Error('No organization in cache to update')
+      const { data } = await axios.patch(`/api/organization/${current.id}`, updates)
+      return data
+    },
+    onMutate: async (updates) => {
+      await queryClient.cancelQueries({ queryKey: ['organization'] })
+      const previousOrganization = queryClient.getQueryData<Organization>(['organization'])
+
+      queryClient.setQueryData<Organization | undefined>(['organization'], (old) => {
+        if (!old) return old
+        return { ...old, ...updates, updated_at: new Date().toISOString() }
+      })
+
+      return { previousOrganization }
+    },
+    onError: (error: any, _variables, context) => {
+      if (context?.previousOrganization) {
+        queryClient.setQueryData(['organization'], context.previousOrganization)
+      }
+      const message = error?.response?.data?.error
+        || error?.message
+        || 'Failed to update organization'
+      toast.error('Update failed', { description: message })
+    },
+    onSuccess: () => {
+      toast.success('Settings updated successfully!', {
+        description: 'Your changes have been saved.'
+      })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['organization'] })
+    }
+  })
+}
+
+export function useUploadOrganizationLogo() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const org = queryClient.getQueryData<Organization>(['organization'])
+      if (!org?.id) throw new Error('No organization in cache to upload logo for')
+
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('type', 'organizations/logos')
+      const uploadResponse = await axios.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const { url } = uploadResponse.data
+
+      await axios.patch(`/api/organization/${org.id}`, { logoUrl: url })
+      return { url }
+    },
+    onMutate: async (file) => {
+      await queryClient.cancelQueries({ queryKey: ['organization'] })
+      const previousOrganization = queryClient.getQueryData<Organization>(['organization'])
+      const tempUrl = URL.createObjectURL(file)
+      queryClient.setQueryData<Organization | undefined>(['organization'], (old) => {
+        if (!old) return old
+        return { ...old, logoUrl: tempUrl }
+      })
+      return { previousOrganization, tempUrl }
+    },
+    onError: (error: any, _file, context) => {
+      if (context?.previousOrganization) {
+        queryClient.setQueryData(['organization'], context.previousOrganization)
+      }
+      if (context?.tempUrl) URL.revokeObjectURL(context.tempUrl)
+      const message = error?.response?.data?.error
+        || error?.message
+        || 'Failed to upload logo'
+      toast.error('Upload failed', { description: message })
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData<Organization | undefined>(['organization'], (old) => {
+        if (!old) return old
+        return { ...old, logoUrl: data.url }
+      })
+      toast.success('Logo uploaded successfully!', {
+        description: 'Your company logo has been updated.'
+      })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['organization'] })
+    }
+  })
+}
+
+export function useDeleteOrganizationLogo() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const org = queryClient.getQueryData<Organization>(['organization'])
+      if (!org?.id) throw new Error('No organization in cache to delete logo for')
+      await axios.patch(`/api/organization/${org.id}`, { logoUrl: null })
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['organization'] })
+      const previousOrganization = queryClient.getQueryData<Organization>(['organization'])
+      queryClient.setQueryData<Organization | undefined>(['organization'], (old) => {
+        if (!old) return old
+        return { ...old, logoUrl: null }
+      })
+      return { previousOrganization }
+    },
+    onError: (error: any, _v, context) => {
+      if (context?.previousOrganization) {
+        queryClient.setQueryData(['organization'], context.previousOrganization)
+      }
+      const message = error?.response?.data?.error
+        || error?.message
+        || 'Failed to delete logo'
+      toast.error('Delete failed', { description: message })
+    },
+    onSuccess: () => {
+      toast.success('Logo deleted successfully!', {
+        description: 'Your company logo has been removed.'
+      })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['organization'] })
+    }
+  })
+}
+
+export function useDeleteOrganization() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const org = queryClient.getQueryData<Organization>(['organization'])
+      if (!org?.id) throw new Error('No organization in cache to delete')
+      const { data } = await axios.delete(`/api/organization/${org.id}`)
+      return data
+    },
+  })
+}
+
+export function prefetchOrganization(queryClient: ReturnType<typeof useQueryClient>) {
+  return queryClient.prefetchQuery({ queryKey: ['organization'], queryFn: fetchOrganization })
+}
