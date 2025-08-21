@@ -336,6 +336,12 @@ export async function PATCH(request: Request) {
           from: `${fromName} <${fromEmail}>`,
           subject: `Signed: ${projectName}`,
           html: emailHtml,
+          customArgs: {
+            projectId: signedProject?.id,
+            customerId: signedProject?.customerId || "",
+            // userId: signedProject?.createdBy || "",
+            type: 'project_signed',
+          },
         });
       }
     } catch (emailErr: any) {

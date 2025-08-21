@@ -3,37 +3,51 @@ CREATE TYPE customer_activity_type_enum AS ENUM (
   'invoice_paid',
   'invoice_viewed',
   'invoice_overdue',
+  'invoice_reminder',
+  'invoice_updated',
   'invoice_link_clicked',
   'receipt_sent',
   'receipt_link_clicked',
   'receipt_viewed',
+  'receipt_reminder',
+  'receipt_updated',
   'project_started',
+  'project_overdue',
   'project_completed',
+  'project_updated',
+  'project_reminder',
+  'project_signed',
+  'project_sent',
+  'project_viewed'
   'project_link_clicked',
   'agreement_sent',
   'agreement_signed',
   'agreement_viewed',
   'agreement_link_clicked',
-  'feedback_requested',
+  'feedback_sent',
+  'feedback_updated',
+  'feedback_reminder',
   'feedback_received',
+  'feedback_submitted',
+  'feedback_overdue',
   'feedback_viewed',
   'feedback_link_clicked',
   'email_opened',
-  'project_sent',
-  'project_viewed'
-);
 
-ALTER TYPE customer_activity_type_enum ADD VALUE IF NOT EXISTS 'feedback_sent';
-ALTER TYPE customer_activity_type_enum ADD VALUE IF NOT EXISTS 'feedback_reminder';
-ALTER TYPE customer_activity_type_enum ADD VALUE IF NOT EXISTS 'feedback_overdue';
+);
 
 CREATE TYPE customer_activity_reference_enum AS ENUM (
   'invoice',
   'receipt',
   'project',
   'agreement',
-  'feedback'
+  'feedback',
 );
+
+ALTER TYPE customer_activity_type_enum ADD VALUE IF NOT EXISTS 'feedback_sent';
+ALTER TYPE customer_activity_type_enum ADD VALUE IF NOT EXISTS 'feedback_reminder';
+ALTER TYPE customer_activity_type_enum ADD VALUE IF NOT EXISTS 'feedback_overdue';
+
 
 CREATE TABLE IF NOT EXISTS public.customer_activities (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

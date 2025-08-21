@@ -77,6 +77,13 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
             from:  `${fromName} <${fromEmail}>`,
             subject: `You have an updated form to fill out`,
             html: emailHtml,
+            customArgs: {
+                feedbackId: feedback.id,
+                customerId: feedback.customerId || "",
+                userId: user.id,
+                type: "feedback_updated",
+                token: token,
+            },
         });
 
         console.log("Feedback email sent to:", recipientEmail);

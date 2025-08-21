@@ -158,6 +158,44 @@ export function useUpdateProject() {
   })
 }
 
+// New action-based project mutations similar to paths
+export function usePublishProject() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ projectId, projectData }: { projectId: string; projectData: any }) => {
+      const { data } = await axios.put<{ success: boolean; data: ProjectWithRelations }>(`/api/projects/${projectId}`, {
+        ...projectData,
+        action: 'publish'
+      })
+      if (!data.success) throw new Error('Error publishing project')
+      return data.data
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['project', variables.projectId] })
+    },
+  })
+}
+
+export function useUnpublishProject() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (projectId: string) => {
+      const { data } = await axios.put<{ success: boolean; data: ProjectWithRelations }>(`/api/projects/${projectId}`, {
+        action: 'unpublish'
+      })
+      if (!data.success) throw new Error('Error unpublishing project')
+      return data.data
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['project', variables] })
+    },
+  })
+}
+
 export function useDeleteProject() {
   const queryClient = useQueryClient()
   
@@ -183,8 +221,8 @@ export function useAssignProject() {
   
   return useMutation({
     mutationFn: async ({ projectId, customerId, emailToCustomer }: { projectId: string; customerId: string; emailToCustomer: boolean }) => {
-      const { data } = await axios.patch(`/api/projects/${projectId}`, { 
-        action: 'assign', 
+      const { data } = await axios.put(`/api/projects/${projectId}`, { 
+        action: 'assign_customer', 
         customerId, 
         emailToCustomer 
       })
@@ -206,12 +244,16 @@ export function useUnassignProject() {
   const queryClient = useQueryClient()
   
   return useMutation({
-    mutationFn: async (projectId: string) => {
-      const { data } = await axios.patch(`/api/projects/${projectId}`, { action: 'unassign' })
+    mutationFn: async ({ projectId, makePersonal = false, makeDraft = false }: { projectId: string; makePersonal?: boolean; makeDraft?: boolean }) => {
+      const { data } = await axios.put(`/api/projects/${projectId}`, { 
+        action: 'unassign_customer',
+        makePersonal,
+        makeDraft
+      })
       if (!data.success) throw new Error('Error unassigning project')
       return data
     },
-    onSuccess: (_, projectId) => {
+    onSuccess: (_, { projectId }) => {
       toast.success('Project unassigned successfully!')
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       queryClient.invalidateQueries({ queryKey: ['project', projectId] })
@@ -227,7 +269,7 @@ export function useCancelProject() {
   
   return useMutation({
     mutationFn: async (projectId: string) => {
-      const { data } = await axios.patch(`/api/projects/${projectId}`, { action: 'cancel' })
+      const { data } = await axios.put(`/api/projects/${projectId}`, { action: 'cancel' })
       if (!data.success) throw new Error('Error cancelling project')
       return data
     },
@@ -247,7 +289,7 @@ export function useMarkProjectCompleted() {
   
   return useMutation({
     mutationFn: async ({ projectId, completedDate }: { projectId: string; completedDate: Date }) => {
-      const { data } = await axios.patch(`/api/projects/${projectId}`, { 
+      const { data } = await axios.put(`/api/projects/${projectId}`, { 
         action: 'mark_completed', 
         completedDate: completedDate.toISOString() 
       })

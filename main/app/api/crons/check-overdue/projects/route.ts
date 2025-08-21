@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import sendgrid from "@sendgrid/mail";
 import { render } from "@react-email/components";
 import { baseUrl } from "@/utils/universal";
+import ProjectReminder from "@/emails/ProjectReminder";
+import crypto from "crypto";
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
@@ -22,12 +24,15 @@ export async function GET(request: NextRequest) {
       .from("projects")
       .select(`
         *,
-        customers!inner(name, email)
+        customers:customerId (name, email),
+        organization:organizationId (name, logoUrl, projectNotifications)
       `)
       .lt("endDate", now.toISOString())
       .neq("signedStatus", "signed")
       .neq("status", "overdue")
-      .eq("allowReminders", true)
+      .eq("status", "pending")
+      .eq("state", "published")
+      .eq("type", "customer")
       .eq("isPublished", true); // Only check published projects
 
     if (queryError) {
@@ -43,17 +48,8 @@ export async function GET(request: NextRequest) {
     let processedCount = 0;
     for (const project of overdueProjects) {
       try {
-        // Check organization's project notification preference
-        const { data: organization, error: orgError } = await supabase
-          .from("organization")
-          .select("projectNotifications")
-          .eq("id", project.organizationId)
-          .single();
-
-        if (orgError) {
-          console.error(`Error fetching organization settings for project ${project.id}:`, orgError);
-          continue;
-        }
+        // Organization is joined in the initial query; avoid separate fetch to prevent null UUID errors
+        const organization = (project as any).organization || null;
 
         // Update project status to overdue (always do this)
         const { error: updateError } = await supabase
@@ -67,36 +63,39 @@ export async function GET(request: NextRequest) {
         }
 
         // Only send emails and create notifications if organization has projectNotifications enabled
-        if (organization?.projectNotifications) {
+        // Note: null defaults to enabled; only explicit false disables
+        if (organization?.projectNotifications !== false) {
           // Create notification for the organization
-          const { error: notificationError } = await supabase
-            .from("notifications")
-            .insert({
-              organizationId: project.organizationId,
-              title: "Project Overdue",
-              message: `Project "${project.name}" for ${project.customers?.name || 'Unknown Customer'} is overdue for signoff.`,
-              type: "warning",
-              actionUrl: `${baseUrl}/protected/projects/${project.id}`,
-              metadata: {
-                projectName: project.name,
-                customerName: project.customers?.name,
-                endDate: project.endDate,
-                budget: project.budget,
-                currency: project.currency
-              },
-              tableName: "projects",
-              tableId: project.id,
-              state: "active"
-            });
+          if (project.organizationId) {
+            const { error: notificationError } = await supabase
+              .from("notifications")
+              .insert({
+                organizationId: project.organizationId,
+                title: "Project Overdue",
+                message: `Project "${project.name}" for ${project.customers?.name || 'Unknown Customer'} is overdue for signoff.`,
+                type: "warning",
+                actionUrl: `${baseUrl}/protected/projects?projectId=${project.id}`,
+                metadata: {
+                  projectName: project.name,
+                  customerName: project.customers?.name,
+                  endDate: project.endDate,
+                  budget: project.budget,
+                  currency: project.currency
+                },
+                tableName: "projects",
+                tableId: project.id,
+                state: "active"
+              });
 
-          if (notificationError) {
-            console.error(`Error creating notification for project ${project.id}:`, notificationError);
-            continue;
+            if (notificationError) {
+              console.error(`Error creating notification for project ${project.id}:`, notificationError);
+            }
           }
 
           // Send email reminder if customer email exists
-          if (project.customers?.email) {
-            await sendProjectReminderEmail(project);
+          const recipientEmail = project.customers?.email || project.recepientEmail;
+          if (recipientEmail) {
+            await sendProjectReminderEmail(supabase, project, organization, recipientEmail, project.token);
             console.log(`Project reminder email sent for project ${project.id}`);
           } else {
             console.log(`Skipping email for project ${project.id} - no customer email available`);
@@ -121,28 +120,36 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function sendProjectReminderEmail(project: any) {
+async function sendProjectReminderEmail(supabase: any, project: any, organization: any, recipientEmail: string, token: string) {
   try {
-    const fromEmail = 'no_reply@bexforte.com';
-    const fromName = 'Bexforte';
+    const fromEmail = 'no_reply@projects.bexforte.com';
+    const fromName = organization?.name || 'Bexforte';
+    const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
+
+    // Ensure project has a token; generate and persist if missing
+    let token = project.token;
+    if (!token) {
+      token = crypto.randomUUID();
+      await supabase.from('projects').update({ token }).eq('id', project.id);
+    }
     
-    const emailHtml = `
-      <h2>Project Overdue Reminder</h2>
-      <p>Dear ${project.customers?.name},</p>
-      <p>This is a reminder that project "${project.name}" is overdue for signoff.</p>
-      <p><strong>End Date:</strong> ${new Date(project.endDate).toLocaleDateString()}</p>
-      ${project.budget ? `<p><strong>Budget:</strong> ${project.currency} ${project.budget}</p>` : ''}
-      <p>Please review and sign off on this project as soon as possible.</p>
-    `;
+    const emailHtml = await render(ProjectReminder({
+      projectId: project.id,
+      clientName: project.customers?.name || recipientEmail.split('@')[0],
+      projectName: project.name,
+      logoUrl: logoUrl,
+      // Use public preview link that requires token
+      projectLink: `${baseUrl}/p/${project.id}?token=${token}`
+    }));
 
     await sendgrid.send({
-      to: project.customers.email,
+      to: recipientEmail,
       from: `${fromName} <${fromEmail}>`,
       subject: `Project Overdue - ${project.name}`,
       html: emailHtml,
     });
 
-    console.log("Project reminder email sent to:", project.customers.email);
+    console.log("Project reminder email sent to:", recipientEmail);
   } catch (emailError: any) {
     console.error("SendGrid Project Reminder Error:", emailError);
   }

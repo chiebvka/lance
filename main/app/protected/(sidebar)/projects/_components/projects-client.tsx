@@ -218,40 +218,25 @@ export default function ProjectsClient({ initialProjects }: Props) {
 
   // --- Table State ---
   const [rowSelection, setRowSelection] = useState({})
-  
-  // Fix hydration issue: Initialize with server-safe default state
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
-    // Use default columns for SSR to prevent hydration mismatch
-    const defaultColumns = getDefaultColumns('projects');
-    const allColumns = ['name', 'description', 'type', 'customerName', 'budget', 'hasServiceAgreement', 'state', 'status', 'paymentType', 'endDate'];
-    
-    const state: VisibilityState = {};
-    for (const col of allColumns) {
-      state[col] = defaultColumns.includes(col);
-    }
-    
-    return state;
-  });
-
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [sorting, setSorting] = useState<SortingState>([])
+  // const [isHydrated, setIsHydrated] = useState(false)
 
   // Simple hydration effect
   useEffect(() => {
     setIsHydrated(true);
 
     // Load saved column visibility after hydration
-    if (typeof window !== 'undefined') {
-      const savedColumns = getTableColumnsWithDefaults('projects');
-      const allColumns = ['name', 'description', 'type', 'customerName', 'budget', 'hasServiceAgreement', 'state', 'status', 'paymentType', 'endDate'];
-      
-      const newState: VisibilityState = {};
-      for (const col of allColumns) {
-        newState[col] = savedColumns.includes(col);
-      }
-      
-      setColumnVisibility(newState);
+    const savedColumns = getTableColumnsWithDefaults('projects');
+    const allColumns = ['name', 'description', 'type', 'customerName', 'budget', 'hasServiceAgreement', 'state', 'status', 'paymentType', 'endDate'];
+    
+    const newState: VisibilityState = {};
+    for (const col of allColumns) {
+      newState[col] = savedColumns.includes(col);
     }
+    
+    setColumnVisibility(newState);
   }, []);
 
   // Persist column visibility to cookie on change (only after hydration)
@@ -1048,24 +1033,28 @@ export default function ProjectsClient({ initialProjects }: Props) {
    
           <DataTableViewOptions table={table} />
         </div>
-        <Suspense fallback={<ProjectClientSkeleton />}>
-          <DataTable 
-            table={table} 
-            onProjectSelect={(projectId: string) => {
-              setParams({ projectId, type: 'details' });
-            }} 
-            searchQuery={params.query}
-          />
-          <Pagination
-            currentPage={table.getState().pagination.pageIndex + 1}
-            totalPages={table.getPageCount()}
-            pageSize={table.getState().pagination.pageSize}
-            totalItems={table.getFilteredRowModel().rows.length}
-            onPageChange={page => table.setPageIndex(page - 1)}
-            onPageSizeChange={size => table.setPageSize(size)}
-            itemName="projects"
-          />
-        </Suspense>
+        {isHydrated ? (
+          <>
+            <DataTable 
+              table={table} 
+              onProjectSelect={(projectId: string) => {
+                setParams({ projectId, type: 'details' });
+              }} 
+              searchQuery={params.query}
+            />
+            <Pagination
+              currentPage={table.getState().pagination.pageIndex + 1}
+              totalPages={table.getPageCount()}
+              pageSize={table.getState().pagination.pageSize}
+              totalItems={table.getFilteredRowModel().rows.length}
+              onPageChange={page => table.setPageIndex(page - 1)}
+              onPageSizeChange={size => table.setPageSize(size)}
+              itemName="projects"
+            />
+          </>
+        ) : (
+          <ProjectClientSkeleton />
+        )}
       </div>
 
       {/* Export Bar */}

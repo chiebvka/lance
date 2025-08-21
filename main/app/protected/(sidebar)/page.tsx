@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { ChartAreaInteractive } from "../_components/chart-area-interactive";
 import { OverviewCarousel } from "../_components/overview-carousel";
 import { getAuthenticatedUser } from "@/utils/auth";
+import { PreviewChartArea } from "../_components/preview-chart-area";
 
 export default async function ProtectedPage() {
   const supabase = await createClient();
@@ -18,7 +19,8 @@ export default async function ProtectedPage() {
           This is a protected page that you can only see as an authenticated
           user
         </div>
-        <ChartAreaInteractive />
+        <PreviewChartArea />
+        {/* <ChartAreaInteractive /> */}
       </div>
       <OverviewCarousel />
       <div className="flex flex-col gap-2 items-start">

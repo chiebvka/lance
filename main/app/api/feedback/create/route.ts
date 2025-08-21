@@ -429,7 +429,7 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
                 feedbackId: feedback.id,
                 customerId: feedback.customerId || "",
                 userId: user.id,
-                type: "feedback_requested",
+                type: "feedback_sent",
                 token: token,
             },
         });

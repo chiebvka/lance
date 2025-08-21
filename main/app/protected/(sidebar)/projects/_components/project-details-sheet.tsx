@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { CalendarDays, ClipboardCopy, DollarSign, FileEdit, FileText, User, Tag, HardDriveDownload, Bell, ExternalLink, Grip, UserPlus, X, Ban, Check, Trash2 } from 'lucide-react'
+import { CalendarDays, ClipboardCopy, DollarSign, FileEdit, FileText, User, Tag, HardDriveDownload, Bell, ExternalLink, Grip, UserPlus, X, Ban, Check, Trash2, EyeOff, Loader2 } from 'lucide-react'
 import { format, differenceInDays, isBefore } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
@@ -18,6 +18,7 @@ import { useCustomers } from '@/hooks/customers/use-customers'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { cn } from '@/lib/utils'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import ConfirmModal from '@/components/modal/confirm-modal'
 import ProjectConfirmModal from './project-confirm-modal'
@@ -26,7 +27,10 @@ import {
   useUnassignProject, 
   useCancelProject, 
   useMarkProjectCompleted, 
-  useDeleteProject 
+  useDeleteProject,
+  usePublishProject,
+  useUnpublishProject,
+  useUpdateProject
 } from '@/hooks/projects/use-projects'
 
 type ProjectDetails = {
@@ -36,6 +40,7 @@ type ProjectDetails = {
   type?: string | null
   customerName?: string | null
   customerEmail?: string | null
+  customerId?: string | null
   budget?: number | null
   currency?: string | null
   state?: string | null
@@ -135,10 +140,95 @@ export default function ProjectDetailsSheet({ project }: Props) {
   const assignMutation = useAssignProject()
   const completeMutation = useMarkProjectCompleted()
   const deleteMutation = useDeleteProject()
+  const publishMutation = usePublishProject()
+  const unpublishMutation = useUnpublishProject()
+  const updateMutation = useUpdateProject()
 
   const handleAssignToCustomer = (customerId: string, emailToCustomer: boolean) => {
     assignMutation.mutate({ projectId: project.id, customerId, emailToCustomer })
   }
+
+  const handlePublish = async (asPersonal: boolean, customerId?: string | null, emailToCustomer: boolean = false) => {
+    try {
+      const updateData: any = {
+        action: "publish",
+        name: project.name || "",
+        description: project.description,
+        type: asPersonal ? "personal" : "customer",
+        customerId: asPersonal ? null : (customerId || null),
+        recipientEmail: asPersonal ? null : (customerId ? undefined : project.customerEmail),
+        recepientName: asPersonal ? null : (customerId ? undefined : project.customerName),
+        emailToCustomer: emailToCustomer && !asPersonal
+      };
+
+      await publishMutation.mutateAsync({
+        projectId: project.id,
+        projectData: updateData
+      });
+
+      if (emailToCustomer && !asPersonal && customerId) {
+        toast.success("Project published and email sent!");
+      } else {
+        toast.success("Project published successfully!");
+      }
+    } catch (error) {
+      console.error('Error publishing project:', error);
+      toast.error("Failed to publish project");
+    }
+  };
+
+  const handlePublishAndAssign = async (customerId: string, emailToCustomer: boolean = false) => {
+    try {
+      const selectedCustomer = customers.find(c => c.id === customerId);
+      if (!selectedCustomer) {
+        toast.error("Selected customer not found");
+        return;
+      }
+
+      const updateData: any = {
+        action: "publish",
+        name: project.name || "",
+        description: project.description,
+        type: "customer",
+        customerId: customerId,
+        recipientEmail: selectedCustomer.email,
+        recepientName: selectedCustomer.name,
+        emailToCustomer: emailToCustomer
+      };
+
+      await publishMutation.mutateAsync({
+        projectId: project.id,
+        projectData: updateData
+      });
+
+      toast.success(emailToCustomer ? "Project published, assigned, and email sent!" : "Project published and assigned successfully!");
+    } catch (error) {
+      console.error('Error publishing and assigning project:', error);
+      toast.error("Failed to publish and assign project");
+    }
+  };
+
+  const handleUnpublish = async () => {
+    try {
+      await unpublishMutation.mutateAsync(project.id);
+      toast.success("Project unpublished successfully!");
+    } catch (error) {
+      console.error('Error unpublishing project:', error);
+      toast.error("Failed to unpublish project");
+    }
+  };
+
+  const handleUnassign = async ({ makePersonal = false, makeDraft = false }: { makePersonal?: boolean; makeDraft?: boolean }) => {
+    try {
+      await unassignMutation.mutateAsync({
+        projectId: project.id,
+        makePersonal,
+        makeDraft
+      });
+    } catch (error) {
+      console.error('Error unassigning project:', error);
+    }
+  };
 
   // Add effect to handle assign mutation success and reset selection
   useEffect(() => {
@@ -158,24 +248,45 @@ export default function ProjectDetailsSheet({ project }: Props) {
     }
   }, [deleteMutation.isSuccess, router])
 
-  const getAvailableActions = (status: string) => {
+  const getAvailableActions = (state: string, status: string, type: string) => {
     const s = status.toLowerCase()
-    switch (s) {
-      case 'pending':
-        return ['assign', 'unassign', 'cancel', 'delete'] as const
-      case 'inprogress':
-        return ['assign', 'unassign', 'cancel', 'delete'] as const
-      case 'signed':
-        return ['mark_completed', 'delete'] as const
-      case 'overdue':
-        return ['assign', 'unassign', 'cancel', 'delete'] as const
-      case 'completed':
-        return ['delete'] as const
-      case 'cancelled':
-        return ['assign', 'unassign', 'delete'] as const
-      default:
-        return ['delete'] as const
+    const st = state.toLowerCase()
+    const isAssigned = !!project?.customerId
+    
+    const actions = [];
+    
+    if (st === 'draft') {
+      actions.push('publish_personal', 'delete');
+      if (!isAssigned) {
+        actions.push('publish_customer', 'assign_customer');
+      } else {
+        actions.push('unassign_customer');
+      }
+    } else if (st === 'published') {
+      actions.push('unpublish', 'delete');
+      
+      if (isAssigned) {
+        actions.push('unassign_customer');
+      } else {
+        actions.push('assign_customer');
+      }
     }
+    
+    // Status-specific actions for published projects
+    if (st === 'published') {
+      switch (s) {
+        case 'pending':
+        case 'inprogress':
+        case 'overdue':
+          actions.push('cancel');
+          break;
+        case 'signed':
+          actions.push('mark_completed');
+          break;
+      }
+    }
+    
+    return actions;
   }
 
   return (
@@ -190,11 +301,88 @@ export default function ProjectDetailsSheet({ project }: Props) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 w-8 p-0 border rounded-none">
-                <Grip size={12} />
+                {(publishMutation.isPending || unpublishMutation.isPending || updateMutation.isPending) ? 
+                  <Loader2 size={12} className="animate-spin" /> : 
+                  <Grip size={12} />
+                }
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              {getAvailableActions(status).includes('mark_completed' as any) && (
+            <DropdownMenuContent align="end" className="w-56">
+              {/* Publish options for draft projects */}
+              {getAvailableActions(state, status, project.type || '').includes('publish_personal') && (
+                <DropdownMenuItem onClick={() => handlePublish(true)} disabled={publishMutation.isPending}>
+                  <User className="w-4 h-4 mr-2" />
+                  Publish as Personal
+                </DropdownMenuItem>
+              )}
+              
+              {getAvailableActions(state, status, project.type || '').includes('publish_customer') && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger disabled={publishMutation.isPending}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Publish as Customer
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-72 p-0">
+                    <Command>
+                      <CommandInput placeholder="Search customers..." autoFocus />
+                      <CommandList>
+                        <CommandEmpty>No customers found.</CommandEmpty>
+                        <CommandGroup>
+                          {customers.map((customer) => (
+                            <CommandItem
+                              key={customer.id}
+                              value={customer.name}
+                              onSelect={() => {
+                                setSelectedAssignCustomerId(customer.id)
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${selectedAssignCustomerId === customer.id ? "opacity-100" : "opacity-0"}`}
+                              />
+                              {customer.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                    <div className="p-2 pt-1 flex gap-2 border-t">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        disabled={!selectedAssignCustomerId || publishMutation.isPending}
+                        onClick={() => selectedAssignCustomerId && handlePublishAndAssign(selectedAssignCustomerId, false)}
+                      >
+                        Publish & Assign
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        disabled={!selectedAssignCustomerId || publishMutation.isPending}
+                        onClick={() => selectedAssignCustomerId && handlePublishAndAssign(selectedAssignCustomerId, true)}
+                      >
+                        Publish & Email
+                      </Button>
+                    </div>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+
+              {/* Add separator between publish and other actions */}
+              {(getAvailableActions(state, status, project.type || '').includes('publish_personal') || 
+                getAvailableActions(state, status, project.type || '').includes('publish_customer')) && (
+                <DropdownMenuSeparator />
+              )}
+              
+              {/* Unpublish for published projects */}
+              {getAvailableActions(state, status, project.type || '').includes('unpublish') && (
+                <DropdownMenuItem onClick={handleUnpublish} disabled={unpublishMutation.isPending}>
+                  <EyeOff className="w-4 h-4 mr-2" />
+                  Unpublish
+                </DropdownMenuItem>
+              )}
+
+              {getAvailableActions(state, status, project.type || '').includes('mark_completed') && (
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <Check className="w-4 h-4 mr-2" />
@@ -214,7 +402,7 @@ export default function ProjectDetailsSheet({ project }: Props) {
                 </DropdownMenuSub>
               )}
 
-              {getAvailableActions(status).includes('assign' as any) && (
+              {getAvailableActions(state, status, project.type || '').includes('assign_customer') && (
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <UserPlus className="w-4 h-4 mr-2" />
@@ -262,21 +450,34 @@ export default function ProjectDetailsSheet({ project }: Props) {
                 </DropdownMenuSub>
               )}
 
-              {getAvailableActions(status).includes('unassign' as any) && (
-                <DropdownMenuItem onClick={() => unassignMutation.mutate(project.id)}>
-                  <X className="w-4 h-4 mr-2" />
-                  Use personal (unassign)
-                </DropdownMenuItem>
+              {getAvailableActions(state, status, project.type || '').includes('unassign_customer') && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger disabled={unassignMutation.isPending}>
+                    <X className="w-4 h-4 mr-2" />
+                    Unassign Customer
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => handleUnassign({})} disabled={unassignMutation.isPending}>
+                      Unassign only
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleUnassign({ makePersonal: true })} disabled={unassignMutation.isPending}>
+                      Unassign & Make Personal
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleUnassign({ makeDraft: true })} disabled={unassignMutation.isPending}>
+                      Unassign & Make Draft
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
               )}
 
-              {getAvailableActions(status).includes('cancel' as any) && (
+              {getAvailableActions(state, status, project.type || '').includes('cancel') && (
                 <DropdownMenuItem onClick={() => cancelMutation.mutate(project.id)}>
                   <Ban className="w-4 h-4 mr-2" />
                   Cancel
                 </DropdownMenuItem>
               )}
 
-              {getAvailableActions(status).includes('delete' as any) && (
+              {getAvailableActions(state, status, project.type || '').includes('delete') && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-red-600">

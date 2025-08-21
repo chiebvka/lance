@@ -110,7 +110,7 @@ async function sendReminderEmail(feedback: any) {
         feedbackId: feedback.id,
         customerId: feedback.customerId || "",
         userId: feedback.createdBy,
-        type: "feedback_requested",
+        type: "feedback_reminder",
         token: token,
     },
     });

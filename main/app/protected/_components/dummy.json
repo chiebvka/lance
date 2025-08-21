@@ -1,0 +1,212 @@
+{
+  "invoices": {
+    "from": "2025-01-01",
+    "to": "2025-01-31",
+    "bucket": "day",
+    "metric": "invoices",
+    "series": [
+      { "date": "2025-01-01", "pending": 12, "overdue": 3, "settled": 8 },
+      { "date": "2025-01-02", "pending": 15, "overdue": 2, "settled": 10 },
+      { "date": "2025-01-03", "pending": 18, "overdue": 5, "settled": 12 },
+      { "date": "2025-01-04", "pending": 14, "overdue": 4, "settled": 15 },
+      { "date": "2025-01-05", "pending": 20, "overdue": 6, "settled": 18 },
+      { "date": "2025-01-06", "pending": 16, "overdue": 3, "settled": 22 },
+      { "date": "2025-01-07", "pending": 22, "overdue": 7, "settled": 25 },
+      { "date": "2025-01-08", "pending": 19, "overdue": 5, "settled": 28 },
+      { "date": "2025-01-09", "pending": 25, "overdue": 8, "settled": 30 },
+      { "date": "2025-01-10", "pending": 21, "overdue": 4, "settled": 32 },
+      { "date": "2025-01-11", "pending": 28, "overdue": 9, "settled": 35 },
+      { "date": "2025-01-12", "pending": 24, "overdue": 6, "settled": 38 },
+      { "date": "2025-01-13", "pending": 30, "overdue": 11, "settled": 40 },
+      { "date": "2025-01-14", "pending": 26, "overdue": 7, "settled": 42 },
+      { "date": "2025-01-15", "pending": 33, "overdue": 12, "settled": 45 },
+      { "date": "2025-01-16", "pending": 29, "overdue": 8, "settled": 48 },
+      { "date": "2025-01-17", "pending": 35, "overdue": 14, "settled": 50 },
+      { "date": "2025-01-18", "pending": 31, "overdue": 9, "settled": 52 },
+      { "date": "2025-01-19", "pending": 38, "overdue": 16, "settled": 55 },
+      { "date": "2025-01-20", "pending": 34, "overdue": 10, "settled": 58 },
+      { "date": "2025-01-21", "pending": 40, "overdue": 18, "settled": 60 },
+      { "date": "2025-01-22", "pending": 36, "overdue": 11, "settled": 62 },
+      { "date": "2025-01-23", "pending": 42, "overdue": 20, "settled": 65 },
+      { "date": "2025-01-24", "pending": 38, "overdue": 12, "settled": 68 },
+      { "date": "2025-01-25", "pending": 45, "overdue": 22, "settled": 70 },
+      { "date": "2025-01-26", "pending": 41, "overdue": 13, "settled": 72 },
+      { "date": "2025-01-27", "pending": 47, "overdue": 24, "settled": 75 },
+      { "date": "2025-01-28", "pending": 43, "overdue": 14, "settled": 78 },
+      { "date": "2025-01-29", "pending": 50, "overdue": 26, "settled": 80 },
+      { "date": "2025-01-30", "pending": 46, "overdue": 15, "settled": 82 },
+      { "date": "2025-01-31", "pending": 52, "overdue": 28, "settled": 85 }
+    ],
+    "totals": {
+      "pending": 52,
+      "overdue": 28,
+      "settled": 85
+    },
+    "meta": {
+      "unit": "count",
+      "seriesKeys": ["pending", "overdue", "settled"],
+      "config": {
+        "pending": { "label": "Pending", "color": "hsl(250, 95%, 70%)" },
+        "overdue": { "label": "Overdue", "color": "hsl(0, 85%, 75%)" },
+        "settled": { "label": "Settled", "color": "hsl(250, 95%, 25%)" }
+      }
+    }
+  },
+  "receipts": {
+    "from": "2025-01-01",
+    "to": "2025-01-31",
+    "bucket": "day",
+    "metric": "receipts",
+    "series": [
+      { "date": "2025-01-01", "invoice": 8, "manual": 5 },
+      { "date": "2025-01-02", "invoice": 10, "manual": 7 },
+      { "date": "2025-01-03", "invoice": 12, "manual": 9 },
+      { "date": "2025-01-04", "invoice": 9, "manual": 6 },
+      { "date": "2025-01-05", "invoice": 15, "manual": 11 },
+      { "date": "2025-01-06", "invoice": 11, "manual": 8 },
+      { "date": "2025-01-07", "invoice": 18, "manual": 13 },
+      { "date": "2025-01-08", "invoice": 14, "manual": 10 },
+      { "date": "2025-01-09", "invoice": 20, "manual": 15 },
+      { "date": "2025-01-10", "invoice": 16, "manual": 12 },
+      { "date": "2025-01-11", "invoice": 22, "manual": 17 },
+      { "date": "2025-01-12", "invoice": 18, "manual": 14 },
+      { "date": "2025-01-13", "invoice": 25, "manual": 19 },
+      { "date": "2025-01-14", "invoice": 21, "manual": 16 },
+      { "date": "2025-01-15", "invoice": 28, "manual": 22 },
+      { "date": "2025-01-16", "invoice": 24, "manual": 18 },
+      { "date": "2025-01-17", "invoice": 30, "manual": 25 },
+      { "date": "2025-01-18", "invoice": 26, "manual": 20 },
+      { "date": "2025-01-19", "invoice": 32, "manual": 27 },
+      { "date": "2025-01-20", "invoice": 28, "manual": 23 },
+      { "date": "2025-01-21", "invoice": 35, "manual": 29 },
+      { "date": "2025-01-22", "invoice": 31, "manual": 25 },
+      { "date": "2025-01-23", "invoice": 37, "manual": 31 },
+      { "date": "2025-01-24", "invoice": 33, "manual": 27 },
+      { "date": "2025-01-25", "invoice": 40, "manual": 33 },
+      { "date": "2025-01-26", "invoice": 36, "manual": 29 },
+      { "date": "2025-01-27", "invoice": 42, "manual": 35 },
+      { "date": "2025-01-28", "invoice": 38, "manual": 31 },
+      { "date": "2025-01-29", "invoice": 45, "manual": 37 },
+      { "date": "2025-01-30", "invoice": 41, "manual": 33 },
+      { "date": "2025-01-31", "invoice": 47, "manual": 39 }
+    ],
+    "totals": {
+      "invoice": 47,
+      "manual": 39
+    },
+    "meta": {
+      "unit": "count",
+      "seriesKeys": ["invoice", "manual"],
+      "config": {
+        "invoice": { "label": "From Invoice", "color": "hsl(250, 95%, 70%)" },
+        "manual": { "label": "Manual", "color": "hsl(250, 95%, 40%)" }
+      }
+    }
+  },
+  "feedbacks": {
+    "from": "2025-01-01",
+    "to": "2025-01-31",
+    "bucket": "day",
+    "metric": "feedbacks",
+    "series": [
+      { "date": "2025-01-01", "answered": 15, "overdue": 3, "unanswered": 8 },
+      { "date": "2025-01-02", "answered": 18, "overdue": 4, "unanswered": 10 },
+      { "date": "2025-01-03", "answered": 22, "overdue": 5, "unanswered": 12 },
+      { "date": "2025-01-04", "answered": 19, "overdue": 2, "unanswered": 9 },
+      { "date": "2025-01-05", "answered": 25, "overdue": 6, "unanswered": 14 },
+      { "date": "2025-01-06", "answered": 21, "overdue": 3, "unanswered": 11 },
+      { "date": "2025-01-07", "answered": 28, "overdue": 7, "unanswered": 16 },
+      { "date": "2025-01-08", "answered": 24, "overdue": 4, "unanswered": 13 },
+      { "date": "2025-01-09", "answered": 31, "overdue": 8, "unanswered": 18 },
+      { "date": "2025-01-10", "answered": 27, "overdue": 5, "unanswered": 15 },
+      { "date": "2025-01-11", "answered": 34, "overdue": 9, "unanswered": 20 },
+      { "date": "2025-01-12", "answered": 30, "overdue": 6, "unanswered": 17 },
+      { "date": "2025-01-13", "answered": 37, "overdue": 10, "unanswered": 22 },
+      { "date": "2025-01-14", "answered": 33, "overdue": 7, "unanswered": 19 },
+      { "date": "2025-01-15", "answered": 40, "overdue": 11, "unanswered": 24 },
+      { "date": "2025-01-16", "answered": 36, "overdue": 8, "unanswered": 21 },
+      { "date": "2025-01-17", "answered": 43, "overdue": 12, "unanswered": 26 },
+      { "date": "2025-01-18", "answered": 39, "overdue": 9, "unanswered": 23 },
+      { "date": "2025-01-19", "answered": 46, "overdue": 13, "unanswered": 28 },
+      { "date": "2025-01-20", "answered": 42, "overdue": 10, "unanswered": 25 },
+      { "date": "2025-01-21", "answered": 49, "overdue": 14, "unanswered": 30 },
+      { "date": "2025-01-22", "answered": 45, "overdue": 11, "unanswered": 27 },
+      { "date": "2025-01-23", "answered": 52, "overdue": 15, "unanswered": 32 },
+      { "date": "2025-01-24", "answered": 48, "overdue": 12, "unanswered": 29 },
+      { "date": "2025-01-25", "answered": 55, "overdue": 16, "unanswered": 34 },
+      { "date": "2025-01-26", "answered": 51, "overdue": 13, "unanswered": 31 },
+      { "date": "2025-01-27", "answered": 58, "overdue": 17, "unanswered": 36 },
+      { "date": "2025-01-28", "answered": 54, "overdue": 14, "unanswered": 33 },
+      { "date": "2025-01-29", "answered": 61, "overdue": 18, "unanswered": 38 },
+      { "date": "2025-01-30", "answered": 57, "overdue": 15, "unanswered": 35 },
+      { "date": "2025-01-31", "answered": 64, "overdue": 20, "unanswered": 40 }
+    ],
+    "totals": {
+      "answered": 64,
+      "overdue": 20,
+      "unanswered": 40
+    },
+    "meta": {
+      "unit": "count",
+      "seriesKeys": ["answered", "overdue", "unanswered"],
+      "config": {
+        "answered": { "label": "Answered", "color": "hsl(250, 95%, 70%)" },
+        "overdue": { "label": "Overdue", "color": "hsl(0, 85%, 75%)" },
+        "unanswered": { "label": "Unanswered", "color": "hsl(250, 95%, 40%)" }
+      }
+    }
+  },
+  "projects": {
+    "from": "2025-01-01",
+    "to": "2025-01-31",
+    "bucket": "day",
+    "metric": "projects",
+    "series": [
+      { "date": "2025-01-01", "pending": 25, "overdue": 8, "completed": 15 },
+      { "date": "2025-01-02", "pending": 28, "overdue": 10, "completed": 18 },
+      { "date": "2025-01-03", "pending": 32, "overdue": 12, "completed": 22 },
+      { "date": "2025-01-04", "pending": 29, "overdue": 9, "completed": 25 },
+      { "date": "2025-01-05", "pending": 35, "overdue": 14, "completed": 28 },
+      { "date": "2025-01-06", "pending": 31, "overdue": 11, "completed": 30 },
+      { "date": "2025-01-07", "pending": 38, "overdue": 16, "completed": 33 },
+      { "date": "2025-01-08", "pending": 34, "overdue": 13, "completed": 35 },
+      { "date": "2025-01-09", "pending": 41, "overdue": 18, "completed": 38 },
+      { "date": "2025-01-10", "pending": 37, "overdue": 15, "completed": 40 },
+      { "date": "2025-01-11", "pending": 44, "overdue": 20, "completed": 43 },
+      { "date": "2025-01-12", "pending": 40, "overdue": 17, "completed": 45 },
+      { "date": "2025-01-13", "pending": 47, "overdue": 22, "completed": 48 },
+      { "date": "2025-01-14", "pending": 43, "overdue": 19, "completed": 50 },
+      { "date": "2025-01-15", "pending": 50, "overdue": 24, "completed": 53 },
+      { "date": "2025-01-16", "pending": 46, "overdue": 21, "completed": 55 },
+      { "date": "2025-01-17", "pending": 53, "overdue": 26, "completed": 58 },
+      { "date": "2025-01-18", "pending": 49, "overdue": 23, "completed": 60 },
+      { "date": "2025-01-19", "pending": 56, "overdue": 28, "completed": 63 },
+      { "date": "2025-01-20", "pending": 52, "overdue": 25, "completed": 65 },
+      { "date": "2025-01-21", "pending": 59, "overdue": 30, "completed": 68 },
+      { "date": "2025-01-22", "pending": 55, "overdue": 27, "completed": 70 },
+      { "date": "2025-01-23", "pending": 62, "overdue": 32, "completed": 73 },
+      { "date": "2025-01-24", "pending": 58, "overdue": 29, "completed": 75 },
+      { "date": "2025-01-25", "pending": 65, "overdue": 34, "completed": 78 },
+      { "date": "2025-01-26", "pending": 61, "overdue": 31, "completed": 80 },
+      { "date": "2025-01-27", "pending": 68, "overdue": 36, "completed": 83 },
+      { "date": "2025-01-28", "pending": 64, "overdue": 33, "completed": 85 },
+      { "date": "2025-01-29", "pending": 71, "overdue": 38, "completed": 88 },
+      { "date": "2025-01-30", "pending": 67, "overdue": 35, "completed": 90 },
+      { "date": "2025-01-31", "pending": 74, "overdue": 40, "completed": 93 }
+    ],
+    "totals": {
+      "pending": 74,
+      "overdue": 40,
+      "completed": 93
+    },
+    "meta": {
+      "unit": "count",
+      "seriesKeys": ["pending", "overdue", "completed"],
+      "config": {
+        "pending": { "label": "Pending", "color": "hsl(250, 95%, 70%)" },
+        "overdue": { "label": "Overdue", "color": "hsl(0, 85%, 75%)" },
+        "completed": { "label": "Completed", "color": "hsl(250, 95%, 25%)" }
+      }
+    }
+  }
+}

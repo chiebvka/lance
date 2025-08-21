@@ -90,7 +90,7 @@ import {
               <Section style={codeBlockStyle}>
                 <Text style={codeHeaderStyle}>{"You've got another mail!"}</Text>
                 <Text style={codeLineStyle}>
-                  {`Your project ${projectName} is overdue. Please take a moment to pay it to confirm your agreement.`}
+                  {`Your project ${projectName} is overdue. Please take a moment to ensure that the project is signed off.`}
                 </Text>
               </Section>
   

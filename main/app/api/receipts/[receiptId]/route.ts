@@ -33,7 +33,7 @@ async function sendReceiptEmail(supabase: any, user: any, receipt: any, recipien
         receiptId: receipt.id,
         customerId: receipt.customerId || '',
         userId: user.id,
-        type: 'receipt_sent',
+        type: 'receipt_updated',
       },
     });
   } catch (emailError) {

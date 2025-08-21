@@ -44,6 +44,7 @@ import { TeamSwitcher } from "./team-switcher"
 import { NavMain } from "./nav-main"
 import { NavProjects } from "./nav-projects"
 import Logo from "./logo"
+import { useOrganization } from "@/hooks/organizations/use-organization"
 
 // This is sample data.
 const data = {
@@ -130,6 +131,9 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     avatar: user.user_metadata?.avatar_url || "/avatars/shadcn.jpg"
   }
 
+  const { data: organization } = useOrganization()
+  const supportEmail = organization?.email || userData.email
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -140,7 +144,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} userEmail={userData.email} />
+        <NavProjects projects={data.projects} userEmail={supportEmail} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />

@@ -7,8 +7,344 @@ import sendgrid from "@sendgrid/mail";
 import IssueProject from '../../../../emails/IssueProject';
 import crypto from "crypto";
 import { baseUrl } from "@/utils/universal";
+import { ratelimit } from '@/utils/rateLimit';
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
+
+// Helper function to get customer details
+async function getCustomerDetails(supabase: any, customerId: string): Promise<{ email: string | null; name: string | null }> {
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("email, name")
+    .eq("id", customerId)
+    .single()
+  
+  return {
+    email: customer?.email || null,
+    name: customer?.name || null
+  }
+}
+
+// Action handler function
+async function handleProjectAction(supabase: any, user: any, projectId: string, body: any) {
+  // Ensure user is tied to an organization
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('organizationId, email')
+    .eq('profile_id', user.id)
+    .single();
+
+  if (profileError || !profile?.organizationId) {
+    return NextResponse.json({ error: 'You must be part of an organization to update projects.' }, { status: 403 });
+  }
+
+  // Load existing project
+  const { data: existingProject, error: existingError } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .single();
+
+  if (existingError || !existingProject) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  }
+
+  if (existingProject.createdBy !== user.id || existingProject.organizationId !== profile.organizationId) {
+    return NextResponse.json({ error: 'Unauthorized to update this project' }, { status: 403 });
+  }
+
+  const { action } = body;
+
+  try {
+    switch (action) {
+      case 'publish':
+        return await handlePublishProject(supabase, user, projectId, existingProject, body, profile);
+      case 'unpublish':
+        return await handleUnpublishProject(supabase, user, projectId, existingProject, profile);
+      case 'assign_customer':
+        return await handleAssignCustomer(supabase, user, projectId, existingProject, body, profile);
+      case 'unassign_customer':
+        return await handleUnassignCustomer(supabase, user, projectId, existingProject, body, profile);
+      case 'cancel':
+        return await handleCancelProject(supabase, user, projectId, existingProject, profile);
+      case 'mark_completed':
+        return await handleMarkCompleted(supabase, user, projectId, existingProject, body, profile);
+      default:
+        return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+    }
+  } catch (error: any) {
+    console.error(`[API][PUT] Error handling action ${action}:`, error.message);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+// Individual action handlers
+async function handlePublishProject(supabase: any, user: any, projectId: string, existingProject: any, body: any, profile: any) {
+  const { type = 'personal', customerId = null, emailToCustomer = false, recipientEmail = null, recepientName = null } = body;
+  const isCustomerType = type === 'customer';
+  
+  // Generate token for published projects
+  const newToken = crypto.randomUUID();
+  
+  const updatePayload: any = {
+    state: 'published',
+    type: type,
+    token: newToken,
+    updatedOn: new Date().toISOString(),
+  };
+
+  if (isCustomerType && customerId) {
+    // Fetch customer details
+    const { email, name } = await getCustomerDetails(supabase, customerId);
+    updatePayload.customerId = customerId;
+    updatePayload.recepientEmail = email;
+    updatePayload.recepientName = name;
+  } else if (isCustomerType && (recipientEmail || recepientName)) {
+    // Use provided recipient details
+    updatePayload.customerId = customerId;
+    updatePayload.recepientEmail = recipientEmail;
+    updatePayload.recepientName = recepientName;
+  } else if (!isCustomerType) {
+    // For personal projects, clear customer data
+    updatePayload.customerId = null;
+    updatePayload.recepientEmail = null;
+    updatePayload.recepientName = null;
+  }
+
+  const { error: updateError, data: updatedProject } = await supabase
+    .from('projects')
+    .update(updatePayload)
+    .eq('id', projectId)
+    .eq('createdBy', user.id)
+    .eq('organizationId', profile.organizationId)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  // Send email if requested and it's a customer project
+  if (emailToCustomer && isCustomerType && (customerId || updatedProject.customerId) && updatedProject) {
+    const customerIdForEmail = customerId || updatedProject.customerId;
+    await sendProjectEmail(supabase, user, updatedProject, customerIdForEmail, newToken);
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: 'Project published successfully',
+    data: updatedProject
+  });
+}
+
+async function handleUnpublishProject(supabase: any, user: any, projectId: string, existingProject: any, profile: any) {
+  const { error: updateError, data: updatedProject } = await supabase
+    .from('projects')
+    .update({
+      state: 'draft',
+      token: null, // Remove token when unpublishing
+      updatedOn: new Date().toISOString(),
+    })
+    .eq('id', projectId)
+    .eq('createdBy', user.id)
+    .eq('organizationId', profile.organizationId)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  return NextResponse.json({
+    success: true,
+    message: 'Project unpublished successfully',
+    data: updatedProject
+  });
+}
+
+async function handleAssignCustomer(supabase: any, user: any, projectId: string, existingProject: any, body: any, profile: any) {
+  const { customerId, emailToCustomer = false } = body;
+  
+  // Fetch customer details
+  const { email, name } = await getCustomerDetails(supabase, customerId);
+  
+  if (!email) {
+    return NextResponse.json({ error: 'Customer email not found' }, { status: 400 });
+  }
+
+  // Generate new token when assigning to customer
+  const newToken = crypto.randomUUID();
+
+  const { error: updateError, data: updatedProject } = await supabase
+    .from('projects')
+    .update({
+      type: 'customer',
+      customerId: customerId,
+      recepientEmail: email,
+      recepientName: name,
+      token: newToken,
+      state: 'published', // Automatically publish when assigning to customer
+      updatedOn: new Date().toISOString(),
+    })
+    .eq('id', projectId)
+    .eq('createdBy', user.id)
+    .eq('organizationId', profile.organizationId)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  // Send email if requested
+  if (emailToCustomer && updatedProject) {
+    await sendProjectEmail(supabase, user, updatedProject, customerId, newToken);
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: 'Project assigned to customer successfully',
+    data: updatedProject
+  });
+}
+
+async function handleUnassignCustomer(supabase: any, user: any, projectId: string, existingProject: any, body: any, profile: any) {
+  const { makePersonal = false, makeDraft = false } = body;
+  
+  const updatePayload: any = {
+    customerId: null,
+    recepientEmail: null,
+    recepientName: null,
+    updatedOn: new Date().toISOString(),
+  };
+
+  if (makePersonal) {
+    updatePayload.type = 'personal';
+  }
+
+  if (makeDraft) {
+    updatePayload.state = 'draft';
+    updatePayload.token = null; // Remove token when making draft
+  }
+
+  const { error: updateError, data: updatedProject } = await supabase
+    .from('projects')
+    .update(updatePayload)
+    .eq('id', projectId)
+    .eq('createdBy', user.id)
+    .eq('organizationId', profile.organizationId)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  return NextResponse.json({
+    success: true,
+    message: 'Project unassigned successfully',
+    data: updatedProject
+  });
+}
+
+async function handleCancelProject(supabase: any, user: any, projectId: string, existingProject: any, profile: any) {
+  const { error: updateError, data: updatedProject } = await supabase
+    .from('projects')
+    .update({
+      status: 'cancelled',
+      state: 'draft', // Set to draft when cancelled
+      token: null, // Remove token when cancelled
+      updatedOn: new Date().toISOString(),
+    })
+    .eq('id', projectId)
+    .eq('createdBy', user.id)
+    .eq('organizationId', profile.organizationId)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  return NextResponse.json({
+    success: true,
+    message: 'Project cancelled successfully',
+    data: updatedProject
+  });
+}
+
+async function handleMarkCompleted(supabase: any, user: any, projectId: string, existingProject: any, body: any, profile: any) {
+  const { completedDate } = body;
+  const parsedDate = new Date(completedDate);
+  
+  if (Number.isNaN(parsedDate.getTime())) {
+    return NextResponse.json({ error: 'Invalid date supplied' }, { status: 400 });
+  }
+
+  const { error: updateError, data: updatedProject } = await supabase
+    .from('projects')
+    .update({
+      status: 'completed',
+      updatedOn: parsedDate.toISOString(),
+    })
+    .eq('id', projectId)
+    .eq('createdBy', user.id)
+    .eq('organizationId', profile.organizationId)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  return NextResponse.json({
+    success: true,
+    message: 'Project marked as completed',
+    data: updatedProject
+  });
+}
+
+// Helper function to send project emails
+async function sendProjectEmail(supabase: any, user: any, project: any, customerId: string, token: string) {
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("name, email")
+    .eq("id", customerId)
+    .single();
+
+  if (!customer?.email) return;
+
+  const { data: organization } = await supabase
+    .from('organization')
+    .select('name, email, logoUrl')
+    .eq('createdBy', user.id)
+    .maybeSingle();
+
+  const fromEmail = 'no_reply@projects.bexforte.com';
+  const fromName = 'Bexbot';
+  const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
+  const projectLink = `${baseUrl}/p/${project.id}?token=${token}`;
+
+  const emailHtml = await render(IssueProject({
+    projectId: project.id,
+    clientName: customer.name || "",
+    projectName: project.name,
+    senderName: fromName,
+    logoUrl: logoUrl,
+    projectLink,
+  }));
+
+  const fromField = `${fromName} <${fromEmail}>`;
+
+  try {
+    await sendgrid.send({
+      to: customer.email,
+      from: fromField,
+      subject: `Project ${project.name} Updated`,
+      html: emailHtml,
+      customArgs: {
+        projectId: project.id,
+        customerId: project.customerId,
+        userId: user.id,
+        type: "project_updated",
+      },
+    });
+  } catch (emailError: any) {
+    console.error("SendGrid Error:", emailError);
+  }
+}
+
 
 export async function GET(
   request: NextRequest,
@@ -27,12 +363,22 @@ export async function GET(
   const { projectId } = params
 
   try {
+
+    const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('organizationId')
+    .eq('profile_id', user.id)
+    .single();
+
+    if (profileError || !profile?.organizationId) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
     // Fetch the project
     const { data: project, error: projectError } = await supabase
       .from("projects")
       .select("*")
       .eq("id", projectId)
-      .eq("createdBy", user.id)
+      .eq('organizationId', profile.organizationId)
       .single()
 
     if (projectError) throw projectError
@@ -104,7 +450,30 @@ export async function PUT(
   const { projectId } = params
   const body = await request.json()
 
+  // Rate limiting
+  const ip = request.headers.get('x-forwarded-for') ?? 
+    request.headers.get('x-real-ip') ?? 
+    '127.0.0.1';
+  const { success, limit, reset, remaining } = await ratelimit.limit(ip);
+
+  if (!success) {
+    return NextResponse.json(
+      { 
+        error: 'Too many requests. Please try again later.',
+        limit,
+        reset,
+        remaining
+      }, 
+      { status: 429 }
+    );
+  }
+
   console.log('[API][PUT] Incoming body:', body);
+
+  // Check if this is an action-based request
+  if (body.action) {
+    return handleProjectAction(supabase, user, projectId, body);
+  }
 
   // Ensure user is tied to an organization
   const { data: profile, error: profileError } = await supabase

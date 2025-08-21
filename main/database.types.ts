@@ -322,6 +322,7 @@ export type Database = {
           details: Json | null
           id: string
           label: string | null
+          organizationId: string | null
           referenceId: string | null
           referenceType:
             | Database["public"]["Enums"]["customer_activity_reference_enum"]
@@ -339,6 +340,7 @@ export type Database = {
           details?: Json | null
           id?: string
           label?: string | null
+          organizationId?: string | null
           referenceId?: string | null
           referenceType?:
             | Database["public"]["Enums"]["customer_activity_reference_enum"]
@@ -356,6 +358,7 @@ export type Database = {
           details?: Json | null
           id?: string
           label?: string | null
+          organizationId?: string | null
           referenceId?: string | null
           referenceType?:
             | Database["public"]["Enums"]["customer_activity_reference_enum"]
@@ -378,6 +381,13 @@ export type Database = {
             columns: ["customerId"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_activities_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organization"
             referencedColumns: ["id"]
           },
         ]
@@ -1145,6 +1155,7 @@ export type Database = {
           createdBy: string | null
           customerId: string | null
           description: string | null
+          fts: unknown | null
           id: string
           name: string | null
           organizationEmail: string | null
@@ -1166,6 +1177,7 @@ export type Database = {
           createdBy?: string | null
           customerId?: string | null
           description?: string | null
+          fts?: unknown | null
           id?: string
           name?: string | null
           organizationEmail?: string | null
@@ -1187,6 +1199,7 @@ export type Database = {
           createdBy?: string | null
           customerId?: string | null
           description?: string | null
+          fts?: unknown | null
           id?: string
           name?: string | null
           organizationEmail?: string | null
@@ -1919,6 +1932,7 @@ export type Database = {
           createdBy: string | null
           customerId: string | null
           description: string | null
+          fts: unknown | null
           id: string
           issueDate: string | null
           name: string | null
@@ -1944,6 +1958,7 @@ export type Database = {
           createdBy?: string | null
           customerId?: string | null
           description?: string | null
+          fts?: unknown | null
           id?: string
           issueDate?: string | null
           name?: string | null
@@ -1969,6 +1984,7 @@ export type Database = {
           createdBy?: string | null
           customerId?: string | null
           description?: string | null
+          fts?: unknown | null
           id?: string
           issueDate?: string | null
           name?: string | null
