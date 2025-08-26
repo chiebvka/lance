@@ -192,13 +192,14 @@ export default function ProjectDetailsSheet({ project }: Props) {
   }
 
   const handlePublish = async (asPersonal: boolean, customerId?: string | null, emailToCustomer: boolean = false) => {
+    setIsPublishing(true);
     try {
       const updateData: any = {
         action: "publish",
         name: project.name || "",
         description: project.description,
         type: asPersonal ? "personal" : "customer",
-        customerId: asPersonal ? null : (customerId || null),
+        customerId: asPersonal ? null : (customerId || project.customerId || null),
         recipientEmail: asPersonal ? null : (customerId ? undefined : project.customerEmail),
         recepientName: asPersonal ? null : (customerId ? undefined : project.customerName),
         emailToCustomer: emailToCustomer && !asPersonal
@@ -209,7 +210,7 @@ export default function ProjectDetailsSheet({ project }: Props) {
         projectData: updateData
       });
 
-      if (emailToCustomer && !asPersonal && customerId) {
+      if (emailToCustomer && !asPersonal && (customerId || project.customerId)) {
         toast.success("Project published and email sent!");
       } else {
         toast.success("Project published successfully!");
@@ -217,6 +218,8 @@ export default function ProjectDetailsSheet({ project }: Props) {
     } catch (error) {
       console.error('Error publishing project:', error);
       toast.error("Failed to publish project");
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -506,20 +509,39 @@ export default function ProjectDetailsSheet({ project }: Props) {
             <DropdownMenuContent align="end" className="w-56">
               {/* Publish options for draft projects */}
               {getAvailableActions(state, status, project.type || '').includes('publish_personal') && (
-                <DropdownMenuItem 
-                  onClick={() => handlePublish(true)} 
-                  disabled={isPublishing}
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  {isPublishing ? (
-                    <>
-                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                      Publishing...
-                    </>
-                  ) : (
-                    'Publish as Personal'
+                <>
+                  {/* Show "Publish as is" if project has an assigned customer */}
+                  {isAssigned && (
+                    <DropdownMenuItem 
+                      onClick={() => handlePublish(false)} 
+                      disabled={isPublishing}
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      {isPublishing ? (
+                        <>
+                          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                          Publishing...
+                        </>
+                      ) : (
+                        'Publish as is'
+                      )}
+                    </DropdownMenuItem>
                   )}
-                </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => handlePublish(true)} 
+                    disabled={isPublishing}
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    {isPublishing ? (
+                      <>
+                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                        Publishing...
+                      </>
+                    ) : (
+                      'Publish as Personal'
+                    )}
+                  </DropdownMenuItem>
+                </>
               )}
               
               {getAvailableActions(state, status, project.type || '').includes('publish_customer') && (

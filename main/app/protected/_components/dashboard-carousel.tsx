@@ -378,7 +378,7 @@ export default function DashboardCarousel() {
         <CarouselContent className="-ml-2 md:-ml-4">
           {dashboardCards.map((card, index) => (
             <CarouselItem key={index} className="pl-2 md:pl-4 basis-full sm:basis-2/3 md:basis-1/2 lg:basis-2/5 xl:basis-1/3 2xl:basis-1/4">
-              <Card className="h-full min-h-[55vh] max-h-[55vh] flex flex-col">
+              <Card className="h-full min-h-[400px] max-h-[400px] flex flex-col">
                 <CardHeader className="flex flex-row items-center  w-full justify-between space-y-0 my-4 pb-2 flex-shrink-0">
                   <div className="flex space-x-2 items-center">
                     <card.icon className="h-5 w-5 text-primary" />

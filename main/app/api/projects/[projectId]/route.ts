@@ -298,11 +298,15 @@ async function handleMarkCompleted(supabase: any, user: any, projectId: string, 
 }
 
 async function handleRestartProject(supabase: any, user: any, projectId: string, existingProject: any, profile: any) {
+  // Generate new token when restarting project
+  const newToken = crypto.randomUUID();
+  
   const { error: updateError, data: updatedProject } = await supabase
     .from('projects')
     .update({
       status: 'pending',
       state: 'published',
+      token: newToken,
       updatedOn: new Date().toISOString(),
     })
     .eq('id', projectId)
@@ -942,11 +946,15 @@ export async function PATCH(
 
     if (action === 'restart') {
       // Restart cancelled project: set status to pending and state to published
+      // Generate new token when restarting project
+      const newToken = crypto.randomUUID();
+      
       const { error: updateError } = await supabase
         .from('projects')
         .update({ 
           status: 'pending', 
           state: 'published',
+          token: newToken,
           updatedOn: new Date().toISOString() 
         })
         .eq('id', projectId)

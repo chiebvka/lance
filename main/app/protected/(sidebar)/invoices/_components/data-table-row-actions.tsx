@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { Invoice } from "./columns"
-import { MoreHorizontal, Loader2, CheckCircle, Clock, HardDriveDownload, Receipt } from "lucide-react"
+import { MoreHorizontal, Loader2, CheckCircle, Clock, HardDriveDownload, Receipt, Bubbles } from "lucide-react"
 import ConfirmModal from "@/components/modal/confirm-modal"
 import { downloadInvoiceAsPDF, type InvoicePDFData } from '@/utils/invoice-pdf'
 
@@ -70,7 +70,21 @@ export function DataTableRowActions<TData>({
   // Receipt creation mutation
   const createReceiptMutation = useMutation({
     mutationFn: async (invoiceId: string) => {
-      return axios.post(`/api/invoices/${invoiceId}/receipt`);
+      const loadingToastId = toast.loading(
+        <div className="flex items-center gap-3">
+          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+          <span>Creating Receipt...</span>
+        </div>,
+        { duration: Infinity }
+      );
+      try {
+        const result =  axios.post(`/api/invoices/${invoiceId}/receipt`);
+        toast.dismiss(loadingToastId);
+        return result
+      } catch (error) {
+        toast.dismiss(loadingToastId);
+        throw error;
+      }
     },
     onSuccess: (response) => {
       toast.success("Receipt created successfully!");
@@ -99,43 +113,63 @@ export function DataTableRowActions<TData>({
   // Duplicate invoice mutation
   const duplicateInvoiceMutation = useMutation({
     mutationFn: async (originalInvoice: Invoice) => {
-      // First, get the full invoice details
-      const { data: fullInvoiceResponse } = await axios.get(`/api/invoices/${originalInvoice.id}`)
-      const fullInvoice = fullInvoiceResponse.invoice
-      
-      // Create a copy with modified invoice number and reset certain fields
-      const duplicatedInvoice = {
-        // Basic invoice info
-        customerId: fullInvoice.customerId || null,
-        projectId: fullInvoice.projectId || null,
-        organizationName: fullInvoice.organizationName || null,
-        organizationLogoUrl: fullInvoice.organizationLogo || null,
-        organizationEmail: fullInvoice.organizationEmail || null,
-        recepientName: fullInvoice.recepientName || null,
-        recepientEmail: fullInvoice.recepientEmail || null,
-        issueDate: new Date(), // Set to current date for duplicate
-        dueDate: fullInvoice.dueDate ? new Date(new Date().getTime() + (3 * 24 * 60 * 60 * 1000)) : null, // 3 days from now
-        currency: fullInvoice.currency || "CAD",
-        hasVat: fullInvoice.hasVat || false,
-        hasTax: fullInvoice.hasTax || false,
-        hasDiscount: fullInvoice.hasDiscount || false,
-        vatRate: fullInvoice.vatRate || 0,
-        taxRate: fullInvoice.taxRate || 0,
-        discount: fullInvoice.discount || 0,
-        notes: fullInvoice.notes || "",
-        paymentInfo: fullInvoice.paymentInfo || null,
-        paymentDetails: fullInvoice.paymentDetails || null,
-        invoiceDetails: fullInvoice.invoiceDetails || [],
+
+        // Show loading toast with bubbles icon
+      const loadingToastId = toast.loading(
+        <div className="flex items-center gap-3">
+          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+          <span>Duplicating Invoice...</span>
+        </div>,
+        { duration: Infinity }
+      );
+
+      try {
+        // First, get the full invoice details
+        const { data: fullInvoiceResponse } = await axios.get(`/api/invoices/${originalInvoice.id}`)
+        const fullInvoice = fullInvoiceResponse.invoice
         
-        // Reset state and status for new invoice
-        state: "draft",
-        sentViaEmail: false,
-        emailSentAt: null,
-        emailToCustomer: false,
+        // Create a copy with modified invoice number and reset certain fields
+        const duplicatedInvoice = {
+          // Basic invoice info
+          customerId: fullInvoice.customerId || null,
+          projectId: fullInvoice.projectId || null,
+          organizationName: fullInvoice.organizationName || null,
+          organizationLogoUrl: fullInvoice.organizationLogo || null,
+          organizationEmail: fullInvoice.organizationEmail || null,
+          recepientName: fullInvoice.recepientName || null,
+          recepientEmail: fullInvoice.recepientEmail || null,
+          issueDate: new Date(), // Set to current date for duplicate
+          dueDate: fullInvoice.dueDate ? new Date(new Date().getTime() + (3 * 24 * 60 * 60 * 1000)) : null, // 3 days from now
+          currency: fullInvoice.currency || "CAD",
+          hasVat: fullInvoice.hasVat || false,
+          hasTax: fullInvoice.hasTax || false,
+          hasDiscount: fullInvoice.hasDiscount || false,
+          vatRate: fullInvoice.vatRate || 0,
+          taxRate: fullInvoice.taxRate || 0,
+          discount: fullInvoice.discount || 0,
+          notes: fullInvoice.notes || "",
+          paymentInfo: fullInvoice.paymentInfo || null,
+          paymentDetails: fullInvoice.paymentDetails || null,
+          invoiceDetails: fullInvoice.invoiceDetails || [],
+          
+          // Reset state and status for new invoice
+          state: "draft",
+          sentViaEmail: false,
+          emailSentAt: null,
+          emailToCustomer: false,
+        }
+        
+        console.log("Sending duplicate invoice data:", duplicatedInvoice)
+        const result = await axios.post('/api/invoices/create', duplicatedInvoice)
+        toast.dismiss(loadingToastId);
+        return result
+        
+      } catch (error) {
+         // Dismiss loading toast on error
+         toast.dismiss(loadingToastId);
+         throw error;
       }
-      
-      console.log("Sending duplicate invoice data:", duplicatedInvoice)
-      return axios.post('/api/invoices/create', duplicatedInvoice)
+    
     },
     onSuccess: () => {
       toast.success("Invoice duplicated successfully!")
@@ -286,8 +320,14 @@ export function DataTableRowActions<TData>({
               onClick={handleCreateReceipt}
               disabled={createReceiptMutation.isPending}
             >
-
-              {createReceiptMutation.isPending ? 'Creating Receipt...' : 'Create Receipt'}
+              {createReceiptMutation.isPending ? (
+                <>
+                  <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                  Creating Receipt...
+                </>
+              ) : (
+                'Create Receipt'
+              )}
             </DropdownMenuItem>
           )}
           

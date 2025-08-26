@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { Project } from "./columns"
-import { MoreHorizontal, Loader2, CheckCircle, Clock } from "lucide-react"
+import { MoreHorizontal, Loader2, CheckCircle, Clock, Bubbles } from "lucide-react"
 import ConfirmModal from "@/components/modal/confirm-modal"
 
 interface DataTableRowActionsProps<TData> {
@@ -78,74 +78,94 @@ export function DataTableRowActions<TData>({
   // Duplicate project mutation
   const duplicateProjectMutation = useMutation({
     mutationFn: async (originalProject: Project) => {
-      // First, get the full project details
-      const { data: fullProjectResponse } = await axios.get(`/api/projects/${originalProject.id}`)
-      const fullProject = fullProjectResponse.project
-      
-      // Create a copy with modified name and reset certain fields
-      const duplicatedProject = {
-        // Basic project info
-        name: `${fullProject.name} (Copy)`,
-        description: fullProject.description || "",
-        type: fullProject.type || "customer",
-        customerId: fullProject.customerId || null,
-        currency: fullProject.currency || "USD",
-        currencyEnabled: fullProject.currencyEnabled || false,
-        budget: fullProject.budget || 0,
-        startDate: fullProject.startDate || null,
-        endDate: fullProject.endDate || null,
-        effectiveDate: fullProject.effectiveDate || null,
-        notes: fullProject.notes || "",
+      // Show loading toast with bubbles icon
+      const loadingToastId = toast.loading(
+        <div className="flex items-center gap-3">
+          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+          <span>Duplicating project...</span>
+        </div>,
+        { duration: Infinity }
+      );
+
+      try {
+        // First, get the full project details
+        const { data: fullProjectResponse } = await axios.get(`/api/projects/${originalProject.id}`)
+        const fullProject = fullProjectResponse.project
         
-        // Deliverables
-        deliverablesEnabled: fullProject.deliverablesEnabled || false,
-        deliverables: (fullProject.deliverables || []).map((d: any) => ({
-          // DO NOT include id - let Supabase auto-generate it
-          name: d.name || "",
-          description: d.description || null,
-          dueDate: d.dueDate || null,
-          status: d.status || "pending",
-          position: d.position || 1,
-          isPublished: d.isPublished || false,
-          // DO NOT include: id, projectId, createdBy, lastSaved
-        })),
+        // Create a copy with modified name and reset certain fields
+        const duplicatedProject = {
+          // Basic project info
+          name: `${fullProject.name} (Copy)`,
+          description: fullProject.description || "",
+          type: fullProject.type || "customer",
+          customerId: fullProject.customerId || null,
+          currency: fullProject.currency || "USD",
+          currencyEnabled: fullProject.currencyEnabled || false,
+          budget: fullProject.budget || 0,
+          startDate: new Date(),
+          endDate: new Date(new Date().getTime() + (21 * 24 * 60 * 60 * 1000)) || null,
+          effectiveDate: fullProject.effectiveDate || null,
+          notes: fullProject.notes || "",
+          
+          // Deliverables
+          deliverablesEnabled: fullProject.deliverablesEnabled || false,
+          deliverables: (fullProject.deliverables || []).map((d: any) => ({
+            // DO NOT include id - let Supabase auto-generate it
+            name: d.name || "",
+            description: d.description || null,
+            dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) || null,
+            status: d.status || "pending",
+            position: d.position || 1,
+            isPublished: d.isPublished || false,
+            // DO NOT include: id, projectId, createdBy, lastSaved
+          })),
+          
+          // Payment structure
+          paymentStructure: fullProject.paymentStructure || "noPayment",
+          paymentMilestones: (fullProject.paymentMilestones || []).map((m: any) => ({
+            // DO NOT include id - let Supabase auto-generate it
+            name: m.name || null,
+            description: m.description || null,
+            amount: m.amount || null,
+            percentage: m.percentage || null,
+            dueDate: new  Date(Date.now() + 7 * 24 * 60 * 60 * 1000) || null,
+            status: m.status || null,
+            type: m.type || "milestone",
+            hasPaymentTerms: m.hasPaymentTerms || false,
+            // DO NOT include: id, projectId, deliverableId, createdBy
+          })),
+          hasPaymentTerms: fullProject.hasPaymentTerms || false,
+          
+          // Service agreement
+          hasServiceAgreement: fullProject.hasServiceAgreement || false,
+          serviceAgreement: fullProject.serviceAgreement || "",
+          agreementTemplate: fullProject.agreementTemplate || "standard",
+          hasAgreedToTerms: false, // Reset for new project
+          
+          // Status and state - reset for new project
+          isPublished: false,
+          status: "pending",
+          signedStatus: "not_signed",
+          state: "draft",
+          
+          // Other fields
+          documents: fullProject.documents || "",
+          customFields: fullProject.customFields || { name: "", value: "" },
+          emailToCustomer: false,
+        }
         
-        // Payment structure
-        paymentStructure: fullProject.paymentStructure || "noPayment",
-        paymentMilestones: (fullProject.paymentMilestones || []).map((m: any) => ({
-          // DO NOT include id - let Supabase auto-generate it
-          name: m.name || null,
-          description: m.description || null,
-          amount: m.amount || null,
-          percentage: m.percentage || null,
-          dueDate: m.dueDate || null,
-          status: m.status || null,
-          type: m.type || "milestone",
-          hasPaymentTerms: m.hasPaymentTerms || false,
-          // DO NOT include: id, projectId, deliverableId, createdBy
-        })),
-        hasPaymentTerms: fullProject.hasPaymentTerms || false,
+        console.log("Sending duplicate project data:", duplicatedProject)
+        const result = await axios.post('/api/projects/create', duplicatedProject)
         
-        // Service agreement
-        hasServiceAgreement: fullProject.hasServiceAgreement || false,
-        serviceAgreement: fullProject.serviceAgreement || "",
-        agreementTemplate: fullProject.agreementTemplate || "standard",
-        hasAgreedToTerms: false, // Reset for new project
+        // Dismiss loading toast
+        toast.dismiss(loadingToastId);
         
-        // Status and state - reset for new project
-        isPublished: false,
-        status: "pending",
-        signedStatus: "not_signed",
-        state: "draft",
-        
-        // Other fields
-        documents: fullProject.documents || "",
-        customFields: fullProject.customFields || { name: "", value: "" },
-        emailToCustomer: false,
+        return result;
+      } catch (error) {
+        // Dismiss loading toast on error
+        toast.dismiss(loadingToastId);
+        throw error;
       }
-      
-      console.log("Sending duplicate project data:", duplicatedProject)
-      return axios.post('/api/projects/create', duplicatedProject)
     },
     onSuccess: () => {
       toast.success("Project duplicated successfully!")
@@ -260,7 +280,14 @@ export function DataTableRowActions<TData>({
             onClick={handleDuplicate}
             disabled={duplicateProjectMutation.isPending}
           >
-            {duplicateProjectMutation.isPending ? 'Duplicating...' : 'Duplicate Project'}
+            {duplicateProjectMutation.isPending ? (
+              <>
+                <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                Duplicating...
+              </>
+            ) : (
+              'Duplicate Project'
+            )}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem 

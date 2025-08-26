@@ -18,87 +18,65 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
     const token = searchParams.get('token');
-  
-    if (!projectId || !token) {
-      // Even if token is missing, check org subscription by projectId to decide if we should show a subscription notice
-      if (projectId) {
-        try {
-          const { data: projOrg } = await supabase
-            .from('projects')
-            .select(`
-              id,
-                organization:organizationId (
-                  id,
-                  logoUrl,
-                  name,
-                  email,
-                  subscriptionstatus,
-                  trialEndsAt
-                ),
-            `)
-            .eq('id', projectId)
-            .maybeSingle();
 
-          const orgStatus = (projOrg as any)?.organization?.subscriptionstatus ?? null;
-          const orgTrialEndsAt = (projOrg as any)?.organization?.trialEndsAt ?? null;
-          if (orgStatus !== undefined && orgStatus !== null) {
-            const { isOrgSubscriptionActive, deriveInactiveReason } = await import('@/utils/subscription');
-            if (!isOrgSubscriptionActive(orgStatus, orgTrialEndsAt)) {
-              return NextResponse.json(
-                {
-                  success: false,
-                  error: 'Organization subscription inactive',
-                  reason: deriveInactiveReason(orgStatus, orgTrialEndsAt),
-                },
-                { status: 403 }
-              );
-            }
-          }
-        } catch (e) {
-          // Fail open to normal error handling below
-        }
-      }
-      return NextResponse.json({ error: "Missing projectId or token" }, { status: 400 });
+    if (!projectId) {
+      return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
     }
-  
-    try {
-      // Pre-check subscription by projectId so we can return a subscription notice regardless of token validity
-      try {
-        const { data: projOrg } = await supabase
-          .from('projects')
-          .select(`
-            id,
-            organization:organizationId (
-              id,
-              logoUrl,
-              name,
-              email,
-              subscriptionstatus,
-              trialEndsAt
-            ),
-          `)
-          .eq('id', projectId)
-          .maybeSingle();
 
-        const orgStatus = (projOrg as any)?.organization?.subscriptionstatus ?? null;
-        const orgTrialEndsAt = (projOrg as any)?.organization?.trialEndsAt ?? null;
-        if (orgStatus !== undefined && orgStatus !== null) {
-          const { isOrgSubscriptionActive, deriveInactiveReason } = await import('@/utils/subscription');
-          if (!isOrgSubscriptionActive(orgStatus, orgTrialEndsAt)) {
-            return NextResponse.json(
-              {
-                success: false,
-                error: 'Organization subscription inactive',
-                reason: deriveInactiveReason(orgStatus, orgTrialEndsAt),
-              },
-              { status: 403 }
-            );
-          }
-        }
-      } catch (e) {
-        // continue to normal flow
+    try {
+      // Fetch minimal project to determine type and subscription
+      const { data: projectMeta, error: metaError } = await supabase
+        .from('projects')
+        .select(`
+          id,
+          type,
+          state,
+          token,
+          organization:organizationId (
+            id,
+            logoUrl,
+            name,
+            email,
+            subscriptionstatus,
+            trialEndsAt
+          )
+        `)
+        .eq('id', projectId)
+        .maybeSingle();
+
+      if (metaError || !projectMeta) {
+        return NextResponse.json({ error: 'Project not found' }, { status: 404 });
       }
 
+      // Gate by organization subscription (non-auth public preview)
+      const orgStatus = (projectMeta as any)?.organization?.subscriptionstatus ?? null;
+      const orgTrialEndsAt = (projectMeta as any)?.organization?.trialEndsAt ?? null;
+      if (orgStatus !== undefined && orgStatus !== null) {
+        if (!isOrgSubscriptionActive(orgStatus, orgTrialEndsAt)) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Organization subscription inactive',
+              reason: deriveInactiveReason(orgStatus, orgTrialEndsAt),
+            },
+            { status: 403 }
+          );
+        }
+      }
+
+      const isPersonal = (projectMeta as any)?.type === 'personal';
+
+      // If personal, do not require token; otherwise require and validate
+      if (!isPersonal) {
+        if (!token) {
+          return NextResponse.json({ error: 'Missing token' }, { status: 400 });
+        }
+        if ((projectMeta as any)?.token !== token) {
+          return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 });
+        }
+      }
+
+      // Fetch full project details
       const { data: project, error } = await supabase
         .from("projects")
         .select(`
@@ -123,40 +101,21 @@ export async function GET(request: Request) {
           paymentStructure,
           signatureType,
           signatureDetails,
-          signedOn
+          signedOn,
+          type
         `)
         .eq("id", projectId)
-        .filter('token', 'eq', token)
-        .single();
+        .maybeSingle();
 
-        console.log('[submit-project][GET] project:', project)
+      console.log('[submit-project][GET] project:', project)
 
       if (error || !project) {
-        // Deep debug to see what's stored for this id
-        const { data: byId, error: byIdError } = await supabase
-          .from('projects')
-          .select('id, token, state, type, updatedOn')
-          .eq('id', projectId)
-          .maybeSingle()
-
-        console.log('[submit-project][GET] fallback by id:', byId, 'error:', byIdError)
-        console.log('[submit-project][GET] incoming token:', token)
         return NextResponse.json({ error: "Invalid or expired link" }, { status: 404 });
       }
 
-  
-      // Gate by organization subscription (non-auth public preview)
-      const orgStatus = (project as any)?.organization?.subscriptionstatus ?? null;
-      const orgTrialEndsAt = (project as any)?.organization?.trialEndsAt ?? null;
-      if (!isOrgSubscriptionActive(orgStatus, orgTrialEndsAt)) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Organization subscription inactive",
-            reason: deriveInactiveReason(orgStatus, orgTrialEndsAt),
-          },
-          { status: 403 }
-        );
+      // If draft, do not allow viewing
+      if ((project as any)?.state === 'draft') {
+        return NextResponse.json({ error: 'Project is in draft mode' }, { status: 400 });
       }
 
       // Fetch related collections

@@ -61,6 +61,7 @@ export default function ProjectPreview({ projectId, token }: ProjectPreviewProps
   const [canvasSignature, setCanvasSignature] = useState<string>('')
   const [typedSignature, setTypedSignature] = useState<{ name: string; font: string } | null>(null)
   const isSigned = useMemo(() => Boolean(project?.signedOn), [project])
+  const isPersonal = useMemo(() => (project?.type || '') === 'personal', [project?.type])
   const [isEditingAgreement, setIsEditingAgreement] = useState(false)
   const [agreementContent, setAgreementContent] = useState<string>(project?.serviceAgreement || '')
   const isAgreementLocked = useMemo(() => (project?.status || '').toLowerCase() === 'signed' || isSigned, [project, isSigned])
@@ -211,9 +212,15 @@ export default function ProjectPreview({ projectId, token }: ProjectPreviewProps
                   </div>
                 </div>
               <div className="flex items-center gap-2">
-                <Badge className={`${isSigned ? 'bg-green-500/20 text-green-100 border-green-300' : 'bg-yellow-500/20 text-yellow-100 border-yellow-300'} text-xs md:text-sm`}>
-                  {isSigned ? 'Signed' : 'Pending Signature'}
-                </Badge>
+                {isPersonal ? (
+                  <Badge className="bg-blue-500/20 text-blue-100 border-blue-300 text-xs md:text-sm">
+                    Personal Project
+                  </Badge>
+                ) : (
+                  <Badge className={`${isSigned ? 'bg-green-500/20 text-green-100 border-green-300' : 'bg-yellow-500/20 text-yellow-100 border-yellow-300'} text-xs md:text-sm`}>
+                    {isSigned ? 'Signed' : 'Pending Signature'}
+                  </Badge>
+                )}
                 <Badge variant="secondary" className={`bg-white/20 text-white border-white/30 text-xs md:text-sm`}>
                   Due: {due}
                 </Badge>
@@ -235,16 +242,28 @@ export default function ProjectPreview({ projectId, token }: ProjectPreviewProps
           </div>
           <div className="max-w-4xl mx-auto px-6 py-8">
             {/* Intro block matching example layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-none">
-                <h3 className="font-semibold  mb-2">From:</h3>
-                <p className="font-medium">{orgName}</p>
+            {isPersonal ? (
+              <div className="mb-8">
+                <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-none flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold mb-1">Project Type</h3>
+                    <p className="font-medium">Personal</p>
+                  </div>
+                  <Badge className="bg-blue-500/20 text-blue-900 dark:text-blue-100 border-blue-300">Personal</Badge>
+                </div>
               </div>
-              <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-none">
-                <h3 className="font-semibold mb-2">To:</h3>
-                <p className="font-medium">{customerName}</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-none">
+                  <h3 className="font-semibold  mb-2">From:</h3>
+                  <p className="font-medium">{orgName}</p>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-900 p-4 rounded-none">
+                  <h3 className="font-semibold mb-2">To:</h3>
+                  <p className="font-medium">{customerName}</p>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* <div className="mb-6">
               <h3  className="font-semibold  mb-4 text-lg md:text-xl">{project.name}</h3>
@@ -403,160 +422,164 @@ export default function ProjectPreview({ projectId, token }: ProjectPreviewProps
                     <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: agreementContent || project.serviceAgreement || '' }} />
                   )}
 
-                  {/* Signature lines preview with applied signature and date */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 ">
-                    <div className="space-y-6">
-                      <div>
-                        <span className="font-semibold">Date:</span>{' '}
-                        <span className="ml-2 inline-block border-b w-56 align-bottom">
-                          {isSigned && project.signedOn ? format(new Date(project.signedOn), 'MMMM do, yyyy h:mm a') : (!isSigned ? format(new Date(), 'MMMM do, yyyy h:mm a') : '')}
-                        </span>
+                  {/* Signature lines preview with applied signature and date (hide for personal projects) */}
+                  {!isPersonal && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 ">
+                      <div className="space-y-6">
+                        <div>
+                          <span className="font-semibold">Date:</span>{' '}
+                          <span className="ml-2 inline-block border-b w-56 align-bottom">
+                            {isSigned && project.signedOn ? format(new Date(project.signedOn), 'MMMM do, yyyy h:mm a') : (!isSigned ? format(new Date(), 'MMMM do, yyyy h:mm a') : '')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-semibold">Signature:</span>{' '}
+                          <span className="ml-2 inline-block border-b w-72 align-bottom">
+                            {signatureType === 'draw' && !isSigned && canvasSignature && (
+                              <img src={canvasSignature} alt="signature" className="h-8 inline-block object-contain" />
+                            )}
+                            {signatureType === 'type' && !isSigned && typedSignature?.name && <span>{typedSignature.name}</span>}
+                            {isSigned && project.signatureType === 'manual' && (project as any).signatureDetails?.name && (
+                              <span>{(project as any).signatureDetails.name}</span>
+                            )}
+                            {isSigned && project.signatureType === 'canvas' && (project as any).signatureDetails?.dataUrl && (
+                              <img src={(project as any).signatureDetails.dataUrl} alt="signature" className="h-8 inline-block object-contain" />
+                            )}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-semibold">Signature:</span>{' '}
-                        <span className="ml-2 inline-block border-b w-72 align-bottom">
-                          {signatureType === 'draw' && !isSigned && canvasSignature && (
-                            <img src={canvasSignature} alt="signature" className="h-8 inline-block object-contain" />
-                          )}
-                          {signatureType === 'type' && !isSigned && typedSignature?.name && <span>{typedSignature.name}</span>}
-                          {isSigned && project.signatureType === 'manual' && (project as any).signatureDetails?.name && (
-                            <span>{(project as any).signatureDetails.name}</span>
-                          )}
-                          {isSigned && project.signatureType === 'canvas' && (project as any).signatureDetails?.dataUrl && (
-                            <img src={(project as any).signatureDetails.dataUrl} alt="signature" className="h-8 inline-block object-contain" />
-                          )}
-                        </span>
+                      <div className="space-y-6">
+                        <div>
+                          <span className="font-semibold">Date:</span>{' '}
+                          <span className="ml-2 inline-block border-b w-56 align-bottom">
+                            {format(new Date(), 'MMMM do, yyyy h:mm a')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-semibold">Signature:</span>{' '}
+                          <span className="ml-2 inline-flex items-center gap-2 border-b w-72 align-bottom"></span>
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-6">
-                      <div>
-                        <span className="font-semibold">Date:</span>{' '}
-                        <span className="ml-2 inline-block border-b w-56 align-bottom">
-                          {format(new Date(), 'MMMM do, yyyy h:mm a')}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-semibold">Signature:</span>{' '}
-                        <span className="ml-2 inline-flex items-center gap-2 border-b w-72 align-bottom"></span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Signature Section */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Digital Signature
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isSigned ? (
-                  <div className="space-y-4">
-                    <div className="text-sm text-muted-foreground">Signed on {project.signedOn ? format(new Date(project.signedOn), 'd MMMM yyyy, HH:mm') : ''}</div>
-                    <div className="border rounded p-4 flex items-center justify-center min-h-[120px]">
-                      {project.signatureType === 'canvas' && (project as any).signatureDetails?.dataUrl && (
-                        <img src={(project as any).signatureDetails.dataUrl} alt="signature" className="h-14 object-contain" />
+            {/* Signature Section (hidden for personal projects) */}
+            {!isPersonal && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Digital Signature
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isSigned ? (
+                    <div className="space-y-4">
+                      <div className="text-sm text-muted-foreground">Signed on {project.signedOn ? format(new Date(project.signedOn), 'd MMMM yyyy, HH:mm') : ''}</div>
+                      <div className="border rounded p-4 flex items-center justify-center min-h-[120px]">
+                        {project.signatureType === 'canvas' && (project as any).signatureDetails?.dataUrl && (
+                          <img src={(project as any).signatureDetails.dataUrl} alt="signature" className="h-14 object-contain" />
+                        )}
+                        {project.signatureType === 'manual' && (project as any).signatureDetails?.name && (
+                          <span className="text-xl font-medium">{(project as any).signatureDetails.name}</span>
+                        )}
+                      </div>
+                      <div className="text-xs bg-purple-50 dark:bg-purple-900 p-2 rounded-none ">
+                        Note: This template is a framework to facilitate agreement. Both parties are solely responsible for reviewing and agreeing to the contents. <Link href="https://bexforte.com" target="_blank" className='text-primary underline'>Bexforte</Link> is only a communication medium and is not a party to the agreement.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex gap-2">
+                        <Button
+                          variant={signatureType === 'draw' ? 'default' : 'outline'}
+                          onClick={() => setSignatureType('draw')}
+                        >
+                          Draw Signature
+                        </Button>
+                        <Button
+                          variant={signatureType === 'type' ? 'default' : 'outline'}
+                          onClick={() => setSignatureType('type')}
+                        >
+                          Type Signature
+                        </Button>
+                      </div>
+
+                      {signatureType === 'draw' ? (
+                        <SignaturePad onSignature={setCanvasSignature} onClear={() => setCanvasSignature('')} />
+                      ) : (
+                        <TypedSignature onSignature={handleTypedSignature} />
                       )}
-                      {project.signatureType === 'manual' && (project as any).signatureDetails?.name && (
-                        <span className="text-xl font-medium">{(project as any).signatureDetails.name}</span>
-                      )}
-                    </div>
-                    <div className="text-xs bg-purple-50 dark:bg-purple-900 p-2 rounded-none ">
-                      Note: This template is a framework to facilitate agreement. Both parties are solely responsible for reviewing and agreeing to the contents. <Link href="https://bexforte.com" target="_blank" className='text-primary underline'>Bexforte</Link> is only a communication medium and is not a party to the agreement.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
+
+                      <div className="text-xs bg-purple-50 dark:bg-purple-900 p-2 rounded-none ">
+                        Note: This template is a framework to facilitate agreement. Both parties are solely responsible for reviewing and agreeing to the contents. <Link href="https://bexforte.com" target="_blank" className='text-primary underline'>Bexforte</Link> is only a communication medium and is not a party to the agreement.
+                      </div>
+
                       <Button
-                        variant={signatureType === 'draw' ? 'default' : 'outline'}
-                        onClick={() => setSignatureType('draw')}
+                        onClick={handleSignClick}
+                        disabled={
+                          isSigned ||
+                          (signatureType === 'draw' ? !canvasSignature : !typedSignature?.name)
+                        }
+                        className="w-full"
                       >
-                        Draw Signature
-                      </Button>
-                      <Button
-                        variant={signatureType === 'type' ? 'default' : 'outline'}
-                        onClick={() => setSignatureType('type')}
-                      >
-                        Type Signature
+                        {isSigned ? 'Document Signed' : 'Sign Document'}
                       </Button>
                     </div>
-
-                    {signatureType === 'draw' ? (
-                      <SignaturePad onSignature={setCanvasSignature} onClear={() => setCanvasSignature('')} />
-                    ) : (
-                      <TypedSignature onSignature={handleTypedSignature} />
-                    )}
-
-                    <div className="text-xs bg-purple-50 dark:bg-purple-900 p-2 rounded-none ">
-                      Note: This template is a framework to facilitate agreement. Both parties are solely responsible for reviewing and agreeing to the contents. <Link href="https://bexforte.com" target="_blank" className='text-primary underline'>Bexforte</Link> is only a communication medium and is not a party to the agreement.
-                    </div>
-
-                    <Button
-                      onClick={handleSignClick}
-                      disabled={
-                        isSigned ||
-                        (signatureType === 'draw' ? !canvasSignature : !typedSignature?.name)
-                      }
-                      className="w-full"
-                    >
-                      {isSigned ? 'Document Signed' : 'Sign Document'}
-                    </Button>
-                  </div>
-                )}
-                                                                 {/* Download Button */}
-                   <div className="flex justify-center pt-4">
-                     <Button
-                       className="flex space-x-3 mx-2"
-                       title="Download Project PDF"
-                       onClick={async () => {
-                         try {
-                           // Use existing project data instead of making authenticated API call
-                           const pdfData: ProjectPDFData = {
-                             id: project.id,
-                             name: project.name || 'Project',
-                             description: project.description || '',
-                             type: project.type || 'personal',
-                             customerName: customerName,
-                             organizationName: orgName,
-                             organizationLogoUrl: logoUrl,
-                             budget: project.budget || 0,
-                             currency: project.currency || 'USD',
-                             startDate: project.startDate || undefined,
-                             endDate: project.endDate || undefined,
-                             deliverables: (project.deliverables || [])?.map((d: any) => ({
-                               name: d.name || null,
-                               description: d.description || null,
-                               dueDate: d.dueDate || null,
-                             })),
-                             serviceAgreement: project.serviceAgreement || null,
+                  )}
+                                                                   {/* Download Button */}
+                     <div className="flex justify-center pt-4">
+                       <Button
+                         className="flex space-x-3 mx-2"
+                         title="Download Project PDF"
+                         onClick={async () => {
+                           try {
+                             // Use existing project data instead of making authenticated API call
+                             const pdfData: ProjectPDFData = {
+                               id: project.id,
+                               name: project.name || 'Project',
+                               description: project.description || '',
+                               type: project.type || 'personal',
+                               customerName: customerName,
+                               organizationName: orgName,
+                               organizationLogoUrl: logoUrl,
+                               budget: project.budget || 0,
+                               currency: project.currency || 'USD',
+                               startDate: project.startDate || undefined,
+                               endDate: project.endDate || undefined,
+                               deliverables: (project.deliverables || [])?.map((d: any) => ({
+                                 name: d.name || null,
+                                 description: d.description || null,
+                                 dueDate: d.dueDate || null,
+                               })),
+                               serviceAgreement: project.serviceAgreement || null,
+                             }
+                             
+                             const filename = project.name 
+                               ? `${project.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
+                               : `project-${project.id}.pdf`;
+                             
+                             await downloadProjectAsPDF(pdfData, filename)
+                             toast.success("Project PDF downloaded successfully!");
+                           } catch (err) {
+                             console.error('Download project PDF error:', err)
+                             toast.error('Failed to generate project PDF')
                            }
-                           
-                           const filename = project.name 
-                             ? `${project.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
-                             : `project-${project.id}.pdf`;
-                           
-                           await downloadProjectAsPDF(pdfData, filename)
-                           toast.success("Project PDF downloaded successfully!");
-                         } catch (err) {
-                           console.error('Download project PDF error:', err)
-                           toast.error('Failed to generate project PDF')
-                         }
-                       }}
-                     >
-                       <HardDriveDownload className="w-3 h-3" />
-                       Download Project PDF
-                     </Button>
-                   </div>
-              </CardContent>
-            </Card>
+                         }}
+                       >
+                         <HardDriveDownload className="w-3 h-3" />
+                         Download Project PDF
+                       </Button>
+                     </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Signature Status */}
-            {isSigned && project.signedOn && (
+            {!isPersonal && isSigned && project.signedOn && (
               <Card className="mb-6 border-green-200 bg-green-50 dark:bg-green-900 dark:border-green-700">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -579,13 +602,15 @@ export default function ProjectPreview({ projectId, token }: ProjectPreviewProps
 
       </div>
 
-      {/* Confirmation Modal */}
-      <ConfirmModal
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        onConfirm={handleConfirmSign}
-        organizationName={orgName}
-      />
+      {/* Confirmation Modal (hidden for personal projects) */}
+      {!isPersonal && (
+        <ConfirmModal
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          onConfirm={handleConfirmSign}
+          organizationName={orgName}
+        />
+      )}
     </div>
   )
 }

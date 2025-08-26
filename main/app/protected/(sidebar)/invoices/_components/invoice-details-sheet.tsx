@@ -142,6 +142,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
   const [isCancelling, setIsCancelling] = useState(false);
   const [isSettingToUnassigned, setIsSettingToUnassigned] = useState(false);
   const [isMarkingAsSettled, setIsMarkingAsSettled] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   
   // State management functions
   const handleDeleteInvoice = async () => {
@@ -338,17 +339,63 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
 
   const handleCreateReceipt = async () => {
     try {
+      toast.loading(
+        <div className="flex items-center gap-3">
+          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+          <span>Creating Receipt...</span>
+        </div>,
+        { id: `create-receipt-${invoice.id}`, duration: Infinity }
+      );
       await createReceiptMutation.mutateAsync(invoice.id);
+      toast.dismiss(`create-receipt-${invoice.id}`);
     } catch (error) {
       // Error handling is done in the mutation
       console.error('Error creating receipt:', error);
+      toast.dismiss(`create-receipt-${invoice.id}`);
+    }
+  };
+
+  const handleSendInvoice = async () => {
+    if (!invoice.customerId && !invoice.recepientEmail) {
+      toast.error('No assigned customer to send invoice to');
+      return;
+    }
+    
+    // Get the recipient email - prefer customer email from database, fallback to invoice recipient
+    const recipientEmail = invoice.customerId 
+      ? (await queryClient.getQueryData(['customers']) as any[])?.find(c => c.id === invoice.customerId)?.email
+      : invoice.recepientEmail;
+    
+    if (!recipientEmail) {
+      toast.error('No valid email address found for customer');
+      return;
+    }
+    
+    setIsSending(true);
+    try {
+      await updateInvoiceMutation.mutateAsync({
+        invoiceId: invoice.id,
+        invoiceData: {
+          state: 'sent',
+          emailToCustomer: true,
+          // Ensure we have the recipient email for the API to send the email
+          recepientEmail: recipientEmail,
+          recepientName: invoice.recepientName || invoice.customerName,
+        }
+      });
+      toast.success('Invoice sent to customer!');
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      toast.error('Failed to send invoice');
+    } finally {
+      setIsSending(false);
     }
   };
 
   // Helper function to get available actions based on state
   const getAvailableActions = (state: string) => {
     const baseActions = {
-      'draft': ['assign', 'delete'],
+      'draft': ['assign', 'delete', 'send'],
       'sent': ['settle', 'unassign', 'cancel', 'delete'],
       'unassigned': ['cancel', 'settle', 'delete', 'assign', 'create_receipt'],
       'cancelled': ['assign', 'delete'], // Allow direct assignment since cancelled invoices are now unassigned
@@ -478,6 +525,24 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              {/* Send Invoice */}
+              {getAvailableActions(state).includes('send') && isAssigned && (
+                <DropdownMenuItem 
+                  onClick={handleSendInvoice}
+                  disabled={isSending}
+                >
+                  <MessageSquareShare className="w-4 h-4 mr-2" />
+                  {isSending ? (
+                    <>
+                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Invoice'
+                  )}
+                </DropdownMenuItem>
+              )}
+              
               {/* Mark as settled with date picker */}
               {getAvailableActions(state).includes('settle') && (
                 <DropdownMenuSub>

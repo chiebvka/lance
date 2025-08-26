@@ -20,7 +20,7 @@ import {
 import CreateSearchFilter from "@/components/general/create-search-filter"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { DataTable } from "./data-table"
 import { columns } from "./columns"
 import ProjectForm, { ProjectFormRef } from './project-form'
@@ -420,19 +420,36 @@ export default function ProjectsClient({ initialProjects }: Props) {
 
         await new Promise(resolve => setTimeout(resolve, 500))
 
+        // Show initial loading toast
+        toast.loading(
+          <div className="flex flex-col gap-3 py-2">
+            <div className="flex flex-col gap-1">
+              <div className="font-medium text-base">Exporting projects</div>
+              <div className="text-sm text-muted-foreground">Please wait while we prepare your files...</div>
+            </div>
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex justify-between text-sm">
+                <span>Progress</span>
+                <span>0%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: '0%' }}></div>
+              </div>
+            </div>
+          </div>,
+          { id: loadingToast, duration: Infinity, className: 'w-[380px] p-4' }
+        )
+
         for (let i = 0; i < selectedProjects.length; i++) {
           const project = selectedProjects[i]
           const progress = Math.round(((i + 1) / selectedProjects.length) * 100)
 
+          // Update the existing toast with progress
           toast.loading(
             <div className="flex flex-col gap-3 py-2">
               <div className="flex flex-col gap-1">
-                <div className="font-medium text-base">
-                  Processing project {i + 1} of {selectedProjects.length}...
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Working on: {project.name || `Project ${project.id}`}
-                </div>
+                <div className="font-medium text-base">Exporting projects</div>
+                <div className="text-sm text-muted-foreground">Please wait while we prepare your files...</div>
               </div>
               <div className="flex flex-col gap-2 w-full">
                 <div className="flex justify-between text-sm">
@@ -491,8 +508,8 @@ export default function ProjectsClient({ initialProjects }: Props) {
         toast.loading(
           <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col gap-1">
-              <div className="font-medium text-base">Finalizing your export...</div>
-              <div className="text-sm text-muted-foreground">Creating zip file</div>
+              <div className="font-medium text-base">Exporting projects</div>
+              <div className="text-sm text-muted-foreground">Please wait while we prepare your files...</div>
             </div>
             <div className="flex flex-col gap-2 w-full">
               <div className="flex justify-between text-sm">
@@ -517,12 +534,29 @@ export default function ProjectsClient({ initialProjects }: Props) {
               <div className="font-medium text-base">Export completed!</div>
               <div className="text-sm text-muted-foreground">{selectedProjects.length} project PDFs ready for download</div>
             </div>
+            {/* <Button
+              className="w-full"
+              onClick={() => {
+                const url = URL.createObjectURL(zipBlob)
+                const link = document.createElement('a')
+                link.href = url
+                link.download = `projects-export-${new Date().toISOString().split('T')[0]}.zip`
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                URL.revokeObjectURL(url)
+                toast.success('Download started!')
+                toast.dismiss(loadingToast)
+              }}
+            >
+              Download ({(zipBlob.size / 1024).toFixed(1)} KB)
+            </Button> */}
           </div>,
           {
             id: loadingToast,
             description: `File size: ${(zipBlob.size / 1024).toFixed(1)} KB`,
             action: {
-              label: 'Download',
+              label: "Download",
               onClick: () => {
                 const url = URL.createObjectURL(zipBlob)
                 const link = document.createElement('a')
@@ -533,11 +567,16 @@ export default function ProjectsClient({ initialProjects }: Props) {
                 document.body.removeChild(link)
                 URL.revokeObjectURL(url)
                 toast.success('Download started!')
+                toast.dismiss(loadingToast)
               },
             },
             duration: 15000,
             className: 'w-[380px] p-4',
-          }
+            actionButtonStyle: {
+              backgroundColor: 'hsl(var(--primary))',
+              color: 'hsl(var(--primary-foreground))',
+            }
+          },
         )
       }
     } catch (error) {
@@ -1035,13 +1074,18 @@ export default function ProjectsClient({ initialProjects }: Props) {
         </div>
         {isHydrated ? (
           <>
-            <DataTable 
-              table={table} 
-              onProjectSelect={(projectId: string) => {
-                setParams({ projectId, type: 'details' });
-              }} 
-              searchQuery={params.query}
-            />
+            <ScrollArea className="w-full">
+              <div className="min-w-[1100px]">
+                <DataTable 
+                  table={table} 
+                  onProjectSelect={(projectId: string) => {
+                    setParams({ projectId, type: 'details' });
+                  }} 
+                  searchQuery={params.query}
+                />
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
             <Pagination
               currentPage={table.getState().pagination.pageIndex + 1}
               totalPages={table.getPageCount()}

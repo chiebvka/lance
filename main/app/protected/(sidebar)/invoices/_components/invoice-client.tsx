@@ -20,7 +20,7 @@ import {
 import CreateSearchFilter, { DropdownOption } from "@/components/general/create-search-filter"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { columns } from "./columns"
 import InvoiceForm from './invoice-form';
 import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload } from "lucide-react"
@@ -46,7 +46,7 @@ import ConfirmModal from '@/components/modal/confirm-modal'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-import { Invoice, useInvoices } from '@/hooks/invoices/use-invoices'
+import { fetchInvoice, Invoice, useInvoices } from '@/hooks/invoices/use-invoices'
 import Pagination from '@/components/pagination'
 import { createClient } from '@/utils/supabase/client'
 import { currencies, type Currency } from '@/data/currency'
@@ -188,6 +188,7 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
 
   // Load saved column visibility (client-only)
   useEffect(() => {
+    setIsHydrated(true);
     const savedColumns = getTableColumnsWithDefaults('invoices');
     const allColumns = ['invoiceNumber', 'recepientName', 'totalAmount', 'state', 'issueDate', 'dueDate', 'paidOn', 'taxRate', 'vatRate'];
     
@@ -201,11 +202,13 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
 
   // Persist column visibility to cookie on change
   useEffect(() => {
+    if (isHydrated) {
     const visibleCols = Object.entries(columnVisibility)
       .filter(([_, v]) => v)
       .map(([k]) => k);
-    setTableColumns('invoices', visibleCols);
-  }, [columnVisibility]);
+      setTableColumns('invoices', visibleCols);
+    }
+  }, [columnVisibility, isHydrated]);
 
   const filteredInvoices = useMemo(() => {
     let filtered = [...invoices];
@@ -349,6 +352,14 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
       if (selectedInvoices.length === 1) {
         // Single invoice download
         const invoice = selectedInvoices[0];
+        let fullInvoice 
+        try {
+          fullInvoice = await fetchInvoice(invoice.id);
+        } catch (error) {
+          toast.error(`Failed to fetch invoice details for invoice ${invoice.invoiceNumber} using basic data `);
+          fullInvoice = invoice;
+        }
+  
         console.log('Single invoice for PDF:', invoice);
         console.log('Invoice details:', invoice.invoiceDetails);
         
@@ -386,12 +397,8 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
           toast.loading(
             <div className="flex flex-col gap-3 py-2">
               <div className="flex flex-col gap-1">
-                <div className="font-medium text-base">
-                  Processing invoice {i + 1} of {selectedInvoices.length}...
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Working on: {invoice.invoiceNumber || `Invoice ${invoice.id}`}
-                </div>
+                <div className="font-medium text-base">Exporting invoices</div>
+                <div className="text-sm text-muted-foreground">Please wait while we prepare your files...</div>
               </div>
               <div className="flex flex-col gap-2 w-full">
                 <div className="flex justify-between text-sm">
@@ -399,19 +406,12 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
                   <span>{progress}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300" 
-                    style={{ width: `${progress}%` }}
-                  ></div>
+                  <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
                 </div>
               </div>
             </div>,
-            {
-              id: loadingToast,
-              duration: Infinity,
-              className: "w-[380px] p-4",
-            }
-          );
+            { id: loadingToast, duration: Infinity, className: 'w-[380px] p-4' }
+          )
 
           console.log('Bulk invoice for PDF:', invoice);
           console.log('Invoice details:', invoice.invoiceDetails);
@@ -439,8 +439,8 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
         toast.loading(
           <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col gap-1">
-              <div className="font-medium text-base">Finalizing your export...</div>
-              <div className="text-sm text-muted-foreground">Creating zip file</div>
+              <div className="font-medium text-base">Exporting invoices</div>
+              <div className="text-sm text-muted-foreground">Please wait while we prepare your files...</div>
             </div>
             <div className="flex flex-col gap-2 w-full">
               <div className="flex justify-between text-sm">
@@ -448,19 +448,12 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
                 <span>100%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-primary h-2 rounded-full transition-all duration-300" 
-                  style={{ width: '100%' }}
-                ></div>
+                <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: '100%' }}></div>
               </div>
             </div>
           </div>,
-          {
-            id: loadingToast,
-            duration: Infinity,
-            className: "w-[380px] p-4",
-          }
-        );
+          { id: loadingToast, duration: Infinity, className: 'w-[380px] p-4' }
+        )
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -1270,22 +1263,33 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
         <div className="flex items-center justify-between">
           <DataTableViewOptions table={table} />
         </div>
-        <Suspense fallback={<ProjectClientSkeleton />}>
-          <DataTable 
-            table={table} 
-            onInvoiceSelect={handleInvoiceSelect} 
-            searchQuery={searchQuery}
-          />
-          <Pagination
-            currentPage={table.getState().pagination.pageIndex + 1}
-            totalPages={table.getPageCount()}
-            pageSize={table.getState().pagination.pageSize}
-            totalItems={table.getFilteredRowModel().rows.length}
-            onPageChange={page => table.setPageIndex(page - 1)}
-            onPageSizeChange={size => table.setPageSize(size)}
-            itemName="invoices"
-          />
-        </Suspense>
+        {isHydrated ? (
+          <>
+           <ScrollArea className='w-full'>
+            <div className="min-w-[1100px]">
+              <DataTable 
+                table={table} 
+                onInvoiceSelect={handleInvoiceSelect} 
+                searchQuery={searchQuery}
+              />
+            </div>
+            <ScrollBar orientation="horizontal" />
+           </ScrollArea>
+           <Pagination
+              currentPage={table.getState().pagination.pageIndex + 1}
+              totalPages={table.getPageCount()}
+              pageSize={table.getState().pagination.pageSize}
+              totalItems={table.getFilteredRowModel().rows.length}
+              onPageChange={page => table.setPageIndex(page - 1)}
+              onPageSizeChange={size => table.setPageSize(size)}
+              itemName="invoices"
+            />
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <ProjectClientSkeleton />
+          </div>
+        )}
       </div>
 
       {/* Export Bar */}

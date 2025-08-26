@@ -40,8 +40,8 @@ export default async function page({ params, searchParams }: PageProps) {
   // Check if project exists
   if (state === 'not_found') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-red-600 to-red-700">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="text-center p-8 bg-lightCard dark:bg-darkCard rounded-none shadow-lg max-w-md">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Project Not Found</h1>
           <p className="text-gray-600">The requested project could not be found or may have been removed.</p>
         </div>
@@ -52,8 +52,8 @@ export default async function page({ params, searchParams }: PageProps) {
   // Check if project is still in draft mode
   if (state === 'draft') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-yellow-500 to-orange-600">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="text-center p-8 bg-lightCard dark:bg-darkCard rounded-none shadow-lg max-w-md">
           <h1 className="text-2xl font-bold text-yellow-600 mb-4">Still in Draft Mode</h1>
           <p className="text-gray-600">This project is still being prepared and is not ready for viewing yet.</p>
         </div>
@@ -61,11 +61,11 @@ export default async function page({ params, searchParams }: PageProps) {
     )
   }
 
-  // Check if project is published but missing token
-  if (state === 'published' && !hasToken) {
+  // For customer projects, check if project is published but missing token
+  if (state === 'published' && type === 'customer' && !hasToken) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-red-600 to-red-700">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="text-center p-8 bg-lightCard dark:bg-darkCard rounded-none shadow-lg max-w-md">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Missing Required Information</h1>
           <p className="text-gray-600">This project is missing required information to view. Please contact the project owner.</p>
         </div>
@@ -76,13 +76,13 @@ export default async function page({ params, searchParams }: PageProps) {
   // For customer projects, check if valid token is provided
   if (type === 'customer' && (!token || !hasValidToken)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-purple-600 to-purple-700">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg max-w-md">
-          <h1 className="text-2xl font-bold text-purple-600 mb-4">Access Required</h1>
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="text-center p-8 bg-lightCard dark:bg-darkCard rounded-none shadow-lg max-w-md">
+          <h1 className="text-2xl font-bold text-primary mb-4">Access Required</h1>
           <p className="text-gray-600">
             {!token ? 
-              'A valid access token is required to view this project.' :
-              'The provided access token is invalid or expired.'
+              'A valid access requirement is required to view this project.' :
+              'The provided access requirement is invalid or expired.'
             }
           </p>
         </div>
