@@ -174,7 +174,7 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
           {question.required && (
             <div className="flex items-center gap-1">
               <span className="text-red-400 text-xs font-bold">*</span>
-              <span className="text-xs text-red-300 px-2 py-1 rounded bg-red-100">Required</span>
+              <span className="text-xs text-red-800 px-2 py-1 rounded-none bg-red-100">Required</span>
             </div>
           )}
         </div>

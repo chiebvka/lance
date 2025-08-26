@@ -5,16 +5,16 @@ import { useRouter } from "next/navigation";
 import { useGlobalSearch } from "@/hooks/search/use-global-search";
 import {
   Folder,
-  Users,
-  FileText,
   Receipt,
-  Shield,
-  MessageSquare,
   ArrowRight,
   Loader2,
   FolderSearch2,
-  ExternalLink,
-  Link,
+  FolderKanban,
+  Contact,
+  ReceiptText,
+  MessagesSquare,
+  BrickWall,
+  Split,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -59,13 +59,13 @@ function useDebounce<T>(value: T, delay: number): T {
 
 
 const iconMap: { [key: string]: React.ElementType } = {
-  Projects: Folder,
-  Customers: Users,
-  Invoices: FileText,
-  Receipts: Receipt,
-  Feedbacks: MessageSquare,
-  Walls: ExternalLink,
-  Paths: Link,
+  Projects: FolderKanban,
+  Customers: Contact,
+  Invoices: Receipt,
+  Receipts: ReceiptText,
+  Feedbacks: MessagesSquare,
+  Walls: BrickWall,
+  Paths: Split,
 };
 
 export default function CommandFilter({

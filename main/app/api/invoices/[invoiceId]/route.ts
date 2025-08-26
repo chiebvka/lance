@@ -8,18 +8,23 @@ import { ratelimit } from '@/utils/rateLimit';
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
-async function sendInvoiceEmail(supabase: any, user: any, invoice: any, recipientEmail: string, recipientName: string | null, organizationName: string, logoUrl: string) {
+async function sendInvoiceEmail(supabase: any, user: any, invoice: any, recipientEmail: string, recipientName: string | null, organizationName: string, logoUrl: string, organizationId: string) {
   try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('profile_id', user.id)
-      .single();
-
     const fromEmail = 'no_reply@invoices.bexforte.com';
     const fromName = 'Bexbot';
     const senderName = organizationName || 'Bexforte';
-    
+
+    // Get customer name if customerId exists
+    let customerName = "";
+    if (invoice.customerId) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('name')
+        .eq('id', invoice.customerId)
+        .single();
+      customerName = customer?.name || "";
+    }
+
     const emailHtml = await render(IssueInvoice({
       invoiceId: invoice.id,
       clientName: recipientName || recipientEmail.split('@')[0],
@@ -35,7 +40,10 @@ async function sendInvoiceEmail(supabase: any, user: any, invoice: any, recipien
       html: emailHtml,
       customArgs: {
         invoiceId: invoice.id,
-        customerId: invoice.customerId,
+        invoiceName: invoice.invoiceNumber || "",
+        customerId: invoice.customerId || "",
+        customerName: customerName,
+        organizationId: organizationId,
         userId: user.id,
         type: "invoice_updated",
       },
@@ -353,13 +361,14 @@ export async function PUT(
     // Send email if requested and recipient email exists
     if (emailToCustomer && finalRecipientEmail && updatedInvoice) {
       await sendInvoiceEmail(
-        supabase, 
-        user, 
-        updatedInvoice, 
-        finalRecipientEmail, 
-        finalRecipientName || null, 
-        organizationName || organization?.name || 'Bexforte', 
-        organizationLogoUrl || organization?.logoUrl || ''
+        supabase,
+        user,
+        updatedInvoice,
+        finalRecipientEmail,
+        finalRecipientName || null,
+        organizationName || organization?.name || 'Bexforte',
+        organizationLogoUrl || organization?.logoUrl || '',
+        profile.organizationId
       );
     }
 

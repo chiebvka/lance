@@ -320,15 +320,18 @@ export async function POST(request: Request) {
                   html: emailHtml,
                   customArgs: {
                       projectId: project.id,
+                      projectName: project.name || '',
                       customerId: customerId,
+                      customerName: customer.name || '',
+                      organizationId: profile.organizationId,
                       userId: user.id,
                       type: "project_sent",
                       token: token,
                   },
               });
-  
+
               console.log("Email sent to:", customer.email);
-  
+
             } catch (emailError: any) {
                 console.error("SendGrid Error:", emailError);
                 if (emailError.response) {

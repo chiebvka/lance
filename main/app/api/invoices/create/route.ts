@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
 
     // Send email if emailToCustomer is true and customer exists
     if (emailToCustomer && finalRecepientEmail && invoice) {
-      await sendInvoiceEmail(supabase, user, invoice, finalRecepientEmail, finalRecepientName || null, finalOrganizationName, finalOrganizationLogoUrl);
+      await sendInvoiceEmail(supabase, user, invoice, finalRecepientEmail, finalRecepientName || null, finalOrganizationName, finalOrganizationLogoUrl, profile.organizationId);
     }
 
     return NextResponse.json({ success: true, data: invoice }, { status: 200 });
@@ -218,14 +218,25 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function sendInvoiceEmail(supabase: any, user: any, invoice: any, recipientEmail: string, recepientName: string | null, organizationName: string, logoUrl: string) {
+async function sendInvoiceEmail(supabase: any, user: any, invoice: any, recipientEmail: string, recepientName: string | null, organizationName: string, logoUrl: string, organizationId: string) {
   try {
     const fromEmail = 'no_reply@invoices.bexforte.com';
     const fromName = 'Bexbot';
     const senderName = organizationName || 'Bexforte';
 
     const finalLogoUrl = logoUrl || "https://www.bexoni.com/favicon.ico";
-    
+
+    // Get customer name if customerId exists
+    let customerName = "";
+    if (invoice.customerId) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('name')
+        .eq('id', invoice.customerId)
+        .single();
+      customerName = customer?.name || "";
+    }
+
     const emailHtml = await render(IssueInvoice({
       invoiceId: invoice.id,
       clientName: recepientName || "Valued Customer",
@@ -243,7 +254,10 @@ async function sendInvoiceEmail(supabase: any, user: any, invoice: any, recipien
       html: emailHtml,
       customArgs: {
         invoiceId: invoice.id,
+        invoiceName: invoice.invoiceNumber || "",
         customerId: invoice.customerId || "",
+        customerName: customerName,
+        organizationId: organizationId,
         userId: user.id,
         type: "invoice_sent",
       },

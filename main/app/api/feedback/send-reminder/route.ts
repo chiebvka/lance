@@ -31,7 +31,7 @@ export async function GET() {
 
   let sentCount = 0;
   for (const feedback of feedbacks || []) {
-    const sent = await sendReminderEmail(feedback);
+    const sent = await sendReminderEmail(feedback, supabase);
     if (sent) sentCount++;
   }
 
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "Cannot send reminder for this feedback state" }, { status: 400 });
   }
 
-  const sent = await sendReminderEmail(feedback);
+  const sent = await sendReminderEmail(feedback, supabase);
 
   if (sent) {
     return NextResponse.json({ success: true, message: "Reminder sent" }, { status: 200 });
@@ -84,14 +84,24 @@ export async function POST(request: Request) {
 }
 
 // --- Helper: Send Reminder Email ---
-async function sendReminderEmail(feedback: any) {
+async function sendReminderEmail(feedback: any, supabase: any) {
   try {
     const fromEmail = 'no_reply@feedback.bexforte.com';
     const fromName = 'Bexbot';
     const recipientName = feedback.recepientName || feedback.recepientEmail?.split('@')[0] || "User";
-    const token = feedback.token; // <-- get the token from the feedback record
-        // Build the feedback link with the token
 
+    // Get customer name if customerId exists
+    let customerName = "";
+    if (feedback.customerId) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('name')
+        .eq('id', feedback.customerId)
+        .single();
+      customerName = customer?.name || "";
+    }
+
+    const token = feedback.token; // <-- get the token from the feedback record
     const feedbackLink = `${baseUrl}/f/${feedback.id}?token=${token}`;
 
     const emailHtml = await render(FeedbackReminder({
@@ -108,7 +118,10 @@ async function sendReminderEmail(feedback: any) {
       html: emailHtml,
       customArgs: {
         feedbackId: feedback.id,
+        feedbackName: feedback.name || '',
         customerId: feedback.customerId || "",
+        customerName: customerName,
+        organizationId: feedback.organizationId || "",
         userId: feedback.createdBy,
         type: "feedback_reminder",
         token: token,

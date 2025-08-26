@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
                 });
 
                 // SendGrid flattens custom args to root level
-                const { customerId, userId, type: emailContext } = event;
+                const { customerId, userId, type: emailContext, invoiceName, customerName, organizationId, feedbackName } = event;
 
                 // Determine context and reference ID based on email type
                 let context = 'project';
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 
                 if (emailContext && emailContext.endsWith('_sent')) {
                     context = emailContext.replace('_sent', '');
-                    
+
                     // Map context to the correct reference field
                     switch (context) {
                         case 'invoice':
@@ -159,7 +159,11 @@ export async function POST(request: NextRequest) {
                     referenceId,
                     referenceFieldName,
                     emailContext,
-                    customerId
+                    customerId,
+                    customerName,
+                    organizationId,
+                    invoiceName,
+                    feedbackName
                 });
 
                 // Check if we have the required fields
@@ -215,9 +219,14 @@ export async function POST(request: NextRequest) {
                             userAgent: event.useragent || null,
                             url: event.url || null,
                             // Store the specific reference ID with its proper field name
-                            [referenceFieldName]: referenceId
+                            [referenceFieldName]: referenceId,
+                            // Include new custom fields for better tracking
+                            invoiceName: invoiceName || null,
+                            feedbackName: feedbackName || null,
+                            customerName: customerName || null
                         },
                         createdBy: userId || null,
+                        organizationId: organizationId || null,
                         created_at: utcTimestamp
                     };
 
@@ -226,6 +235,10 @@ export async function POST(request: NextRequest) {
                         context,
                         referenceType: context,
                         referenceId,
+                        customerName,
+                        organizationId,
+                        invoiceName,
+                        feedbackName,
                         eventKey,
                         timestamp: utcTimestamp
                     });
@@ -239,7 +252,7 @@ export async function POST(request: NextRequest) {
                         // Remove from processed set if database insert failed
                         processedEvents.delete(eventKey);
                     } else {
-                        console.log(`✅ Successfully created activity: ${activityType} (${eventKey}) for ${context} ${referenceId}`);
+                        console.log(`✅ Successfully created activity: ${activityType} (${eventKey}) for ${context} ${referenceId} (Customer: ${customerName || 'Unknown'}, Org: ${organizationId || 'Unknown'}, Invoice: ${invoiceName || 'N/A'}, Feedback: ${feedbackName || 'N/A'})`);
                         processedCount++;
                     }
                 }

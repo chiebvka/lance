@@ -30,7 +30,7 @@ export async function GET() {
 
   let sentCount = 0;
   for (const invoice of invoices || []) {
-    const sent = await sendReminderEmail(invoice);
+    const sent = await sendReminderEmail(invoice, supabase);
     if (sent) sentCount++;
   }
 
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "Cannot send reminder for this invoice state" }, { status: 400 });
   }
 
-  const sent = await sendReminderEmail(invoice);
+  const sent = await sendReminderEmail(invoice, supabase);
 
   if (sent) {
     return NextResponse.json({ success: true, message: "Reminder sent" }, { status: 200 });
@@ -83,11 +83,22 @@ export async function POST(request: Request) {
 }
 
 // --- Helper: Send Reminder Email ---
-async function sendReminderEmail(invoice: any) {
+async function sendReminderEmail(invoice: any, supabase: any) {
   try {
     const fromEmail = 'no_reply@invoices.bexforte.com';
     const fromName = 'Bexbot';
     const recipientName = invoice.recepientName || invoice.recepientEmail?.split('@')[0] || "User";
+
+    // Get customer name if customerId exists
+    let customerName = "";
+    if (invoice.customerId) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('name')
+        .eq('id', invoice.customerId)
+        .single();
+      customerName = customer?.name || "";
+    }
 
     const invoiceLink = `${baseUrl}/i/${invoice.id}`;
 
@@ -105,7 +116,10 @@ async function sendReminderEmail(invoice: any) {
       html: emailHtml,
       customArgs: {
         invoiceId: invoice.id,
+        invoiceName: invoice.invoiceNumber || "",
         customerId: invoice.customerId || "",
+        customerName: customerName,
+        organizationId: invoice.organizationId || "",
         userId: invoice.createdBy,
         type: "invoice_reminder",
     },

@@ -338,8 +338,11 @@ export async function PATCH(request: Request) {
           html: emailHtml,
           customArgs: {
             projectId: signedProject?.id,
+            projectName: projectName || '',
             customerId: signedProject?.customerId || "",
-            // userId: signedProject?.createdBy || "",
+            customerName: customerName || '',
+            organizationId: signedProject?.organizationId || '',
+            userId: signedProject?.customerId || "",
             type: 'project_signed',
           },
         });

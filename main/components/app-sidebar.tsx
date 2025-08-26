@@ -135,7 +135,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const supportEmail = organization?.email || userData.email
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="icon" variant="floating" {...props}>
       <SidebarHeader>
         <div className="">
             <Logo height={30} width={30} />

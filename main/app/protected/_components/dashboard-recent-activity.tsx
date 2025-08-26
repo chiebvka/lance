@@ -1,15 +1,15 @@
- "use client"
+"use client"
 
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { formatTimeAgo, generateActivityDisplayText } from "@/utils/activity-helpers"
+import { CustomerActivityWithDetails, formatTimeAgo, generateActivityDisplayText } from "@/utils/activity-helpers"
 import { useRecentCustomerActivities } from "@/hooks/activities/use-activities"
 
 export default function RecentActivity() {
-  const { data: activities = [], isLoading, error } = useRecentCustomerActivities(50, true)
+  const { data: activities = [], isLoading, error } = useRecentCustomerActivities(12)
   // Add state for the active filter
   const [activeFilter, setActiveFilter] = useState("all")
 
@@ -116,13 +116,13 @@ export default function RecentActivity() {
                   </div>
                 ) : error ? (
                   <div className="text-center py-8">
-                    <p className="dark:text-gray-300 text-red-400">Failed to load activities</p>
+                    <p className="dark:text-gray-300">Error loading activities. Please try again.</p>
                   </div>
                 ) : filteredActivities.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="dark:text-gray-300">
-                      {activeFilter === "all" 
-                        ? "No activities found. Start sending projects or invoices to see activity here." 
+                      {activeFilter === "all"
+                        ? "No activities found. Start sending projects or invoices to see activity here."
                         : `No ${activeFilter} activities found for this filter.`}
                     </p>
                   </div>

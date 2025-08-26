@@ -1,0 +1,61 @@
+id,stem,type,A,B,C,D,correct,skill_tag,difficulty
+1,"In the nuclide notation ⁴²₁₉K, what does 42 represent?",MCQ,Mass number (protons + neutrons),Atomic number (protons),Neutron number,Charge state,A,nuclear_notation,1
+2,Which particle defines the element’s identity?,MCQ,Neutron,Proton,Electron,Neutrino,B,nuclear_structure,1
+3,"For ¹⁴C, the neutron number is:",MCQ,6,8,14,20,B,nuclear_notation,1
+4,Binding energy per nucleon is most closely related to:,MCQ,Nuclear stability,Atomic radius,Electron affinity,Ionization energy,A,binding_energy,2
+5,Mass defect refers to:,MCQ,Loss of mass when an atom ionizes,Difference between nucleus mass and sum of nucleon masses,Electron mass contribution to nucleus,Isotopic mass variation,B,binding_energy,2
+6,Isotopes share the same:,MCQ,Number of neutrons,Number of protons,Mass number,Decay mode,B,isotopes,1
+7,Which is a helium nucleus?,MCQ,Alpha particle,Beta particle,Gamma ray,Neutron,A,radiation_types,1
+8,Beta-minus emission involves:,MCQ,Proton → neutron + e⁻ + ν̄,Neutron → proton + e⁻ + ν̄,Proton + e⁻ → neutron + ν,Nucleus emits He nucleus,B,decay_modes,2
+9,Which radiation is uncharged?,MCQ,Alpha,Beta,Gamma,All are charged,C,radiation_types,1
+10,Positron emission is also called:,MCQ,Beta-minus,Beta-plus,Gamma decay,Alpha capture,B,decay_modes,2
+11,Gamma emission typically follows:,MCQ,Nuclear excitation de-excitation,Electron orbital transition,Neutron capture only,Fission only,A,gamma_decay,2
+12,Neutrons primarily interact with matter via:,MCQ,Coulomb scattering,Strong nuclear interactions,Photoelectric effect,Auger emission,B,radiation_types,3
+13,Which material is most effective for gamma shielding (per unit thickness)?,MCQ,Paper,Aluminum,Lead,Plastic,C,shielding,1
+14,Alpha particles are best stopped by:,MCQ,Air or paper,Lead bricks,Thick concrete,They penetrate meters of steel,A,shielding,1
+15,The inverse-square law is most directly applicable to:,MCQ,Collimated beams only,Point-like isotropic sources,Planar sources,All sources equally,B,intensity_distance,2
+16,Linear attenuation coefficient (μ) describes:,MCQ,Rate of decay over time,Fraction of particles that scatter elastically,Probability per length of interaction,Ionization density,C,attenuation,2
+17,Half-Value Layer (HVL) is the thickness that:,MCQ,Stops all radiation,Reduces intensity by 50%,Doubles intensity,Reduces intensity by 10%,B,attenuation,2
+18,Beta particles are often shielded with:,MCQ,High-Z metal only,Low-Z plastic or aluminum to reduce bremsstrahlung,Glass,No shielding needed,B,shielding,3
+19,Half-life (T₁/₂) is:,MCQ,Time for activity to double,Time for half the nuclei to decay,Always 1 year,Time depending on sample mass,B,half_life,1
+20,Decay law N(t) = N₀ e^{-λt}. What is λ?,MCQ,Growth constant,Attenuation coefficient,Decay constant,Avogadro’s number,C,decay_kinetics,2
+21,Relationship between T₁/₂ and λ:,MCQ,T₁/₂ = λ,T₁/₂ = ln2 / λ,T₁/₂ = 1 / (λ ln2),T₁/₂ = λ ln2,B,decay_kinetics,2
+22,"After two half-lives, what fraction remains?",MCQ,1/2,1/3,1/4,1/8,C,half_life,1
+23,Activity A is proportional to:,MCQ,Sample volume only,Number of undecayed nuclei N,Detector size only,Shield thickness,B,activity,2
+24,Which quantity carries units of s⁻¹?,MCQ,Activity (Bq),Decay constant λ,Dose (Gy),Mass defect,B,decay_kinetics,2
+25,1 becquerel equals:,MCQ,1 decay per second,1 joule per kilogram,1 sievert,1 coulomb per kilogram,A,units_activity,1
+26,Absorbed dose unit is:,MCQ,Sv,Gy,Bq,Ci,B,dosimetry_units,1
+27,Equivalent dose accounts for:,MCQ,Radiation type weighting factor,Exposure time only,Detector efficiency,Linear attenuation only,A,dosimetry,2
+28,Curie (Ci) is approximately:,MCQ,3.7×10¹⁰ Bq,37 Bq,3.7×10⁶ Bq,1 Bq,A,units_activity,3
+29,Dose rate decreases primarily with:,MCQ,Distance and shielding,Detector voltage,Atomic number of detector gas,Neutrino flux,A,safety_TDS,1
+30,Which is NOT a standard unit?,MCQ,Bq,Gy,Sv,Hz for dose,D,units,1
+31,A Geiger–Müller tube primarily detects:,MCQ,Ionization events,Thermal photons,Neutrino interactions,Gravitational waves,A,detectors_GM,2
+32,Scintillation detectors convert radiation into:,MCQ,Heat only,Visible/UV photons,Sound waves,Neutron beams,B,detectors_scint,2
+33,Semiconductor HPGe detectors are valued for:,MCQ,High energy resolution,Low voltage operation,Waterproof nature,No cooling needed,A,detectors_semiconductor,3
+34,Background radiation includes:,MCQ,Cosmic rays,Terrestrial sources,Radon,All of the above,D,background,1
+35,Detector efficiency relates counts to:,MCQ,True disintegrations,Sample temperature,Source volume,Shield mass,A,detection_efficiency,3
+36,Dead time in a detector causes:,MCQ,Overcounting at high rates,Undercounting at high rates,No effect,Random tones,B,detector_dead_time,3
+37,"For counts N in a fixed time, the statistical uncertainty σ is roughly:",MCQ,N,√N,1/N,N²,B,poisson_stats,2
+38,Poisson statistics apply when events are:,MCQ,Correlated,Rare and independent,Periodic,Deterministic,B,poisson_stats,2
+39,"To correct for background, you should:",MCQ,Multiply sample counts by background,Subtract background counts (time-normalized),Ignore background,Add background twice,B,background_subtraction,2
+40,Doubling counting time affects σ/N (relative error) by:,MCQ,No change,Increases,Decreases,Becomes 0,C,poisson_stats,2
+41,Which distribution best models counts/interval for constant rate?,MCQ,Poisson,Gaussian for all N,Uniform,Cauchy,A,poisson_stats,2
+42,"At high N, Poisson approaches:",MCQ,Exponential,Gaussian,Binomial,Power law,B,statistics_limit,3
+43,Deterministic effects typically have:,MCQ,No threshold,A threshold dose,Negative dose-response,Always beneficial outcomes,B,bio_effects,2
+44,Stochastic effects refer to:,MCQ,Severity increases with dose and has threshold,"Probability increases with dose, no assumed threshold",Immediate skin burns,Deterministic cataracts,B,bio_effects,2
+45,ALARA stands for:,MCQ,As Low As Reasonably Achievable,As Light As Reasonable Amount,All Levels Are Reasonable Anyway,Average Level And Risk Assessment,A,safety_principles,1
+46,Time–Distance–Shielding are control strategies to:,MCQ,Increase exposure,Estimate activity,Reduce exposure,Measure half-life,C,safety_TDS,1
+47,Equivalent dose unit is:,MCQ,Gy,Sv,Bq,W/m²,B,dosimetry_units,1
+48,Which has the highest radiation weighting factor w_R (typical)?,MCQ,Gamma,X-rays,Alpha,Beta,C,dosimetry,2
+49,PET imaging relies on detection of:,MCQ,Single gamma photons,Beta-minus electrons,511 keV annihilation photon pairs,Neutron beams,C,applications_medical,3
+50,Industrial radiography uses radiation primarily to:,MCQ,Sterilize tools,Inspect material integrity via imaging,Heat metals,Measure humidity,B,applications_industrial,1
+51,Tracer studies exploit:,MCQ,High chemical reactivity of radionuclides,Identical chemistry but detectable emissions,Magnetic properties,Thermal neutrons only,B,applications_tracers,2
+52,SPECT differs from PET primarily in:,MCQ,Using single-photon emitters and collimation,Using positron emitters,Detecting neutron capture,Not using gamma rays,A,applications_medical,3
+53,Radiation therapy aims to:,MCQ,Maximize tumor dose while sparing healthy tissue,Evenly irradiate entire body,Only use neutrons,Avoid imaging,A,applications_medical,2
+54,"Radioactive dating (e.g., ¹⁴C) is based on:",MCQ,Linear decay,Exponential decay and known half-life,Magnetic alignment,Gravitational redshift,B,applications_dating,2
+55,Electron capture competes with:,MCQ,Beta-plus decay,Alpha decay,Spontaneous fission,Gamma emission,A,decay_modes,3
+56,Isomeric transition involves:,MCQ,Change in Z,Change in A,De-excitation of a metastable nuclear state,Electron ejection from K-shell,C,gamma_decay,3
+57,Which decay increases Z by 1?,MCQ,Alpha,Beta-minus,Beta-plus,Electron capture,B,decay_modes,2
+58,Which decay decreases Z by 1?,MCQ,Beta-minus,Beta-plus,Gamma,Isomeric transition,B,decay_modes,2
+59,Alpha decay changes mass number A by:,MCQ,-2,+2,-4,0,C,decay_modes,2
+60,"After gamma emission, the nucleus:",MCQ,Has different Z,Has different A,Is same nuclide in lower energy state,Changes chemical element,C,gamma_decay,2

@@ -354,16 +354,14 @@ export default function PathDetailsSheet({path}: Props) {
                         </CommandList>
                     </Command>
                     <div className="p-2 pt-1 flex gap-2 border-t">
-                        <Button
-                            size="sm"
-                            className="flex-1"
-                            disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
-                            onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
+                        <Button 
+                          className="flex-1"
+                          disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
+                          onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
                         >
                             {path.customerId ? 'Update only' : 'Assign only'}
                         </Button>
                         <Button
-                            size="sm"
                             variant="outline"
                             className="flex-1"
                             disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
@@ -426,7 +424,6 @@ export default function PathDetailsSheet({path}: Props) {
                     </Command>
                     <div className="p-2 pt-1 flex gap-2 border-t">
                         <Button
-                            size="sm"
                             className="flex-1"
                             disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
                             onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
@@ -434,11 +431,10 @@ export default function PathDetailsSheet({path}: Props) {
                             {path.customerId ? 'Update only' : 'Assign only'}
                         </Button>
                         <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1"
-                            disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
-                            onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
+                          variant="outline"
+                          className="flex-1"
+                          disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
+                          onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
                         >
                             {path.customerId ? 'Update & Email' : 'Assign & Email'}
                         </Button>

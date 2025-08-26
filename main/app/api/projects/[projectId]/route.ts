@@ -69,6 +69,8 @@ async function handleProjectAction(supabase: any, user: any, projectId: string, 
         return await handleCancelProject(supabase, user, projectId, existingProject, profile);
       case 'mark_completed':
         return await handleMarkCompleted(supabase, user, projectId, existingProject, body, profile);
+      case 'restart':
+        return await handleRestartProject(supabase, user, projectId, existingProject, profile);
       default:
         return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
     }
@@ -128,7 +130,7 @@ async function handlePublishProject(supabase: any, user: any, projectId: string,
   // Send email if requested and it's a customer project
   if (emailToCustomer && isCustomerType && (customerId || updatedProject.customerId) && updatedProject) {
     const customerIdForEmail = customerId || updatedProject.customerId;
-    await sendProjectEmail(supabase, user, updatedProject, customerIdForEmail, newToken);
+    await sendProjectEmail(supabase, user, updatedProject, customerIdForEmail, newToken, profile.organizationId);
   }
 
   return NextResponse.json({
@@ -195,7 +197,7 @@ async function handleAssignCustomer(supabase: any, user: any, projectId: string,
 
   // Send email if requested
   if (emailToCustomer && updatedProject) {
-    await sendProjectEmail(supabase, user, updatedProject, customerId, newToken);
+    await sendProjectEmail(supabase, user, updatedProject, customerId, newToken, profile.organizationId);
   }
 
   return NextResponse.json({
@@ -295,8 +297,31 @@ async function handleMarkCompleted(supabase: any, user: any, projectId: string, 
   });
 }
 
+async function handleRestartProject(supabase: any, user: any, projectId: string, existingProject: any, profile: any) {
+  const { error: updateError, data: updatedProject } = await supabase
+    .from('projects')
+    .update({
+      status: 'pending',
+      state: 'published',
+      updatedOn: new Date().toISOString(),
+    })
+    .eq('id', projectId)
+    .eq('createdBy', user.id)
+    .eq('organizationId', profile.organizationId)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  return NextResponse.json({
+    success: true,
+    message: 'Project restarted successfully',
+    data: updatedProject
+  });
+}
+
 // Helper function to send project emails
-async function sendProjectEmail(supabase: any, user: any, project: any, customerId: string, token: string) {
+async function sendProjectEmail(supabase: any, user: any, project: any, customerId: string, token: string, organizationId: string) {
   const { data: customer } = await supabase
     .from("customers")
     .select("name, email")
@@ -335,7 +360,10 @@ async function sendProjectEmail(supabase: any, user: any, project: any, customer
       html: emailHtml,
       customArgs: {
         projectId: project.id,
-        customerId: project.customerId,
+        projectName: project.name || '',
+        customerId: project.customerId || '',
+        customerName: customer.name || '',
+        organizationId: organizationId,
         userId: user.id,
         type: "project_updated",
       },
@@ -689,7 +717,10 @@ export async function PUT(
             html: emailHtml,
             customArgs: {
               projectId: updatedProject.id,
-              customerId: updatedProject.customerId,
+              projectName: updatedProject.name || '',
+              customerId: updatedProject.customerId || '',
+              customerName: customer.name || '',
+              organizationId: existingProject.organizationId || '',
               userId: user.id,
               type: "project_sent",
             },
@@ -736,6 +767,7 @@ export async function PATCH(
     z.object({ action: z.literal('unassign') }),
     z.object({ action: z.literal('assign'), customerId: z.string().uuid(), emailToCustomer: z.boolean().optional() }),
     z.object({ action: z.literal('mark_completed'), completedDate: z.string() }),
+    z.object({ action: z.literal('restart') }),
   ])
 
   try {
@@ -774,10 +806,15 @@ export async function PATCH(
     const action = parsed.data.action
 
     if (action === 'cancel') {
-      // Cancel the project: set status cancelled and delete token
+      // Cancel the project: set status cancelled, state to draft, and delete token
       const { error: updateError } = await supabase
         .from('projects')
-        .update({ status: 'cancelled', token: null, updatedOn: new Date().toISOString() })
+        .update({ 
+          status: 'cancelled', 
+          state: 'draft', // Set to draft when cancelled
+          token: null, 
+          updatedOn: new Date().toISOString() 
+        })
         .eq('id', projectId)
         .eq('createdBy', user.id)
         .eq('organizationId', profile.organizationId)
@@ -872,7 +909,10 @@ export async function PATCH(
             html: emailHtml,
             customArgs: {
               projectId: updatedProject.id,
-              customerId: updatedProject.customerId,
+              projectName: updatedProject.name || '',
+              customerId: updatedProject.customerId || '',
+              customerName: customer.name || '',
+              organizationId: profile?.organizationId || '',
               userId: user.id,
               type: 'project_sent',
             },
@@ -898,6 +938,22 @@ export async function PATCH(
         .eq('organizationId', profile.organizationId)
       if (updateError) throw updateError
       return NextResponse.json({ success: true, message: 'Project marked as completed' })
+    }
+
+    if (action === 'restart') {
+      // Restart cancelled project: set status to pending and state to published
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ 
+          status: 'pending', 
+          state: 'published',
+          updatedOn: new Date().toISOString() 
+        })
+        .eq('id', projectId)
+        .eq('createdBy', user.id)
+        .eq('organizationId', profile.organizationId)
+      if (updateError) throw updateError
+      return NextResponse.json({ success: true, message: 'Project restarted' })
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })

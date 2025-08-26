@@ -8,13 +8,24 @@ import { render } from "@react-email/components";
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
-async function sendReceiptEmail(supabase: any, user: any, receipt: any, recipientEmail: string, recepientName: string | null, organizationName: string, logoUrl: string) {
+async function sendReceiptEmail(supabase: any, user: any, receipt: any, recipientEmail: string, recepientName: string | null, organizationName: string, logoUrl: string, organizationId: string) {
   try {
     const fromEmail = 'no_reply@receipts.bexforte.com';
     const fromName = 'Bexforte';
     const senderName = organizationName || 'Bexforte';
 
     const finalLogoUrl = logoUrl || 'https://www.bexoni.com/favicon.ico';
+
+    // Get customer name if customerId exists
+    let customerName = "";
+    if (receipt.customerId) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('name')
+        .eq('id', receipt.customerId)
+        .single();
+      customerName = customer?.name || "";
+    }
 
     const emailHtml = await render(IssueReceipt({
       receiptId: receipt.id,
@@ -31,7 +42,10 @@ async function sendReceiptEmail(supabase: any, user: any, receipt: any, recipien
       html: emailHtml,
       customArgs: {
         receiptId: receipt.id,
+        receiptName: receipt.receiptNumber || '',
         customerId: receipt.customerId || '',
+        customerName: customerName,
+        organizationId: organizationId,
         userId: user.id,
         type: 'receipt_updated',
       },

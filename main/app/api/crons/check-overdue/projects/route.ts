@@ -147,6 +147,15 @@ async function sendProjectReminderEmail(supabase: any, project: any, organizatio
       from: `${fromName} <${fromEmail}>`,
       subject: `Project Overdue - ${project.name}`,
       html: emailHtml,
+      customArgs: {
+        projectId: project.id,
+        projectName: project.name || '',
+        customerId: project.customerId || '',
+        customerName: project.customers?.name || '',
+        organizationId: project.organizationId || '',
+        userId: project.createdBy || '',
+        type: 'project_overdue',
+      },
     });
 
     console.log("Project reminder email sent to:", recipientEmail);

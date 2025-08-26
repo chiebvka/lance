@@ -341,7 +341,7 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
 
     // Send email if action is "send_feedback"
     if (action === "send_feedback" && finalRecipientEmail) {
-        await sendFeedbackEmail(supabase, user, feedback, finalRecipientEmail, customerName, name, token, message || "");
+        await sendFeedbackEmail(supabase, user, feedback, finalRecipientEmail, customerName, name, token, message || "", organizationId, customerName);
     }
 
     return NextResponse.json({ 
@@ -353,7 +353,7 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
     }, { status: 200 });
 }
 
-async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipientEmail: string, recepientName: string, feedbackName: string, token: string, message?: string) {
+async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipientEmail: string, recepientName: string, feedbackName: string, token: string, message?: string, organizationId?: string, customerName?: string) {
     try {
         // Get user profile for sender info
         const { data: profile } = await supabase
@@ -427,7 +427,10 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
             html: emailHtml,
             customArgs: {
                 feedbackId: feedback.id,
+                feedbackName: feedbackName || '',
                 customerId: feedback.customerId || "",
+                customerName: customerName,
+                organizationId: organizationId,
                 userId: user.id,
                 type: "feedback_sent",
                 token: token,

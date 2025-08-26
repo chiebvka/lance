@@ -151,11 +151,32 @@ async function sendReminderEmail(supabase: any, feedback: any, type: string) {
       feedbackLink,
     }));
 
+    // Get customer name if customerId exists
+    let customerName = "";
+    if (feedback.customerId) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('name')
+        .eq('id', feedback.customerId)
+        .single();
+      customerName = customer?.name || "";
+    }
+
     await sendgrid.send({
       to: feedback.recepientEmail,
       from: `${fromName} <${fromEmail}>`,
       subject: `Reminder: Overdue Feedback - ${feedback.name}`,
       html: emailHtml,
+      customArgs: {
+        feedbackId: feedback.id,
+        feedbackName: feedback.name || '',
+        customerId: feedback.customerId || '',
+        customerName: customerName,
+        organizationId: feedback.organizationId || '',
+        userId: feedback.createdBy || '',
+        type: 'feedback_overdue',
+        token: token,
+      },
     });
 
     console.log("Reminder email sent to:", feedback.recepientEmail);

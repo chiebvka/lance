@@ -33,61 +33,76 @@ import { Button } from "@/components/ui/button"
 
 
 
-import dummyData from "./dummy.json"
 import SelectCalendar from "./select-calendar"
+import { useDashboardMetrics, MetricType } from "@/hooks/dashboard/use-dashboard"
 
-export const description = "Dashboard charts preview with dummy data"
-
-type MetricType = "invoices" | "receipts" | "feedbacks" | "projects"
+export const description = "Dashboard charts with real-time data"
 
 // Chart configurations for each metric type
 const chartConfigs: Record<MetricType, ChartConfig> = {
   invoices: {
     visitors: { label: "Invoices" },
-    pending: { label: "Pending", color: "hsl(250, 95%, 70%)" },
+    sent: { label: "Sent", color: "hsl(250, 95%, 70%)" },
     overdue: { label: "Overdue", color: "hsl(0, 85%, 75%)" },
     settled: { label: "Settled", color: "hsl(250, 95%, 25%)" },
   },
   receipts: {
     views: { label: "Receipts" },
-    invoice: { label: "From Invoice", color: "hsl(250, 95%, 70%)" },
-    manual: { label: "Manual", color: "hsl(250, 95%, 40%)" },
+    manual: { label: "Manual", color: "hsl(250, 95%, 70%)" },
+    auto: { label: "Auto", color: "hsl(250, 95%, 40%)" },
+    invoice: { label: "From Invoice", color: "hsl(250, 95%, 25%)" },
   },
   feedbacks: {
     views: { label: "Feedbacks" },
-    answered: { label: "Answered", color: "hsl(250, 95%, 70%)" },
+    sent: { label: "Sent", color: "hsl(250, 95%, 70%)" },
+    completed: { label: "Completed", color: "hsl(250, 95%, 25%)" },
     overdue: { label: "Overdue", color: "hsl(0, 85%, 75%)" },
-    unanswered: { label: "Unanswered", color: "hsl(250, 95%, 40%)" },
   },
   projects: {
     visitors: { label: "Projects" },
     pending: { label: "Pending", color: "hsl(250, 95%, 70%)" },
+    inProgress: { label: "In Progress", color: "hsl(45, 85%, 65%)" },
+    signed: { label: "Signed", color: "hsl(120, 85%, 65%)" },
     overdue: { label: "Overdue", color: "hsl(0, 85%, 75%)" },
     completed: { label: "Completed", color: "hsl(250, 95%, 25%)" },
   },
 }
 
-
 // choose your default preset here:
-const DEFAULT_PRESET = "ytd" as const;
+const DEFAULT_PRESET = "12m" as const;
+const HARD_START_DATE = new Date("2025-01-01T00:00:00.000Z");
 
 function getPresetRange(preset: string) {
   const now = new Date();
   switch (preset) {
     case "30d": return { from: subDays(now, 29), to: now };
-    case "4w":  return { from: subDays(now, 27), to: now };
     case "3m":  return { from: subMonths(now, 3), to: now };
     case "6m":  return { from: subMonths(now, 6), to: now };
-    case "12m": return { from: subMonths(now, 12), to: now };
-    case "mtd": return { from: startOfMonth(now), to: now };
+    case "12m": {
+      const oneYearAgo = subMonths(now, 12);
+      return { from: oneYearAgo < HARD_START_DATE ? HARD_START_DATE : oneYearAgo, to: now };
+    }
     case "ytd": return { from: startOfYear(now), to: now };
-    default:    return { from: subDays(now, 29), to: now }; // 30d
+    case "all": return { from: HARD_START_DATE, to: now };
+    default:    return { from: subMonths(now, 12), to: now }; // 12m default
   }
 }
 
 
-export function PreviewChartArea() {
-  const defaultRange = React.useMemo(() => getPresetRange(DEFAULT_PRESET), []);
+export function PreviewChartArea({ 
+  initialFrom, 
+  initialTo 
+}: { 
+  initialFrom?: string, 
+  initialTo?: string 
+}) {
+  const defaultRange = React.useMemo(() => {
+    if (initialFrom && initialTo) {
+      return { from: new Date(initialFrom), to: new Date(initialTo) }
+    }
+    return getPresetRange(DEFAULT_PRESET)
+  }, [initialFrom, initialTo]);
+
   const [metric, setMetric] = React.useState<MetricType>("invoices")
 
   // nuqs supplies defaults when URL is empty, and removes them from the URL when equal (clearOnDefault)
@@ -103,15 +118,15 @@ export function PreviewChartArea() {
     { history: "push" }
   );
 
-  // Calculate date range based on params or default to past 30 days
+  // Calculate date range based on params or default to past 12 months
   const dateRange = React.useMemo(() => {
     if (params.dateFrom && params.dateTo) {
       return { from: params.dateFrom, to: params.dateTo };
     }
     
-    // Default to past 30 days
+    // Default to past 12 months
     const endDate = new Date();
-    const startDate = subMonths(endDate, 1); // 1 month = ~30 days
+    const startDate = subMonths(endDate, 12);
     return { from: startDate, to: endDate };
   }, [params.dateFrom, params.dateTo]);
 
@@ -122,24 +137,22 @@ export function PreviewChartArea() {
     return { from: startDate, to: endDate };
   }, []);
 
-  const currentData = dummyData[metric]
+  // Fetch real data using React Query
+  const { data: currentData, isLoading, error } = useDashboardMetrics(
+    dateRange.from.toISOString(),
+    dateRange.to.toISOString(),
+    metric
+  );
+
   const chartConfig = chartConfigs[metric]
 
   const filteredData = React.useMemo(() => {
-    if (!currentData) return []
-    
-    const data = currentData.series
-    const startDate = dateRange.from
-    const endDate = dateRange.to
-    
-    return data.filter(item => {
-      const itemDate = new Date(item.date)
-      return itemDate >= startDate && itemDate <= endDate
-    })
-  }, [currentData, dateRange])
+    if (!currentData?.series) return []
+    return currentData.series
+  }, [currentData])
 
   const total = React.useMemo(() => {
-    if (!currentData) return {}
+    if (!currentData?.totals) return {}
     return currentData.totals
   }, [currentData])
 
@@ -184,6 +197,124 @@ export function PreviewChartArea() {
     return config[seriesKey]?.color || "hsl(250, 95%, 60%)"
   }
 
+  const getXAxisTicks = () => {
+    const ticks = [];
+    let currentDate = new Date(dateRange.from);
+    const endDate = new Date(dateRange.to);
+    
+    const timeDifference = endDate.getTime() - currentDate.getTime();
+    const daysDifference = timeDifference / (1000 * 3600 * 24);
+
+    if (daysDifference > 90) { // Aggregate by month
+      currentDate.setDate(1); // Start from the first day of the month
+      while (currentDate <= endDate) {
+        ticks.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    } else { // Aggregate by day (show ticks for every N days)
+      const tickInterval = Math.ceil(daysDifference / 10) || 1; // Aim for ~10 ticks
+      while (currentDate <= endDate) {
+        ticks.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + tickInterval);
+      }
+    }
+    return ticks;
+  };
+
+  const xAxisTickFormatter = (value: string) => {
+    const date = new Date(value);
+    const timeDifference = dateRange.to.getTime() - dateRange.from.getTime();
+    const daysDifference = timeDifference / (1000 * 3600 * 24);
+
+    if (daysDifference > 90) {
+      return date.toLocaleDateString("en-US", { month: "short", timeZone: 'UTC' });
+    } else {
+      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: 'UTC' });
+    }
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <Select value={metric} onValueChange={(value) => setMetric(value as MetricType)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select metric" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="invoices">Invoices</SelectItem>
+              <SelectItem value="receipts">Receipts</SelectItem>
+              <SelectItem value="feedbacks">Feedbacks</SelectItem>
+              <SelectItem value="projects">Projects</SelectItem>
+            </SelectContent>
+          </Select>
+          <SelectCalendar
+            dateFrom={params.dateFrom}
+            dateTo={params.dateTo}
+            onDateRangeChange={handleDateRangeChange}
+            maxDateRange={maxDateRange}
+            defaultTimeRange={DEFAULT_PRESET}
+          />
+        </div>
+        <Card className="pt-0">
+          <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
+            <div className="grid flex-1 gap-1">
+              <CardTitle>Loading...</CardTitle>
+              <CardDescription>Fetching {metric} data...</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+            <div className="aspect-auto h-[350px] w-full flex items-center justify-center">
+              <div className="text-muted-foreground">Loading chart data...</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between gap-4">
+          <Select value={metric} onValueChange={(value) => setMetric(value as MetricType)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select metric" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="invoices">Invoices</SelectItem>
+              <SelectItem value="receipts">Receipts</SelectItem>
+              <SelectItem value="feedbacks">Feedbacks</SelectItem>
+              <SelectItem value="projects">Projects</SelectItem>
+            </SelectContent>
+          </Select>
+          <SelectCalendar
+            dateFrom={params.dateFrom}
+            dateTo={params.dateTo}
+            onDateRangeChange={handleDateRangeChange}
+            maxDateRange={maxDateRange}
+            defaultTimeRange={DEFAULT_PRESET}
+          />
+        </div>
+        <Card className="pt-0">
+          <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
+            <div className="grid flex-1 gap-1">
+              <CardTitle>Error Loading Data</CardTitle>
+              <CardDescription>Failed to load {metric} data</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+            <div className="aspect-auto h-[350px] w-full flex items-center justify-center">
+              <div className="text-red-500">Error: {error.message}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   // Determine if we should use area chart or bar chart
   const useAreaChart = metric === "invoices" || metric === "projects" || metric === "feedbacks"
 
@@ -223,7 +354,7 @@ export function PreviewChartArea() {
             <CardDescription>
               {params.dateFrom && params.dateTo 
                 ? `Showing ${metric} from ${format(params.dateFrom, 'MMM d')} to ${format(params.dateTo, 'MMM d, yyyy')}`
-                : `Showing ${metric} for the past 30 days`
+                : `Showing ${metric} for the past 12 months`
               }
             </CardDescription>
           </div>
@@ -242,7 +373,7 @@ export function PreviewChartArea() {
         <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
           <ChartContainer
             config={chartConfig}
-            className="aspect-auto h-[250px] w-full"
+            className="aspect-auto h-[350px] w-full"
           >
             {useAreaChart ? (
               <AreaChart data={filteredData}>
@@ -272,17 +403,17 @@ export function PreviewChartArea() {
                 <CartesianGrid vertical={true} horizontal={true} strokeDasharray="3 3" />
                 <XAxis
                   dataKey="date"
+                  type="category"
+                  ticks={getXAxisTicks()}
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  minTickGap={32}
-                  tickFormatter={(value) => {
-                    const date = new Date(value)
-                    return date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }}
+                  tickFormatter={xAxisTickFormatter}
+                />
+                <YAxis 
+                  hide={false} 
+                  tickCount={5}
+                  domain={[0, (dataMax: number) => dataMax < 10 ? 10 : Math.ceil(dataMax * 1.2)]} 
                 />
                 <ChartTooltip
                   cursor={false}
@@ -315,19 +446,14 @@ export function PreviewChartArea() {
                 <CartesianGrid vertical={true} horizontal={true} strokeDasharray="3 3" />
                 <XAxis
                   dataKey="date"
+                  type="category"
+                  ticks={getXAxisTicks()}
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  minTickGap={32}
-                  tickFormatter={(value) => {
-                    const date = new Date(value)
-                    return date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }}
+                  tickFormatter={xAxisTickFormatter}
                 />
-                <YAxis />
+                <YAxis tickCount={5} domain={[0, (dataMax: number) => dataMax < 10 ? 10 : Math.ceil(dataMax * 1.2)]} />
                 <ChartTooltip
                   cursor={false}
                   content={

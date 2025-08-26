@@ -4,10 +4,10 @@ import { redirect } from "next/navigation";
 import { 
     SidebarInset,
     SidebarProvider,
-    SidebarTrigger,
- } from '@/components/ui/sidebar';
+} from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import Breadcrumbs from '@/components/breadcrumbs';
+import { MobileSidebarTrigger } from '@/components/mobile-sidebar-trigger';
 import type { Metadata } from "next";
 import { createPageMetadata } from "@/lib/seo";
 
@@ -34,11 +34,13 @@ export default async function ProtectedLayout({
 
   return (
     <div className="flex-1 w-full flex flex-col h-screen">
-        <SidebarProvider>
+        <SidebarProvider defaultOpen={false}>
             <AppSidebar user={user} />
             <SidebarInset>
                 <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 px-4 border-b-2 border-primary bg-background/95 backdrop-blur-sm">
-                  <SidebarTrigger className="-ml-1" />
+                  <div className="md:hidden">
+                    <MobileSidebarTrigger />
+                  </div>
                   <Breadcrumbs />
                 </header>
                 <div className="flex-1 overflow-auto">

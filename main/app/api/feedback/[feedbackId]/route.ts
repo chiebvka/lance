@@ -11,7 +11,7 @@ var validator = require('validator');
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
-async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipientEmail: string, recepientName: string, feedbackName: string, token: string, message?: string) {
+async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipientEmail: string, recepientName: string, feedbackName: string, token: string, message?: string, organizationId?: string, customerName?: string) {
     try {
         const { data: profile } = await supabase
             .from('profiles')
@@ -79,7 +79,10 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
             html: emailHtml,
             customArgs: {
                 feedbackId: feedback.id,
+                feedbackName: feedbackName || '',
                 customerId: feedback.customerId || "",
+                customerName: customerName,
+                organizationId: feedback.organizationId || '',
                 userId: user.id,
                 type: "feedback_updated",
                 token: token,
@@ -283,7 +286,7 @@ export async function PATCH(
         }
 
         if (action === 'send_feedback' && finalRecipientEmail) {
-            await sendFeedbackEmail(supabase, user, updatedFeedback, finalRecipientEmail, customerName, name, updatedFeedback.token, message || "");
+            await sendFeedbackEmail(supabase, user, updatedFeedback, finalRecipientEmail, customerName, name, updatedFeedback.token, message || "", updatedFeedback.organizationId, customerName);
         }
 
         return NextResponse.json({ success: true, data: updatedFeedback }, { status: 200 });

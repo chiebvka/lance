@@ -457,8 +457,8 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update wall' }, { status: 500 });
     }
 
-    // Send email if required (when sending to customer or has recipient email)
-    if (action === "send_wall" || customerId || recipientEmail) {
+    // Send email only when explicitly requested via "send_wall" action
+    if (action === "send_wall") {
       try {
         if (finalRecipientEmail) {
           await sendWallEmail(

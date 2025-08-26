@@ -32,7 +32,7 @@ export async function GET() {
 
   let sentCount = 0;
   for (const receipt of receipts || []) {
-    const sent = await sendReminderEmail(receipt);
+    const sent = await sendReminderEmail(receipt, supabase);
     if (sent) sentCount++;
   }
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Cannot send reminder for this invoice state" }, { status: 400 });
     }
   
-    const sent = await sendReminderEmail(receipt);
+    const sent = await sendReminderEmail(receipt, supabase);
   
     if (sent) {
       return NextResponse.json({ success: true, message: "Reminder sent" }, { status: 200 });
@@ -91,21 +91,32 @@ export async function POST(request: Request) {
 
 
 // --- Helper: Send Reminder Email ---
-async function sendReminderEmail(receipt: any) {
+async function sendReminderEmail(receipt: any, supabase: any) {
     try {
       const fromEmail = 'no_reply@receipts.bexforte.com';
       const fromName = 'Bexbot';
       const recipientName = receipt.recepientName || receipt.recepientEmail?.split('@')[0] || "User";
-  
+
+      // Get customer name if customerId exists
+      let customerName = "";
+      if (receipt.customerId) {
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('name')
+          .eq('id', receipt.customerId)
+          .single();
+        customerName = customer?.name || "";
+      }
+
       const receiptLink = `${baseUrl}/r/${receipt.id}`;
-  
+
       const emailHtml = await render(ReceiptReminder({
         receiptId: receipt.id,
         clientName: recipientName,
         receiptName: receipt.receiptNumber,
         receiptLink,
       }));
-  
+
       await sendgrid.send({
         to: receipt.recepientEmail,
         from:  `${fromName} <${fromEmail}>`,
@@ -113,12 +124,15 @@ async function sendReminderEmail(receipt: any) {
         html: emailHtml,
         customArgs: {
           receiptId: receipt.id,
+          receiptName: receipt.receiptNumber || "",
           customerId: receipt.customerId || "",
+          customerName: customerName,
+          organizationId: receipt.organizationId || "",
           userId: receipt.createdBy,
           type: "receipt_reminder",
       },
       });
-  
+
       return true;
     } catch (error) {
       console.error("SendGrid Reminder Error:", error);

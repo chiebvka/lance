@@ -88,7 +88,10 @@ export async function POST(request: Request) {
       html: emailHtml,
       customArgs: {
         projectId: project.id,
-        customerId: project.customerId,
+        projectName: project.name || '',
+        customerId: project.customerId || '',
+        customerName: customerName || '',
+        organizationId: project.organizationId || '',
         userId: user.id,
         type: 'project_reminder',
       },

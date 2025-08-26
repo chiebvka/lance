@@ -358,7 +358,7 @@ export default function WallDetailsSheet({ wall  }: Props) {
                       </Command>
                       <div className="p-2 pt-1 flex gap-2 border-t">
                         <Button
-                          size="sm"
+                          
                           className="flex-1"
                           disabled={!selectedAssignCustomerId || updateWallMutation.isPending}
                           onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
@@ -366,7 +366,7 @@ export default function WallDetailsSheet({ wall  }: Props) {
                           {wall.customerId ? 'Update only' : 'Assign only'}
                         </Button>
                         <Button
-                          size="sm"
+                        
                           variant="outline"
                           className="flex-1"
                           disabled={!selectedAssignCustomerId || updateWallMutation.isPending}
@@ -429,7 +429,7 @@ export default function WallDetailsSheet({ wall  }: Props) {
                     </Command>
                     <div className="p-2 pt-1 flex gap-2 border-t">
                       <Button
-                        size="sm"
+                  
                         className="flex-1"
                         disabled={!selectedAssignCustomerId || updateWallMutation.isPending}
                         onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
@@ -437,7 +437,7 @@ export default function WallDetailsSheet({ wall  }: Props) {
                         {wall.customerId ? 'Update only' : 'Assign only'}
                       </Button>
                       <Button
-                        size="sm"
+                
                         variant="outline"
                         className="flex-1"
                         disabled={!selectedAssignCustomerId || updateWallMutation.isPending}

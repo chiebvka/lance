@@ -1,0 +1,61 @@
+id,stem,type,A,B,C,D,correct,skill_tag,difficulty
+1,A nuclide has T₁/₂ = 5.0 h. What is λ (h⁻¹)?,Numeric,,,,,λ = ln2 / 5.0 ≈ 0.1386 h⁻¹,decay_kinetics,2
+2,"If N₀ = 1.0×10⁶ and λ = 0.2 h⁻¹, N after 3 h is:",Numeric,,,,,N = N₀ e^{-0.6} ≈ 5.49×10⁵,decay_kinetics,2
+3,"An activity falls from 8000 to 1000 in time t. In half-lives, t corresponds to:",MCQ,2,3,log₂(8) = 3,log₂(8) = 3 (same as B/C),B,half_life,2
+4,Sample activity drops by 75% in T hours. T equals how many half-lives?,MCQ,1,2,3,0.5,B,half_life,2
+5,A radionuclide has λ = 0.010 s⁻¹. T₁/₂ is:,Numeric,,,,,T₁/₂ = ln2 / 0.010 ≈ 69.3 s,decay_kinetics,2
+6,N(t)/N₀ = 0.1. How many half-lives have elapsed?,MCQ,≈ 3.32,≈ 1.66,≈ 10,≈ 0.5,A,half_life,3
+7,"A decays to B (stable). If A’s T₁/₂ = 10 d, after 30 d the fraction remaining of A is:",MCQ,1/2,1/4,1/8,1/16,C,decay_kinetics,2
+8,"Activity A=λN. If N decreases by factor 5, A changes by:",MCQ,×5,÷5,No change,×√5,B,activity,1
+9,"For a mixture of two nuclides with different half-lives, the early-time decay curve is dominated by:",MCQ,Longer half-life component,Shorter half-life component,Average,Neither,B,multi_component_decay,3
+10,"If A(t) = A₀ e^{-λt}, a semilog plot of A vs t yields:",MCQ,Parabola,Straight line,Sine wave,Exponential growth,B,data_representation,2
+11,"I = I₀ e^{-μx}. For μ = 0.12 cm⁻¹, what thickness x halves I?",Numeric,,,,,x = ln2 / 0.12 ≈ 5.8 cm,attenuation,2
+12,"If three HVLs are added, intensity becomes:",MCQ,I₀/2,I₀/4,I₀/8,I₀/16,C,attenuation,2
+13,A broad-beam geometry compared to narrow-beam typically shows:,MCQ,Less apparent attenuation due to scatter back into detector,More attenuation,No difference,Inverted behavior,A,attenuation_geometry,4
+14,Bremsstrahlung from beta shielding is reduced by choosing:,MCQ,High-Z shields first,Low-Z shields first,No shield,Only lead,B,shielding_beta,3
+15,"If μ increases, HVL:",MCQ,Increases,Decreases,Unaffected,Becomes zero,B,attenuation,2
+16,Tenth-Value Layer (TVL) equals:,MCQ,ln(10)/μ,ln(2)/μ,1/μ,μ/ln(10),A,attenuation,3
+17,"A detector measures I = 200 cps unshielded. With x cm lead, I = 50 cps. The transmission is:",MCQ,0.25,0.5,0.1,0.75,A,attenuation,2
+18,"If background is 20 cps, the net transmission from Q17 is:",Numeric,,,,,Net I: (50-20)/(200-20) = 30/180 = 0.167,background_subtraction,3
+19,"For a point source, dose rate ∝ 1/r². If r doubles, dose rate:",MCQ,Doubles,Halves,Quadruples,Drops to one-quarter,D,intensity_distance,1
+20,Counts at r₁ = 10 cm are 360 cps (bg=20). Predict counts at r₂ = 20 cm (same time).,Numeric,,,,,Net scales ×(10/20)² = ×0.25. Net=340→85; add bg 20 ⇒ ≈105 cps,intensity_distance,3
+21,"If geometry deviates from point-like, inverse-square will:",MCQ,Hold exactly,Over-predict at short r,Under-predict at short r,Become linear,C,intensity_distance,3
+22,A movable shield between source and detector most affects:,MCQ,Background only,Source term,Transmission term of source contribution,Detector dead time,C,shielding,2
+23,"Given a fixed counting time, improving statistics best achieved by:",MCQ,Moving closer (higher rate),Reducing background,Increasing detector area,All of the above,D,measurement_strategy,2
+24,"If dead time is significant, measured rate vs true rate is:",MCQ,Measured > True,Measured < True,Equal,Unrelated,B,detector_dead_time,3
+25,Background subtraction requires matching:,MCQ,Counting time only,Time and geometry (and shielding) as in sample run,Detector model only,Nothing,B,background_subtraction,2
+26,Relative error σ/N for Poisson counts is:,MCQ,1/√N,√N,N,1/N,A,poisson_stats,2
+27,"In secular equilibrium (λ_d ≪ λ_p), daughter activity A_d is approximately:",MCQ,Zero,Much larger than parent,Equal to parent activity,Oscillatory,C,decay_chains,4
+28,Transient equilibrium occurs when:,MCQ,λ_d ≪ λ_p,λ_d ≈ λ_p but greater,λ_d ≫ λ_p,No daughter,B,decay_chains,4
+29,"For A→B→stable with λ_A ≫ λ_B, early-time activity is dominated by:",MCQ,A,B,Stable product,Background,A,decay_chains,3
+30,Bateman equations provide:,MCQ,Dose conversion,Solutions for multi-step decay chains,Shielding thickness tables,Dead-time correction,B,decay_chains,5
+31,"If parent is removed (milked) at t=0, daughter activity will:",MCQ,Instantly vanish,Rise then fall depending on λ_d,Stay constant,Oscillate,B,decay_chains,4
+32,Secular equilibrium requires the parent half-life to be:,MCQ,Much shorter than daughter,Much longer than daughter,Equal to daughter,Zero,B,decay_chains,4
+33,Beta-minus emission shows a continuous energy spectrum because:,MCQ,Detector noise,Energy shared with antineutrino,Atomic electrons screen,Source aging,B,beta_spectrum,4
+34,The endpoint energy of a beta spectrum corresponds to:,MCQ,Average beta energy,Maximum beta kinetic energy (Q minus recoil),Gamma line energy,Binding energy,B,beta_spectrum,4
+35,Fermi–Kurie plots are used to:,MCQ,Measure gamma energies,Linearize beta spectra to find endpoint,Estimate neutron flux,Determine HVL,B,beta_spectrum,5
+36,Positron annihilation produces:,MCQ,Single photon at 511 keV,Two 511 keV photons at ~180°,Three photons,Neutrons,B,positron_physics,3
+37,Intrinsic efficiency relates to:,MCQ,Counts / quanta incident on detector face,Counts / emitted quanta,Detector area only,Shield thickness,A,detection_efficiency,4
+38,Absolute efficiency needs knowledge of:,MCQ,Distance and solid angle to source,Only intrinsic efficiency,Only detector voltage,Only μ,A,detection_efficiency,4
+39,Photopeak efficiency in a scintillator refers to:,MCQ,All interactions,Events depositing full gamma energy,Backscatter only,Compton continuum,B,detector_response,4
+40,Energy resolution (FWHM/E) improves when:,MCQ,Light yield increases and noise drops,Gain fluctuates more,Temperature rises for HPGe,Photon statistics decrease,A,detector_response,4
+41,Dead-time correction in nonparalyzable model is:,MCQ,n = m / (1 - mτ),n = m (1 - mτ),n = m e^{-mτ},n = m + τ,A,dead_time_models,5
+42,Pile-up tends to:,MCQ,Improve resolution,Distort spectra at high rates,Eliminate dead time,Reduce background to zero,B,detector_response,4
+43,A GM tube with long dead time is least suitable for:,MCQ,High rate measurements,Presence/absence monitoring,Rough survey,Low rate detection,A,detectors_GM,3
+44,NaI(Tl) scintillators are preferred over HPGe when:,MCQ,High resolution is needed,Field deployability and cost matter,Cryogenic cooling is available,Low Z is required,B,detectors_scint,3
+45,"Equivalent dose H = Σ w_R · D. If D=0.02 Gy from alphas (w_R≈20), H is:",Numeric,,,,,≈ 0.4 Sv,dosimetry,3
+46,Effective dose accounts for:,MCQ,Tissue weighting factors w_T,Detector window thickness,Source-detector distance,Photon statistics,A,dosimetry,3
+47,"If whole-body dose is 5 mSv, which statement is most accurate?",MCQ,This is equivalent to 5 Gy,It reflects risk-weighted dose (not energy per mass),It equals background per day,Impossible value,B,dosimetry_units,2
+48,"Time, distance, and shielding reduce:",MCQ,Equivalent dose,Activity of source,Half-life,Detector efficiency,A,safety_TDS,1
+49,"For a collimated beam, adding scatter build-up material may:",MCQ,Increase dose behind thin shields,Decrease dose always,Have no effect,Stop beta rays only,A,shielding,4
+50,Lens of the eye has specific dose limits because:,MCQ,It is radioresistant,Cataractogenesis is a deterministic effect with threshold,It repairs DNA efficiently,No regulation applies,B,bio_effects,4
+51,You record 900±√900 counts in 60 s. Count rate and uncertainty are:,Numeric,,,,,15.0 ± 0.5 cps,poisson_stats,3
+52,Subtracting background 120±11 from sample 400±20 gives net:,Numeric,,,,,280 ± sqrt(20²+11²) ≈ 280 ± 22,uncertainty,4
+53,"For a ratio R = A/B with small independent errors, relative σ_R/R is approximately:",MCQ,σ_A/A + σ_B/B,√[(σ_A/A)² + (σ_B/B)²],σ_Aσ_B,σ_A - σ_B,B,uncertainty,4
+54,Counting 100 s vs 400 s changes relative error by factor:,MCQ,×2 worse,×4 worse,×2 better,×√4 better,D,poisson_stats,3
+55,"If the background fluctuates, best practice is to:",MCQ,Use a single short background,Use repeated/background-matched runs and average,Ignore it,Double it,B,measurement_strategy,2
+56,A non-zero dead time causes which systematic effect on net rates?,MCQ,Bias low at high count rates,Bias high at high count rates,No bias,Random sign,A,detector_dead_time,3
+57,You must design a shield to reduce dose by ×10. How many TVLs are needed?,MCQ,1,2,ln(10),Depends on μ but ≈1 TVL,A,attenuation,2
+58,A lab measures a beta source with Al and then Pb shields. Counts rise with thin Pb. Why?,MCQ,Bremsstrahlung from high-Z produces gammas,Detector warmed up,Inverse-square law reversal,Source aging,A,shielding_beta,4
+59,"To demonstrate half-life in VR without real sources, you should:",MCQ,Use random decay events following N(t),Animate a linear fade,Use a sine curve,Hide randomness,A,simulation_design,2
+60,A PET scanner detects back-to-back 511 keV photons. The underlying nuclear process is:,MCQ,Electron capture,Positron annihilation,Alpha emission,Internal conversion,B,applications_medical,3

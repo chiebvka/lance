@@ -151,6 +151,15 @@ async function sendInvoiceReminderEmail(supabase: any, invoice: any, organizatio
       from: `${fromName} <${fromEmail}>`,
       subject: `Reminder: Overdue Invoice - ${invoice.invoiceNumber || `INV-${invoice.id.slice(-6)}`}`,
       html: emailHtml,
+      customArgs: {
+        invoiceId: invoice.id,
+        invoiceName: invoice.invoiceNumber || "",
+        customerId: invoice.customerId || "",
+        customerName: invoice.customers?.name || "",
+        organizationId: invoice.organizationId || "",
+        userId: invoice.createdBy || "",
+        type: "invoice_overdue",
+      },
     });
 
     console.log("Invoice reminder email sent to:", recipientEmail);
