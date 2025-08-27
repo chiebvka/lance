@@ -298,9 +298,22 @@ export async function PATCH(
             if (!finalRecipientEmail || !validator.isEmail(finalRecipientEmail)) {
                 return NextResponse.json({ success: false, error: "Invalid email address." }, { status: 400 });
             }
+            // Save all form changes when sending
             updatePayload.state = 'sent';
             updatePayload.token = crypto.randomUUID();
             updatePayload.sentAt = currentTimestamp;
+            
+            // Update all form fields
+            if (data.name !== undefined) updatePayload.name = data.name;
+            if (data.questions !== undefined) updatePayload.questions = data.questions;
+            if (data.customerId !== undefined) updatePayload.customerId = data.customerId;
+            if (data.projectId !== undefined) updatePayload.projectId = data.projectId;
+            if (data.dueDate !== undefined) updatePayload.dueDate = data.dueDate;
+            if (data.message !== undefined) updatePayload.message = data.message;
+            
+            // Update recipient information
+            updatePayload.recepientName = finalRecipientName;
+            updatePayload.recepientEmail = finalRecipientEmail;
             break;
 
         default:

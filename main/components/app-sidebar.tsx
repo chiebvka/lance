@@ -147,7 +147,11 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         <NavProjects projects={data.projects} userEmail={supportEmail} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={userData} />
+        <NavUser 
+          user={userData} 
+          organization={organization}
+          showDropdown={false}
+        />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

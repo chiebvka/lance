@@ -34,6 +34,30 @@ export interface Feedbacks {
     customerEmail?: string | null
 }
 
+export interface FeedbackTemplate {
+    id: string
+    name: string
+    questions: any[]
+    isDefault?: boolean
+    questionCount?: number
+    isOwner?: boolean
+}
+
+export interface FeedbackDraft {
+    id: string
+    name: string
+    questions: any[]
+    questionCount?: number
+    recipientEmail?: string
+    customerId?: string
+    projectId?: string
+    dueDate?: string
+    customerName?: string
+    projectName?: string
+    createdAtFormatted?: string
+    message?: string
+}
+
 
 export interface CreateFeedbackData {
     name: string | null
@@ -133,5 +157,57 @@ export function useFeedbacks(initialData?: Feedbacks[]) {
         queryClient.invalidateQueries({ queryKey: ['feedbacks'] })
       },
     })
+  }
+
+  // New hooks for templates and drafts with caching
+  export async function fetchFeedbackTemplates(): Promise<FeedbackTemplate[]> {
+    const { data } = await axios.get<{ success: boolean; templates: FeedbackTemplate[] }>('/api/feedback')
+    if (!data.success) throw new Error('Error fetching feedback templates')
+    return data.templates || []
+  }
+
+  export function useFeedbackTemplates(initialData?: FeedbackTemplate[]) {
+    return useQuery<FeedbackTemplate[]>({
+      queryKey: ['feedback-templates'],
+      queryFn: fetchFeedbackTemplates,
+      initialData,
+      staleTime: 10 * 60 * 1000, // 10 minutes - templates don't change often
+      gcTime: 15 * 60 * 1000, // Keep in cache for 15 minutes
+    })
+  }
+
+  export async function fetchFeedbackDrafts(): Promise<FeedbackDraft[]> {
+    const { data } = await axios.get<{ success: boolean; drafts: FeedbackDraft[] }>('/api/feedback')
+    if (!data.success) throw new Error('Error fetching feedback drafts')
+    return data.drafts || []
+  }
+
+  export function useFeedbackDrafts(initialData?: FeedbackDraft[]) {
+    return useQuery<FeedbackDraft[]>({
+      queryKey: ['feedback-drafts'],
+      queryFn: fetchFeedbackDrafts,
+      initialData,
+      staleTime: 2 * 60 * 1000, // 2 minutes - drafts change more frequently
+      gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    })
+  }
+
+  // Combined hook for all feedback builder data - loads in parallel
+  export function useFeedbackBuilderData() {
+    const templatesQuery = useFeedbackTemplates()
+    const draftsQuery = useFeedbackDrafts()
+    
+    return {
+      templates: templatesQuery.data || [],
+      drafts: draftsQuery.data || [],
+      isLoading: templatesQuery.isLoading || draftsQuery.isLoading,
+      isError: templatesQuery.isError || draftsQuery.isError,
+      error: templatesQuery.error || draftsQuery.error,
+      // Individual query states for more granular control
+      templatesLoading: templatesQuery.isLoading,
+      draftsLoading: draftsQuery.isLoading,
+      templatesError: templatesQuery.error,
+      draftsError: draftsQuery.error,
+    }
   }
 

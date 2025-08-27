@@ -309,7 +309,7 @@ async function handleCreateFeedback(supabase: any, user: any, data: any, action:
             dueDate: finalDueDate,
             state,
             recepientEmail: finalRecipientEmail, // Note: matches DB column name
-            recepientName: customerId ? null : recepientName, 
+            recepientName: customerId ? customerName : recepientName, 
             questions,
             answers,
             createdBy: user.id,

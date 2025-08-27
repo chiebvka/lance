@@ -156,7 +156,7 @@ export default function SpotlightCommand({}: Props) {
 
   return (
     <>
-      <div className={cn("flex items-center gap-3")}>
+      <div className={cn("flex md:items-center gap-3 md:justify-start justify-end w-full")}>
         {/* Trial Status Badge */}
         <Badge 
           variant={getBadgeVariant()} 
@@ -245,9 +245,9 @@ export default function SpotlightCommand({}: Props) {
         </DropdownMenu>
 
         {/* Notes/Menu */}
-        <DropdownMenu>
+        <DropdownMenu >
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="bg-background/95 backdrop-blur-sm">
+            <Button variant="outline" size="icon" className="bg-background/95 backdrop-blur-sm hidden md:block">
               <StickyNote className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -286,6 +286,16 @@ export default function SpotlightCommand({}: Props) {
             </Badge>
           </div>
         </div>
+
+        {/* Mobile Search Button */}
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="md:hidden"
+          onClick={() => setIsCommandOpen(true)}
+        >
+          <ScanSearch className="h-4 w-4" />
+        </Button>
       </div>
 
       <CommandFilter 

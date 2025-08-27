@@ -35,7 +35,7 @@ import {
     logoUrl = "https://www.bexoni.com/favicon.ico",
     feedbackLink, // Use the provided feedbackLink prop
   }: IssueFeedbackEmailProps) {
-    const previewText = ` ${feedbackName} is appreciated.`
+    const previewText = ` ${feedbackName} needs your response`
     
     // Use the provided feedbackLink or fall back to the old method (but this should always be provided now)
     const finalFeedbackLink = feedbackLink || `${baseUrl}/f/${feedbackId}`;

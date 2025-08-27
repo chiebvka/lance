@@ -25,6 +25,10 @@ import { AlertTriangle } from "lucide-react";
 import ComboBox from "@/components/combobox";
 import ConfirmModal from "@/components/modal/confirm-modal";
 import SuccessConfirmModal from "@/components/modal/success-confirm-modal";
+import { useFeedbackTemplates } from "@/hooks/feedbacks/use-feedbacks";
+import { useCustomers } from "@/hooks/customers/use-customers";
+import { useProjects } from "@/hooks/projects/use-projects";
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
   Eye,
@@ -86,35 +90,7 @@ interface ExistingFeedback {
     }
 }
 
-// Interfaces for templates (no answers)
-interface TemplateQuestion {
-    id: string
-    type: "yes_no" | "multiple_choice" | "text" | "rating" | "dropdown" | "number"
-    text: string
-    options?: string[]
-    required: boolean
-}
-  
-interface FormTemplate {
-    id: string
-    name: string
-    questions: TemplateQuestion[]
-    isDefault?: boolean
-    questionCount?: number
-    isOwner?: boolean
-}
 
-interface Customer {
-    id: string
-    name: string
-    email: string
-}
-
-interface Project {
-    id: string
-    name: string
-    customerName?: string
-}
   
 const questionTypes = [
   { id: "yes_no", label: "Yes/No", icon: CheckSquare, color: "bg-green-600" },
@@ -130,15 +106,20 @@ interface Props {
 }
 
 export default function EditFeedbackBuilder({ feedbackId }: Props) {
+      // Query client for cache management
+      const queryClient = useQueryClient()
+      
       // Form state - using FeedbackQuestion which can have answers
       const [currentForm, setCurrentForm] = useState<FeedbackQuestion[]>([])
       const [formName, setFormName] = useState("")
       const [editingQuestion, setEditingQuestion] = useState<string>("")
       
-      // Data from API
-      const [templates, setTemplates] = useState<FormTemplate[]>([])
-      const [customers, setCustomers] = useState<Customer[]>([])
-      const [projects, setProjects] = useState<Project[]>([])
+      // Data from hooks - loads in parallel with caching
+      const { data: templates = [], isLoading: templatesLoading } = useFeedbackTemplates()
+      const { data: customers = [], isLoading: customersLoading } = useCustomers()
+      const { data: projects = [], isLoading: projectsLoading } = useProjects()
+      
+      // Feedback-specific data
       const [loading, setLoading] = useState(true)
       const [feedbackData, setFeedbackData] = useState<ExistingFeedback | null>(null)
       
@@ -231,108 +212,83 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
           return state.charAt(0).toUpperCase() + state.slice(1);
       }
   
-      const loadInitialData = async () => {
-          try {
-              setLoading(true)
-              const [feedbackResponse, templatesResponse, customersResponse, projectsResponse] = await Promise.all([
-                  axios.get(`/api/feedback/${feedbackId}`),
-                  axios.get('/api/feedback'),
-                  axios.get('/api/customers'),
-                  axios.get('/api/projects')
-              ])
-  
-              if (feedbackResponse.data.success) {
-                  const feedback: ExistingFeedback = feedbackResponse.data.project
-                  setFeedbackData(feedback)
-                  setFormName(feedback.name || '')
-                  
-                  // Transform questions and add answers
-                  const transformedQuestions: FeedbackQuestion[] = feedback.questions.map((q: any) => {
-                      const baseQuestion = transformQuestionFromDB(q)
-                      const answerObj = feedback.answers?.find((a: FeedbackAnswer) => a.questionId === q.id)
-                      const answerValue = answerObj?.answer
-                      return {
-                          ...baseQuestion,
-                          answer: (answerValue !== undefined && answerValue !== null) ? String(answerValue) : null
-                      }
-                  })
-                  setCurrentForm(transformedQuestions)
+          const loadInitialData = async () => {
+        try {
+            setLoading(true)
+            const feedbackResponse = await axios.get(`/api/feedback/${feedbackId}`)
 
-                  // Set form fields from existing feedback
-                  if (feedback.customerId) {
-                      setSendToCustomer(true)
-                      setSelectedCustomer(feedback.customerId)
-                      setCustomEmail("")
-                  } else if (feedback.recepientEmail) {
-                      setSendToCustomer(false)
-                      setCustomEmail(feedback.recepientEmail)
-                      setSelectedCustomer(null)
-                  }
-                  
-                  if (feedback.projectId) {
-                      setAttachToProject(true)
-                      setSelectedProject(feedback.projectId)
-                  }
+            if (feedbackResponse.data.success) {
+                const feedback: ExistingFeedback = feedbackResponse.data.project
+                setFeedbackData(feedback)
+                setFormName(feedback.name || '')
+                
+                // Transform questions and add answers
+                const transformedQuestions: FeedbackQuestion[] = feedback.questions.map((q: any) => {
+                    const baseQuestion = transformQuestionFromDB(q)
+                    const answerObj = feedback.answers?.find((a: FeedbackAnswer) => a.questionId === q.id)
+                    const answerValue = answerObj?.answer
+                    return {
+                        ...baseQuestion,
+                        answer: (answerValue !== undefined && answerValue !== null) ? String(answerValue) : null
+                    }
+                })
+                setCurrentForm(transformedQuestions)
 
-                  // Handle due date logic for editing
-                  if (feedback.dueDate) {
-                      const date = new Date(feedback.dueDate);
-                      
-                      // Check if the date is in the past and not today
-                      if (isBefore(date, new Date()) && !isToday(date)) {
-                          // Set to 3 days from current date and show alert
-                          const newDueDate = addDays(new Date(), 3);
-                          setDueDate(newDueDate);
-                          setShowPastDueAlert(true);
-                          
-                          // Auto-hide alert after 5 seconds
-                          setTimeout(() => setShowPastDueAlert(false), 5000);
-                      } else {
-                          setDueDate(date);
-                          setShowPastDueAlert(false);
-                      }
-                  } else {
-                      // No due date, set to 3 days from current date
-                      const defaultDueDate = addDays(new Date(), 3);
-                      setDueDate(defaultDueDate);
-                      setShowPastDueAlert(false);
-                  }
+                // Set form fields from existing feedback
+                if (feedback.customerId) {
+                    setSendToCustomer(true)
+                    setSelectedCustomer(feedback.customerId)
+                    setCustomEmail("")
+                } else if (feedback.recepientEmail) {
+                    setSendToCustomer(false)
+                    setCustomEmail(feedback.recepientEmail)
+                    setSelectedCustomer(null)
+                }
+                
+                if (feedback.projectId) {
+                    setAttachToProject(true)
+                    setSelectedProject(feedback.projectId)
+                }
 
-                  if (feedback.message) {
-                      setMessage(feedback.message)
-                  }
+                // Handle due date logic for editing
+                if (feedback.dueDate) {
+                    const date = new Date(feedback.dueDate);
+                    
+                    // Check if the date is in the past and not today
+                    if (isBefore(date, new Date()) && !isToday(date)) {
+                        // Set to 3 days from current date and show alert
+                        const newDueDate = addDays(new Date(), 3);
+                        setDueDate(newDueDate);
+                        setShowPastDueAlert(true);
+                        
+                        // Auto-hide alert after 5 seconds
+                        setTimeout(() => setShowPastDueAlert(false), 5000);
+                    } else {
+                        setDueDate(date);
+                        setShowPastDueAlert(false);
+                    }
+                } else {
+                    // No due date, set to 3 days from current date
+                    const defaultDueDate = addDays(new Date(), 3);
+                    setDueDate(defaultDueDate);
+                    setShowPastDueAlert(false);
+                }
 
-                  if (feedback.recepientName) {
-                      setCustomName(feedback.recepientName)
-                  }
-              }
-              
-              if (templatesResponse.data.success) {
-                  setTemplates(templatesResponse.data.templates)
-              }
-              
-              if (customersResponse.data.success) {
-                  setCustomers(customersResponse.data.customers.map((c: any) => ({
-                      id: c.id,
-                      name: c.name || 'Unnamed Customer',
-                      email: c.email || ''
-                  })))
-              }
-              
-              if (projectsResponse.data.success) {
-                  setProjects(projectsResponse.data.projects.map((p: any) => ({
-                      id: p.id,
-                      name: p.name || 'Unnamed Project',
-                      customerName: p.customerName
-                  })))
-              }
-          } catch (error) {
-              console.error('Error loading initial data:', error)
-              toast.error('Failed to load feedback data')
-          } finally {
-              setLoading(false)
-          }
-      }
+                if (feedback.message) {
+                    setMessage(feedback.message)
+                }
+
+                if (feedback.recepientName) {
+                    setCustomName(feedback.recepientName)
+                }
+            }
+        } catch (error) {
+            console.error('Error loading feedback data:', error)
+            toast.error('Failed to load feedback data')
+        } finally {
+            setLoading(false)
+        }
+    }
   
       const addQuestion = (type: FeedbackQuestion["type"]) => {
           if (!canEditForm()) {
@@ -408,7 +364,9 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                   customerId: sendToCustomer ? selectedCustomer : null,
                   projectId: attachToProject ? selectedProject : null,
                   recipientEmail,
-                  recepientName: sendToCustomer ? null : customName || null,
+                  recepientName: sendToCustomer ? 
+                      customers.find(c => c.id === selectedCustomer)?.name || null : 
+                      customName || null,
                   questions: currentForm.map(q => ({
                       id: q.id,
                       text: q.text,
@@ -464,7 +422,9 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                   recipientEmail: sendToCustomer ? 
                       customers.find(c => c.id === selectedCustomer)?.email || "" : 
                       customEmail || "",
-                  recepientName: sendToCustomer ? null : customName || null,
+                  recepientName: sendToCustomer ? 
+                      customers.find(c => c.id === selectedCustomer)?.name || null : 
+                      customName || null,
                   questions: currentForm.map(q => ({
                       id: q.id,
                       text: q.text,
@@ -501,20 +461,20 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
       
         const editingQuestionData = currentForm.find((q) => q.id === editingQuestion)
   
-      // Prepare dropdown data
-      const customerOptions = customers.map(customer => ({
-          value: customer.id,
-          label: `${customer.name} (${customer.email})`,
-          searchValue: `${customer.name} ${customer.email}`
-      }))
-  
-      const projectOptions = projects.map(project => ({
-          value: project.id,
-          label: project.customerName ? 
-              `${project.name} - ${project.customerName}` : 
-              project.name,
-          searchValue: `${project.name} ${project.customerName || ''}`
-      }))
+          // Prepare dropdown data
+    const customerOptions = customers.map(customer => ({
+        value: customer.id,
+        label: `${customer.name || 'Unnamed Customer'} (${customer.email || '-'})`,
+        searchValue: `${customer.name || ''} ${customer.email || ''}`.trim()
+    }))
+
+    const projectOptions = projects.map(project => ({
+        value: project.id,
+        label: project.customerName ? 
+            `${project.name || 'Unnamed Project'} - ${project.customerName}` : 
+            (project.name || 'Unnamed Project'),
+        searchValue: `${project.name || ''} ${project.customerName || ''}`.trim()
+    }))
       
         const renderPreviewQuestion = (question: FeedbackQuestion, index: number) => {
           return (
@@ -613,16 +573,19 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
           )
         }
       
-      if (loading) {
-          return (
-              <div className="min-h-screen flex items-center justify-center">
-                  <div className="text-center">
-                      <Bubbles className="h-12 w-12 text-primary mx-auto animate-spin [animation-duration:0.5s]" />
-                      <p>Loading feedback builder...</p>
-                  </div>
-              </div>
-          )
-      }
+          // Combined loading state - show loading if any critical data is still loading
+    const isLoading = loading || templatesLoading || customersLoading || projectsLoading
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <Bubbles className="h-12 w-12 text-primary mx-auto animate-spin [animation-duration:0.5s]" />
+                    <p>Loading feedback builder...</p>
+                </div>
+            </div>
+        )
+    }
 
   return (
     <div className="min-h-screen">

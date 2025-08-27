@@ -35,7 +35,7 @@ import {
     logoUrl = "https://www.bexoni.com/favicon.ico",
     feedbackLink,
   }: IssueFeedbackEmailProps) {
-    const previewText = ` ${feedbackName} is appreciated.`
+    const previewText = ` ${feedbackName} needs your response`
     const finalFeedbackLink = feedbackLink || `${baseUrl}/f/${feedbackId}`;
   
     const logoStyle = {

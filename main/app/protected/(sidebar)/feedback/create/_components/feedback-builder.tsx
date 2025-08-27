@@ -22,6 +22,10 @@ import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import ComboBox from "@/components/combobox";
 import ConfirmModal from "@/components/modal/confirm-modal";
+import { useFeedbackBuilderData, FeedbackTemplate, FeedbackDraft } from "@/hooks/feedbacks/use-feedbacks";
+import { useCustomers } from "@/hooks/customers/use-customers";
+import { useProjects } from "@/hooks/projects/use-projects";
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
   Eye,
@@ -52,41 +56,6 @@ interface Question {
     required: boolean
 }
   
-interface FormTemplate {
-    id: string
-    name: string
-    questions: Question[]
-    isDefault?: boolean
-    questionCount?: number
-    isOwner?: boolean
-}
-
-interface FeedbackDraft {
-    id: string
-    name: string
-    questions: Question[]
-    questionCount?: number
-    recipientEmail?: string
-    customerId?: string
-    projectId?: string
-    dueDate?: string
-    customerName?: string
-    projectName?: string
-    createdAtFormatted?: string
-}
-
-interface Customer {
-    id: string
-    name: string
-    email: string
-}
-
-interface Project {
-    id: string
-    name: string
-    customerName?: string
-}
-  
 const questionTypes = [
   { id: "yes_no", label: "Yes/No", icon: CheckSquare, color: "bg-green-600" },
   { id: "multiple_choice", label: "Multiple Choice", icon: MessageSquare, color: "bg-blue-600" },
@@ -99,6 +68,9 @@ const questionTypes = [
 type Props = {}
 
 export default function FeedbackBuilder({}: Props) {
+    // Query client for cache invalidation
+    const queryClient = useQueryClient()
+    
     // Form state
     const [currentForm, setCurrentForm] = useState<Question[]>([])
     const [formName, setFormName] = useState("")
@@ -106,12 +78,13 @@ export default function FeedbackBuilder({}: Props) {
     const [selectedDraft, setSelectedDraft] = useState<string>("")
     const [editingQuestion, setEditingQuestion] = useState<string>("")
     
-    // Data from API
-    const [templates, setTemplates] = useState<FormTemplate[]>([])
-    const [drafts, setDrafts] = useState<FeedbackDraft[]>([])
-    const [customers, setCustomers] = useState<Customer[]>([])
-    const [projects, setProjects] = useState<Project[]>([])
-    const [loading, setLoading] = useState(true)
+    // Data from hooks - loads in parallel with caching
+    const { templates, drafts, isLoading: builderDataLoading, isError: builderDataError } = useFeedbackBuilderData()
+    const { data: customers = [], isLoading: customersLoading, error: customersError } = useCustomers()
+    const { data: projects = [], isLoading: projectsLoading, error: projectsError } = useProjects()
+    
+    // Combined loading state
+    const loading = builderDataLoading || customersLoading || projectsLoading
     
     // Dialog states
     const [showPreview, setShowPreview] = useState(false)
@@ -150,47 +123,6 @@ export default function FeedbackBuilder({}: Props) {
         setDueDate(defaultDueDate);
     }, []);
 
-    // Load data on component mount
-    useEffect(() => {
-        loadInitialData()
-    }, [])
-
-    const loadInitialData = async () => {
-        try {
-            setLoading(true)
-            const [feedbackResponse, customersResponse, projectsResponse] = await Promise.all([
-                axios.get('/api/feedback'),
-                axios.get('/api/customers'),
-                axios.get('/api/projects')
-            ])
-
-            if (feedbackResponse.data.success) {
-                setTemplates(feedbackResponse.data.templates)
-                setDrafts(feedbackResponse.data.drafts || [])
-            }
-            
-            if (customersResponse.data.success) {
-                setCustomers(customersResponse.data.customers.map((c: any) => ({
-                    id: c.id,
-                    name: c.name || 'Unnamed Customer',
-                    email: c.email || ''
-                })))
-            }
-            
-            if (projectsResponse.data.success) {
-                setProjects(projectsResponse.data.projects.map((p: any) => ({
-                    id: p.id,
-                    name: p.name || 'Unnamed Project',
-                    customerName: p.customerName
-                })))
-            }
-        } catch (error) {
-            console.error('Error loading initial data:', error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
     const addQuestion = (type: Question["type"]) => {
         const newQuestion: Question = {
           id: Date.now().toString(),
@@ -227,7 +159,7 @@ export default function FeedbackBuilder({}: Props) {
     }
     
     const loadTemplate = (templateId: string) => {
-        const template = templates.find((t) => t.id === templateId)
+        const template = (templates as FeedbackTemplate[]).find((t: FeedbackTemplate) => t.id === templateId)
         if (template) {
             // Transform questions from DB structure to frontend structure
             const transformedQuestions = template.questions.map(transformQuestionFromDB)
@@ -239,7 +171,7 @@ export default function FeedbackBuilder({}: Props) {
     }
 
     const loadDraft = (draftId: string) => {
-        const draft = drafts.find((d) => d.id === draftId)
+        const draft = (drafts as FeedbackDraft[]).find((d: FeedbackDraft) => d.id === draftId)
         if (draft) {
             // Transform questions from DB structure to frontend structure
             const transformedQuestions = draft.questions.map(transformQuestionFromDB)
@@ -311,7 +243,7 @@ export default function FeedbackBuilder({}: Props) {
     // Helper function for button text - updated to be more descriptive
     const getQuickSaveButtonText = () => {
         if (savingDraft) return 'Saving...'
-        if (isEditingExistingDraft()) return `Update: "${drafts.find(d => d.id === selectedDraft)?.name}"`
+        if (isEditingExistingDraft()) return `Update: "${(drafts as FeedbackDraft[]).find((d: FeedbackDraft) => d.id === selectedDraft)?.name}"`
         if (formName.trim()) return `Quick Save: "${getFormName()}"`
         return 'Save Draft'
     }
@@ -362,11 +294,8 @@ export default function FeedbackBuilder({}: Props) {
             if (response.data.success) {
                 toast.success('Template saved successfully!')
                 
-                // Reload templates
-                const templatesResponse = await axios.get('/api/feedback')
-                if (templatesResponse.data.success) {
-                    setTemplates(templatesResponse.data.templates)
-                }
+                // Invalidate cache to trigger refetch
+                queryClient.invalidateQueries({ queryKey: ['feedback-templates'] })
                 
                 setTemplateNameDialog(false)
                 setTemplateName("")
@@ -410,11 +339,9 @@ export default function FeedbackBuilder({}: Props) {
             if (response.data.success) {
                 toast.success('Template updated successfully!')
                 
-                // Reload templates
-                const templatesResponse = await axios.get('/api/feedback')
-                if (templatesResponse.data.success) {
-                    setTemplates(templatesResponse.data.templates)
-                }
+                // Invalidate cache to trigger refetch
+                queryClient.invalidateQueries({ queryKey: ['feedback-templates'] })
+                
                 console.log('Template updated successfully')
             }
         } catch (error) {
@@ -440,7 +367,9 @@ export default function FeedbackBuilder({}: Props) {
                 recipientEmail: sendToCustomer ? 
                     customers.find(c => c.id === selectedCustomer)?.email || "" : 
                     customEmail || "",
-                recepientName: sendToCustomer ? null : customName || null,
+                recepientName: sendToCustomer ? 
+                    customers.find(c => c.id === selectedCustomer)?.name || null : 
+                    customName || null,
                 questions: currentForm.map(q => ({
                     id: q.id,
                     text: q.text,
@@ -470,12 +399,8 @@ export default function FeedbackBuilder({}: Props) {
             if (response.data.success) {
                 toast.success(isEditingExistingDraft() ? 'Draft updated successfully!' : 'Draft saved successfully!')
                 
-                // Reload data to get updated drafts
-                const feedbackResponse = await axios.get('/api/feedback')
-                if (feedbackResponse.data.success) {
-                    setTemplates(feedbackResponse.data.templates)
-                    setDrafts(feedbackResponse.data.drafts || [])
-                }
+                // Invalidate cache to trigger refetch
+                queryClient.invalidateQueries({ queryKey: ['feedback-drafts'] })
                 
                 setShowDraftDialog(false)
                 setDraftName("")
@@ -530,7 +455,9 @@ export default function FeedbackBuilder({}: Props) {
                 customerId: sendToCustomer ? selectedCustomer : null,
                 projectId: attachToProject ? selectedProject : null,
                 recipientEmail,
-                recepientName: sendToCustomer ? null : customName || null,
+                recepientName: sendToCustomer ? 
+                    customers.find(c => c.id === selectedCustomer)?.name || null : 
+                    customName || null,
                 questions: currentForm.map(q => ({
                     id: q.id,
                     text: q.text,
@@ -609,11 +536,11 @@ export default function FeedbackBuilder({}: Props) {
           if (response.data.success) {
               toast.success('Template deleted successfully!')
               
-              // Remove from local state and reload templates
-              setTemplates(templates.filter((t) => t.id !== templateToDelete))
-      if (selectedTemplate === templateToDelete) {
-        resetForm()
-      }
+              // Invalidate cache and reset form if needed
+              queryClient.invalidateQueries({ queryKey: ['feedback-templates'] })
+              if (selectedTemplate === templateToDelete) {
+                resetForm()
+              }
               console.log('Template deleted successfully')
           }
       } catch (error) {
@@ -643,8 +570,8 @@ export default function FeedbackBuilder({}: Props) {
           if (response.data.success) {
               toast.success('Draft deleted successfully!')
               
-              // Remove from local state and reload drafts
-              setDrafts(drafts.filter((d) => d.id !== draftToDelete))
+              // Invalidate cache and reset form if needed
+              queryClient.invalidateQueries({ queryKey: ['feedback-drafts'] })
               if (selectedDraft === draftToDelete) {
                   resetForm()
               }
@@ -665,16 +592,16 @@ export default function FeedbackBuilder({}: Props) {
     // Prepare dropdown data
     const customerOptions = customers.map(customer => ({
         value: customer.id,
-        label: `${customer.name} (${customer.email})`,
-        searchValue: `${customer.name} ${customer.email}`
+        label: `${customer.name || 'Unnamed Customer'} (${customer.email || '-'})`,
+        searchValue: `${customer.name || ''} ${customer.email || ''}`.trim()
     }))
 
     const projectOptions = projects.map(project => ({
         value: project.id,
         label: project.customerName ? 
-            `${project.name} - ${project.customerName}` : 
-            project.name,
-        searchValue: `${project.name} ${project.customerName || ''}`
+            `${project.name || 'Unnamed Project'} - ${project.customerName}` : 
+            (project.name || 'Unnamed Project'),
+        searchValue: `${project.name || ''} ${project.customerName || ''}`.trim()
     }))
     
     const renderPreviewQuestion = (question: Question, index: number) => {
@@ -771,9 +698,28 @@ export default function FeedbackBuilder({}: Props) {
         )
     }
 
+    // Show error state if there are critical errors
+    if (builderDataError || customersError || projectsError) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">Failed to load feedback builder data</p>
+                    <Button onClick={() => {
+                        queryClient.invalidateQueries({ queryKey: ['feedback-templates'] })
+                        queryClient.invalidateQueries({ queryKey: ['feedback-drafts'] })
+                        queryClient.invalidateQueries({ queryKey: ['customers'] })
+                        queryClient.invalidateQueries({ queryKey: ['projects'] })
+                    }}>
+                        Retry
+                    </Button>
+                </div>
+            </div>
+        )
+    }
+
     // Get template and draft names for modals
-    const templateToDeleteName = templates.find(t => t.id === templateToDelete)?.name || ""
-    const draftToDeleteName = drafts.find(d => d.id === draftToDelete)?.name || ""
+    const templateToDeleteName = (templates as FeedbackTemplate[]).find((t: FeedbackTemplate) => t.id === templateToDelete)?.name || ""
+    const draftToDeleteName = (drafts as FeedbackDraft[]).find((d: FeedbackDraft) => d.id === draftToDelete)?.name || ""
 
   return (
     <div className="min-h-screen">
@@ -800,7 +746,7 @@ export default function FeedbackBuilder({}: Props) {
                   <div>
                     <h3 className="text-sm font-medium mb-3">Templates</h3>
                     <div className="space-y-2">
-                                              {templates.map((template) => (
+                                              {(templates as FeedbackTemplate[]).map((template: FeedbackTemplate) => (
                         <Card
                           key={template.id}
                                                       className="cursor-pointer transition-colors"
@@ -822,7 +768,7 @@ export default function FeedbackBuilder({}: Props) {
                                       <div>
                                           <h3 className="text-sm font-medium mb-3">Drafts</h3>
                                           <div className="space-y-2">
-                                              {drafts.map((draft) => (
+                                              {(drafts as FeedbackDraft[]).map((draft: FeedbackDraft) => (
                                                   <Card
                                                       key={draft.id}
                                                       className="cursor-pointer transition-colors"
@@ -908,7 +854,7 @@ export default function FeedbackBuilder({}: Props) {
                     <Badge variant="secondary" className="bg-primary/20 text-purple-300">
                                               Template
                     </Badge>
-                                          {templates.find((t) => t.id === selectedTemplate)?.isOwner && (
+                                          {(templates as FeedbackTemplate[]).find((t: FeedbackTemplate) => t.id === selectedTemplate)?.isOwner && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -995,7 +941,7 @@ export default function FeedbackBuilder({}: Props) {
               onChange={(e) => setFormName(e.target.value)}
               className="flex-1"
             />
-                          {selectedTemplate && templates.find((t) => t.id === selectedTemplate)?.isOwner && (
+                          {selectedTemplate && (templates as FeedbackTemplate[]).find((t: FeedbackTemplate) => t.id === selectedTemplate)?.isOwner && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -1008,7 +954,7 @@ export default function FeedbackBuilder({}: Props) {
           </div>
           {selectedTemplate && (
             <Badge variant="secondary" className="bg-primary/20 text-purple-300 mt-2">
-                              Template: {templates.find((t) => t.id === selectedTemplate)?.name}
+                              Template: {(templates as FeedbackTemplate[]).find((t: FeedbackTemplate) => t.id === selectedTemplate)?.name}
             </Badge>
           )}
         </div>
@@ -1026,7 +972,7 @@ export default function FeedbackBuilder({}: Props) {
               </CardHeader>
               <CardContent className="space-y-3">
                   <div className="space-y-2">
-                                      {templates.map((template) => (
+                                      {(templates as FeedbackTemplate[]).map((template: FeedbackTemplate) => (
                       <Card
                         key={template.id}
                         className={`cursor-pointer transition-colors group ${
@@ -1065,7 +1011,7 @@ export default function FeedbackBuilder({}: Props) {
                           </Card>
 
                           {/* Drafts Section */}
-                          {drafts.length > 0 && (
+                          {(drafts as FeedbackDraft[]).length > 0 && (
                               <Card className="">
                                   <CardHeader>
                                       <CardTitle className="flex items-center gap-2">
@@ -1075,7 +1021,7 @@ export default function FeedbackBuilder({}: Props) {
                                   </CardHeader>
                                   <CardContent className="space-y-3">
                     <div className="space-y-2">
-                                          {drafts.map((draft) => (
+                                          {(drafts as FeedbackDraft[]).map((draft: FeedbackDraft) => (
                         <Card
                                                   key={draft.id}
                                                   className={`cursor-pointer transition-colors group ${
@@ -1164,12 +1110,12 @@ export default function FeedbackBuilder({}: Props) {
                   <div className="flex items-center gap-2">
                     {selectedTemplate && (
                       <Badge variant="secondary" className="bg-primary/20 text-purple-300">
-                        Template: {templates.find((t) => t.id === selectedTemplate)?.name}
+                        Template: {(templates as FeedbackTemplate[]).find((t: FeedbackTemplate) => t.id === selectedTemplate)?.name}
                       </Badge>
                     )}
                     {selectedDraft && (
                       <Badge variant="secondary" className="bg-blue-500/20 text-blue-300">
-                        Editing Draft: {drafts.find((d) => d.id === selectedDraft)?.name}
+                        Editing Draft: {(drafts as FeedbackDraft[]).find((d: FeedbackDraft) => d.id === selectedDraft)?.name}
                       </Badge>
                     )}
                   </div>

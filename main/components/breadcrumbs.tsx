@@ -46,6 +46,7 @@ export default function Breadcrumbs({}: {}) {
 
   return (
     <div className="flex items-center justify-between w-full">
+      {/* Desktop Breadcrumbs */}
       <Breadcrumb className="hidden md:block">
         <BreadcrumbList>
           {segments.map((segment, index) => {
@@ -77,9 +78,18 @@ export default function Breadcrumbs({}: {}) {
           })}
         </BreadcrumbList>
       </Breadcrumb>
+
+      {/* Mobile Page Title */}
+      {/* <div className="md:hidden flex-1">
+        <h1 className="text-lg font-semibold truncate">
+          {segments.length > 0 ? transformLabel(segments[segments.length - 1]) : 'Dashboard'}
+        </h1>
+      </div> */}
       
-      {/* Spotlight Command integrated into breadcrumbs */}
-      <SpotlightCommand />
+      {/* Spotlight Command integrated into breadcrumbs - positioned right */}
+      <div className="flex-1 md:flex-none flex justify-end">
+        <SpotlightCommand />
+      </div>
     </div>
   )
 }

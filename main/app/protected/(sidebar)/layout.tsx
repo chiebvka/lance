@@ -10,6 +10,7 @@ import Breadcrumbs from '@/components/breadcrumbs';
 import { MobileSidebarTrigger } from '@/components/mobile-sidebar-trigger';
 import type { Metadata } from "next";
 import { createPageMetadata } from "@/lib/seo";
+import { HeaderUserDropdown } from '@/components/header-user-dropdown';
 
 type Props = {}
 
@@ -32,6 +33,13 @@ export default async function ProtectedLayout({
     // Organization and subscription checks are handled by middleware
     // No need to duplicate the logic here
 
+    // Create user data object for the header dropdown
+    const userData = {
+      name: user.user_metadata?.full_name || user.email?.split('@')[0] || "Admin",
+      email: user.email || "user@example.com",
+      avatar: user.user_metadata?.avatar_url || "/avatars/shadcn.jpg"
+    }
+
   return (
     <div className="flex-1 w-full flex flex-col h-screen">
         <SidebarProvider defaultOpen={false}>
@@ -41,7 +49,12 @@ export default async function ProtectedLayout({
                   <div className="md:hidden">
                     <MobileSidebarTrigger />
                   </div>
-                  <Breadcrumbs />
+                  <div className="flex-1">
+                    <Breadcrumbs />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <HeaderUserDropdown user={userData} />
+                  </div>
                 </header>
                 <div className="flex-1 overflow-auto">
                   {children}
