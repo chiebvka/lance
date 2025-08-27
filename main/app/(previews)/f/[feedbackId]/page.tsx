@@ -28,8 +28,8 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
 
   if (state === "draft") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-purple-600 to-purple-700">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg">
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="text-center p-8 bg-lightCard dark:bg-darkCard rounded-none shadow-lg">
           <h1 className="text-2xl font-bold text-yellow-600 mb-4">Preview Mode</h1>
           <p className="text-gray-600">This form is in preview mode and cannot be filled out yet.</p>
         </div>
@@ -40,7 +40,7 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center ">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg">
+        <div className="text-center p-8 bg-lightCard dark:bg-darkCard rounded-none shadow-lg ">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Invalid Link</h1>
           <p className="text-gray-600">This feedback link is missing required information.</p>
         </div>

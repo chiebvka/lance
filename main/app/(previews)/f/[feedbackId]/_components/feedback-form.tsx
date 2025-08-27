@@ -284,7 +284,7 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen flex items-center justify-center ">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p>Loading feedback form...</p>
@@ -299,8 +299,8 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg">
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="text-center p-8 bg-lightCard dark:bg-darkCard rounded-none shadow-lg">
           <AlertCircle className="md:h-12 md:w-12 h-8 w-8 text-red-500 mx-auto mb-4" />
           <h1 className="md:text-2xl text-lg font-bold text-red-600 mb-4">Error</h1>
           <p className="text-gray-600 text-xs md:text-sm">{error}</p>
@@ -311,8 +311,8 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
 
   if (!feedbackData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center p-8 bg-white rounded-lg shadow-lg">
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="text-center p-8 bg-lightCard dark:bg-darkCard rounded-none shadow-lg">
           <h1 className="text-2xl font-bold text-gray-600 mb-4">Feedback form not found</h1>
         </div>
       </div>

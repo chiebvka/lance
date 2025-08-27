@@ -55,6 +55,10 @@ export interface CreateFeedbackData {
     message?: string | null
 
     emailToCustomer?: boolean
+    
+    // Action-based properties for quick actions
+    action?: 'mark_completed' | 'restart' | 'cancel' | 'unassign' | 'assign_customer' | 'update_customer' | 'set_unassigned' | 'send_feedback'
+    setToDraft?: boolean
 }
 
 export async function fetchFeedbacks(): Promise<Feedbacks[]> {
@@ -105,7 +109,7 @@ export function useFeedbacks(initialData?: Feedbacks[]) {
     const queryClient = useQueryClient()
     return useMutation({
       mutationFn: async ({ feedbackId, feedbackData }: { feedbackId: string; feedbackData: Partial<CreateFeedbackData> }) => {
-        const { data } = await axios.put<{ success: boolean; data: Feedback }>(`/api/feedback/${feedbackId}`, feedbackData)
+        const { data } = await axios.patch<{ success: boolean; data: Feedbacks }>(`/api/feedback/${feedbackId}`, feedbackData)
         if (!data.success) throw new Error('Error updating feedback')
         return data.data
       },

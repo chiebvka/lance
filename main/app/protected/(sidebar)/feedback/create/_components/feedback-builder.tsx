@@ -15,6 +15,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format, addDays } from "date-fns";
+import { cn } from "@/lib/utils";
 import ComboBox from "@/components/combobox";
 import ConfirmModal from "@/components/modal/confirm-modal";
 import {
@@ -36,7 +41,7 @@ import {
   Edit3,
   Save,
   Menu,
-  Calendar,
+  Bubbles,
 } from "lucide-react";
 
 interface Question {
@@ -129,7 +134,7 @@ export default function FeedbackBuilder({}: Props) {
     const [customName, setCustomName] = useState("")
     const [sendToCustomer, setSendToCustomer] = useState(false)
     const [attachToProject, setAttachToProject] = useState(false)
-    const [dueDate, setDueDate] = useState("")
+    const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
     const [message, setMessage] = useState("")
     
     // Loading states
@@ -138,6 +143,12 @@ export default function FeedbackBuilder({}: Props) {
     const [savingDraft, setSavingDraft] = useState(false)
     const [deletingTemplate, setDeletingTemplate] = useState(false)
     const [deletingDraft, setDeletingDraft] = useState(false)
+
+    // Set default due date on component mount
+    useEffect(() => {
+        const defaultDueDate = addDays(new Date(), 3);
+        setDueDate(defaultDueDate);
+    }, []);
 
     // Load data on component mount
     useEffect(() => {
@@ -258,12 +269,10 @@ export default function FeedbackBuilder({}: Props) {
 
             // Set due date if available
             if (draft.dueDate) {
-                // Convert to datetime-local format if needed
                 const date = new Date(draft.dueDate);
-                const localISOTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                setDueDate(localISOTime);
+                setDueDate(date);
             } else {
-                setDueDate("");
+                setDueDate(undefined);
             }
         }
     }
@@ -279,7 +288,7 @@ export default function FeedbackBuilder({}: Props) {
         setSelectedProject(null)
         setCustomEmail("")
         setCustomName("")
-        setDueDate("")
+        setDueDate(undefined)
         setMessage("")
         setSendToCustomer(false)
         setAttachToProject(false)
@@ -546,7 +555,7 @@ export default function FeedbackBuilder({}: Props) {
                 setSelectedProject(null)
                 setCustomEmail("")
                 setCustomName("")
-                setDueDate("")
+                setDueDate(undefined)
                 setMessage("")
                 setSendToCustomer(false)
                 setAttachToProject(false)
@@ -755,7 +764,7 @@ export default function FeedbackBuilder({}: Props) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <Bubbles className="h-12 w-12 text-primary mx-auto animate-spin [animation-duration:0.5s]" />
                     <p>Loading feedback builder...</p>
                 </div>
             </div>
@@ -871,10 +880,14 @@ export default function FeedbackBuilder({}: Props) {
             <Button
               size="sm"
               onClick={() => setShowSendDialog(true)}
-              disabled={currentForm.length === 0}
-                              className="bg-primary hover:bg-primary/80"
+              disabled={sendingFeedback || currentForm.length === 0}
+              className="bg-primary hover:bg-primary/80"
             >
-              <Send className="h-4 w-4" />
+              {sendingFeedback ? (
+                <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
@@ -890,12 +903,6 @@ export default function FeedbackBuilder({}: Props) {
                   <Grid3X3 className="h-6 w-6 text-primary" />
                   <h1 className="text-lg font-bold">Form Builder</h1>
                 </div>
-                <Input
-                  placeholder="Form Name"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="border-gray-600 w-full sm:w-64"
-                />
                 {selectedTemplate && (
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="bg-primary/20 text-purple-300">
@@ -923,18 +930,22 @@ export default function FeedbackBuilder({}: Props) {
                 <Button variant="ghost" onClick={resetForm} className="">
                   Reset
                 </Button>
-                                  <Button 
-                                      variant="ghost" 
-                                      onClick={handleSaveAsTemplate} 
-                                      className=""
-                                      disabled={savingTemplate || currentForm.length === 0}
-                                  >
-                  <Template className="h-4 w-4 mr-2" />
-                                      {savingTemplate ? 'Saving...' : 
-                                      isEditingExistingTemplate() ? 'Update Template' : 'Save as Template'}
+                <Button 
+                    variant="outline" 
+                    onClick={handleSaveAsTemplate} 
+                    className=""
+                    disabled={savingTemplate || currentForm.length === 0}
+                >
+                  {savingTemplate ? (
+                    <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                  ) : (
+                    <Template className="h-4 w-4 mr-2" />
+                  )}
+                  {savingTemplate ? 'Saving...' : 
+                  isEditingExistingTemplate() ? 'Update Template' : 'Save as Template'}
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   onClick={() => {
                     if (currentForm.length > 0) {
                       if (formName.trim()) {
@@ -944,13 +955,17 @@ export default function FeedbackBuilder({}: Props) {
                       }
                     }
                   }}
-                                      disabled={savingDraft || currentForm.length === 0}
+                  disabled={savingDraft || currentForm.length === 0}
                   className=""
                 >
-                  <Save className="h-4 w-4 mr-2" />
-                                      {getQuickSaveButtonText()}
+                  {savingDraft ? (
+                    <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {getQuickSaveButtonText()}
                 </Button>
-                <Button variant="ghost" onClick={() => setShowPreview(true)} className="">
+                <Button variant="outline" onClick={() => setShowPreview(true)} className="">
                   <Eye className="h-4 w-4 mr-2" />
                   Preview
                 </Button>
@@ -959,7 +974,11 @@ export default function FeedbackBuilder({}: Props) {
                                       disabled={sendingFeedback || currentForm.length === 0}
                                       className="bg-primary hover:bg-primary/80"
                 >
-                  <Send className="h-4 w-4 mr-2" />
+                  {sendingFeedback ? (
+                    <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
                                       {sendingFeedback ? 'Sending...' : 'Send Form'}
                 </Button>
               </div>
@@ -1132,7 +1151,29 @@ export default function FeedbackBuilder({}: Props) {
           <div className="lg:col-span-6">
                           <Card className="min-h-[400px] lg:min-h-[600px]">
               <CardHeader>
-                <CardTitle className="">Form Canvas</CardTitle>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <CardTitle className="">Form Canvas</CardTitle>
+                    <Input
+                      placeholder="Form Name"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="border-gray-600 w-full sm:w-64"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedTemplate && (
+                      <Badge variant="secondary" className="bg-primary/20 text-purple-300">
+                        Template: {templates.find((t) => t.id === selectedTemplate)?.name}
+                      </Badge>
+                    )}
+                    {selectedDraft && (
+                      <Badge variant="secondary" className="bg-blue-500/20 text-blue-300">
+                        Editing Draft: {drafts.find((d) => d.id === selectedDraft)?.name}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {currentForm.length === 0 ? (
@@ -1360,7 +1401,11 @@ export default function FeedbackBuilder({}: Props) {
                           disabled={savingDraft || currentForm.length === 0}
                           className="shadow-lg"
           >
-            <Save className="h-4 w-4" />
+            {savingDraft ? (
+              <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
           </Button>
           <Sheet>
             <SheetTrigger asChild>
@@ -1475,12 +1520,28 @@ export default function FeedbackBuilder({}: Props) {
                               {/* Due Date */}
                               <div>
                                   <Label className="text-sm mb-2 block">Due Date (optional)</Label>
-                                  <Input
-                                      type="datetime-local"
-                                      value={dueDate}
-                                      onChange={(e) => setDueDate(e.target.value)}
-                                      className=""
-                                  />
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        className={cn(
+                                          "w-full justify-start text-left font-normal",
+                                          !dueDate && "text-muted-foreground"
+                                        )}
+                                      >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                      <Calendar
+                                        mode="single"
+                                        selected={dueDate}
+                                        onSelect={(date) => setDueDate(date || undefined)}
+                                        initialFocus
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
                                   <p className="text-xs text-gray-500 mt-1">
                                       Leave blank to automatically set 3 days from send date
                                   </p>
@@ -1507,6 +1568,9 @@ export default function FeedbackBuilder({}: Props) {
                                       disabled={sendingFeedback || (!selectedCustomer && !customEmail)}
                                       onClick={handleSendFeedback}
                                   >
+                                      {sendingFeedback ? (
+                                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                                      ) : null}
                                       {sendingFeedback ? 'Sending...' : 'Send Form'}
                 </Button>
               </div>
@@ -1539,6 +1603,9 @@ export default function FeedbackBuilder({}: Props) {
                                       className="hover:bg-primary/80"
                                       disabled={savingTemplate || !templateName.trim()}
                                   >
+                                      {savingTemplate ? (
+                                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                                      ) : null}
                                       {savingTemplate ? 'Saving...' : 'Save Template'}
                 </Button>
               </div>
@@ -1571,6 +1638,9 @@ export default function FeedbackBuilder({}: Props) {
                                       className="hover:bg-primary/80"
                                       disabled={savingDraft || !draftName.trim()}
                                   >
+                                      {savingDraft ? (
+                                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                                      ) : null}
                                       {savingDraft ? 'Saving...' : 'Save Draft'}
                 </Button>
               </div>

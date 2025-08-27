@@ -75,7 +75,7 @@ async function sendFeedbackEmail(supabase: any, user: any, feedback: any, recipi
         await sendgrid.send({
             to: recipientEmail,
             from:  `${fromName} <${fromEmail}>`,
-            subject: `You have an updated form to fill out`,
+            subject: `You have a form to fill out`,
             html: emailHtml,
             customArgs: {
                 feedbackId: feedback.id,
@@ -174,10 +174,10 @@ export async function PATCH(
         return NextResponse.json({ error: "Feedback ID is required" }, { status: 400 });
     }
 
-    // Check if feedback exists and belongs to user, and get current recipient/dueDate
+    // Check if feedback exists and belongs to user, and get current state
     const { data: existingFeedback, error: checkError } = await supabase
         .from("feedbacks")
-        .select("createdBy, state, recepientEmail, dueDate")
+        .select("createdBy, state, recepientEmail, dueDate, customerId, recepientName")
         .eq("id", feedbackId)
         .single();
 
@@ -189,94 +189,152 @@ export async function PATCH(
         return NextResponse.json({ error: "Unauthorized to update this feedback" }, { status: 403 });
     }
 
-    // Allow updating/sending for draft, overdue, and sent states
-    if (!["draft", "overdue", "sent"].includes(existingFeedback.state)) {
-        return NextResponse.json({ error: "Only draft, overdue, and sent feedback can be updated" }, { status: 400 });
+    // Allow updating for most states (we handle state transitions in the UI)
+    if (!["draft", "unassigned", "sent", "overdue", "cancelled", "completed"].includes(existingFeedback.state)) {
+        return NextResponse.json({ error: "Invalid feedback state for updates" }, { status: 400 });
     }
-
-    // Clean and validate the data - handle null values properly
-    const cleanData = {
-        ...data,
-        recipientEmail: data.recipientEmail === "" ? undefined : data.recipientEmail,
-        recepientName: data.recepientName,
-        message: data.message,
-        templateId: data.templateId || undefined,
-        name: data.name || (data.questions && data.questions.length > 0 ? data.questions[0].text : 'Untitled Feedback'),
-    }
-
-    const validatedFields = feedbackCreateSchema.safeParse(cleanData);
-
-    if (!validatedFields.success) {
-        console.error("Feedback Update Validation Errors:", JSON.stringify(validatedFields.error.flatten(), null, 2));
-        return NextResponse.json(
-            { error: "Invalid feedback fields!", details: validatedFields.error.flatten() }, 
-            { status: 400 }
-        );
-    }
-
-    const {
-        name, customerId, projectId, templateId, dueDate,
-        recipientEmail, recepientName, message, questions, answers = []
-    } = validatedFields.data;
 
     const currentTimestamp = new Date().toISOString();
-    let finalRecipientEmail = recipientEmail;
+    let finalRecipientEmail = data.recepientEmail;
+    let finalRecipientName = data.recepientName;
     let customerName = "";
 
-    if (customerId) {
+    // Resolve customer data if customerId is provided
+    if (data.customerId) {
         const { data: customer, error: customerError } = await supabase
-            .from("customers").select("name, email").eq("id", customerId).single();
+            .from("customers")
+            .select("name, email")
+            .eq("id", data.customerId)
+            .single();
+        
         if (customerError) {
             return NextResponse.json({ success: false, error: "Customer not found" }, { status: 404 });
         }
+        
         finalRecipientEmail = customer.email;
+        finalRecipientName = customer.name;
         customerName = customer.name || "";
-    }
-
-    // New Due Date Logic
-    let finalDueDate;
-    const recipientHasChanged = finalRecipientEmail && finalRecipientEmail !== existingFeedback.recepientEmail;
-
-    if (recipientHasChanged) {
-        if (dueDate) {
-            // New recipient, new due date provided: use it.
-            finalDueDate = dueDate;
-        } else {
-            // New recipient, no due date provided: default to 3 days from now.
-            const now = new Date();
-            const threeDaysFromNow = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
-            finalDueDate = threeDaysFromNow;
+    } else if (existingFeedback.customerId && data.emailToCustomer) {
+        // If no customerId provided but we're sending email and feedback has existing customer,
+        // fetch the customer data to get the email
+        const { data: existingCustomer, error: customerError } = await supabase
+            .from("customers")
+            .select("name, email")
+            .eq("id", existingFeedback.customerId)
+            .single();
+        
+        if (!customerError && existingCustomer) {
+            finalRecipientEmail = existingCustomer.email;
+            finalRecipientName = existingCustomer.name;
         }
-    } else {
-        // Recipient hasn't changed. Only update due date if a new one is provided.
-        // Otherwise, keep the existing one.
-        finalDueDate = dueDate || existingFeedback.dueDate;
     }
 
-    try {
-        const updatePayload: any = {
-            name, customerId, projectId, templateId,
-            dueDate: finalDueDate,
-            recepientEmail: finalRecipientEmail,
-            recepientName: customerId ? null : recepientName,
-            questions, answers, message,
-            updated_at: currentTimestamp,
-        };
+    // Build update payload dynamically
+    const updatePayload: any = {
+        updated_at: currentTimestamp,
+    };
 
-        if (action === 'send_feedback') {
+    // Handle different actions
+    switch (action) {
+        case 'mark_completed':
+            updatePayload.state = 'completed';
+            updatePayload.filledOn = data.filledOn || currentTimestamp;
+            break;
+
+        case 'restart':
+            updatePayload.state = data.emailToCustomer ? 'sent' : 'draft';
+            if (data.emailToCustomer) {
+                updatePayload.token = crypto.randomUUID();
+                updatePayload.sentAt = currentTimestamp;
+            }
+            break;
+
+        case 'cancel':
+            updatePayload.state = 'cancelled';
+            updatePayload.token = null;
+            break;
+
+        case 'unassign':
+            updatePayload.customerId = null;
+            updatePayload.recepientName = null;
+            updatePayload.recepientEmail = null;
+            updatePayload.token = null;
+            if (data.setToDraft) {
+                updatePayload.state = 'draft';
+            } else if (!['cancelled', 'completed', 'draft'].includes(existingFeedback.state)) {
+                updatePayload.state = 'unassigned';
+            }
+            break;
+
+        case 'assign_customer':
+            updatePayload.customerId = data.customerId;
+            updatePayload.recepientName = finalRecipientName;
+            updatePayload.recepientEmail = finalRecipientEmail;
+            if (data.emailToCustomer) {
+                updatePayload.state = 'sent';
+                updatePayload.token = crypto.randomUUID();
+                updatePayload.sentAt = currentTimestamp;
+            } else if (existingFeedback.state === 'cancelled') {
+                updatePayload.state = 'draft';
+            }
+            break;
+
+        case 'update_customer':
+            updatePayload.customerId = data.customerId;
+            updatePayload.recepientName = finalRecipientName;
+            updatePayload.recepientEmail = finalRecipientEmail;
+            if (data.emailToCustomer) {
+                updatePayload.state = 'sent';
+                updatePayload.token = crypto.randomUUID();
+                updatePayload.sentAt = currentTimestamp;
+            }
+            break;
+
+        case 'set_unassigned':
+            updatePayload.state = 'unassigned';
+            break;
+
+        case 'send_feedback':
             if (!finalRecipientEmail || !validator.isEmail(finalRecipientEmail)) {
                 return NextResponse.json({ success: false, error: "Invalid email address." }, { status: 400 });
             }
-            updatePayload.token = crypto.randomUUID();
             updatePayload.state = 'sent';
+            updatePayload.token = crypto.randomUUID();
             updatePayload.sentAt = currentTimestamp;
-        }
+            break;
 
+        default:
+            // Handle general updates
+            if (data.state !== undefined) updatePayload.state = data.state;
+            if (data.customerId !== undefined) updatePayload.customerId = data.customerId;
+            if (data.projectId !== undefined) updatePayload.projectId = data.projectId;
+            if (data.name !== undefined) updatePayload.name = data.name;
+            if (data.questions !== undefined) updatePayload.questions = data.questions;
+            if (data.answers !== undefined) updatePayload.answers = data.answers;
+            if (data.dueDate !== undefined) updatePayload.dueDate = data.dueDate;
+            if (data.message !== undefined) updatePayload.message = data.message;
+            if (data.templateId !== undefined) updatePayload.templateId = data.templateId;
+            
+            // Handle customer assignment in general updates
+            if (data.customerId !== undefined) {
+                updatePayload.recepientName = finalRecipientName;
+                updatePayload.recepientEmail = finalRecipientEmail;
+            }
+            
+            // Handle sending email in general updates
+            if (data.emailToCustomer && finalRecipientEmail) {
+                updatePayload.state = 'sent';
+                updatePayload.token = crypto.randomUUID();
+                updatePayload.sentAt = currentTimestamp;
+            }
+            break;
+    }
+
+    try {
         const { data: updatedFeedback, error: updateError } = await supabase
             .from("feedbacks")
             .update(updatePayload)
             .eq("id", feedbackId)
-            .in("state", ["draft", "overdue", "sent"])
             .select()
             .single();
 
@@ -285,8 +343,30 @@ export async function PATCH(
             return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
         }
 
-        if (action === 'send_feedback' && finalRecipientEmail) {
-            await sendFeedbackEmail(supabase, user, updatedFeedback, finalRecipientEmail, customerName, name, updatedFeedback.token, message || "", updatedFeedback.organizationId, customerName);
+        // Send email if requested
+        if ((action === 'send_feedback' || data.emailToCustomer || 
+             (action === 'restart' && data.emailToCustomer) ||
+             (action === 'assign_customer' && data.emailToCustomer) ||
+             (action === 'update_customer' && data.emailToCustomer)) && 
+            finalRecipientEmail && updatedFeedback) {
+            
+            const feedbackName = updatedFeedback.name || 'Feedback Form';
+            const token = updatedFeedback.token;
+            
+            if (token) {
+                await sendFeedbackEmail(
+                    supabase, 
+                    user, 
+                    updatedFeedback, 
+                    finalRecipientEmail, 
+                    finalRecipientName || '', 
+                    feedbackName, 
+                    token, 
+                    data.message || "", 
+                    updatedFeedback.organizationId, 
+                    customerName
+                );
+            }
         }
 
         return NextResponse.json({ success: true, data: updatedFeedback }, { status: 200 });

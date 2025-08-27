@@ -15,6 +15,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format, addDays, isBefore, isToday } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import ComboBox from "@/components/combobox";
 import ConfirmModal from "@/components/modal/confirm-modal";
 import SuccessConfirmModal from "@/components/modal/success-confirm-modal";
@@ -37,10 +44,10 @@ import {
   Edit3,
   Save,
   Menu,
-  Calendar,
   CheckCircle,
   Clock,
   Bell,
+  Bubbles,
 } from "lucide-react";
 
 // Interfaces for editing existing feedback
@@ -147,8 +154,9 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
       const [customName, setCustomName] = useState("")
       const [sendToCustomer, setSendToCustomer] = useState(false)
       const [attachToProject, setAttachToProject] = useState(false)
-      const [dueDate, setDueDate] = useState("")
+      const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
       const [message, setMessage] = useState("")
+      const [showPastDueAlert, setShowPastDueAlert] = useState(false)
       
       // Loading states
       const [sendingFeedback, setSendingFeedback] = useState(false)
@@ -266,10 +274,28 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                       setSelectedProject(feedback.projectId)
                   }
 
+                  // Handle due date logic for editing
                   if (feedback.dueDate) {
                       const date = new Date(feedback.dueDate);
-                      const localISOTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                      setDueDate(localISOTime);
+                      
+                      // Check if the date is in the past and not today
+                      if (isBefore(date, new Date()) && !isToday(date)) {
+                          // Set to 3 days from current date and show alert
+                          const newDueDate = addDays(new Date(), 3);
+                          setDueDate(newDueDate);
+                          setShowPastDueAlert(true);
+                          
+                          // Auto-hide alert after 5 seconds
+                          setTimeout(() => setShowPastDueAlert(false), 5000);
+                      } else {
+                          setDueDate(date);
+                          setShowPastDueAlert(false);
+                      }
+                  } else {
+                      // No due date, set to 3 days from current date
+                      const defaultDueDate = addDays(new Date(), 3);
+                      setDueDate(defaultDueDate);
+                      setShowPastDueAlert(false);
                   }
 
                   if (feedback.message) {
@@ -591,7 +617,7 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
           return (
               <div className="min-h-screen flex items-center justify-center">
                   <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                      <Bubbles className="h-12 w-12 text-primary mx-auto animate-spin [animation-duration:0.5s]" />
                       <p>Loading feedback builder...</p>
                   </div>
               </div>
@@ -676,7 +702,11 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                     disabled={updatingFeedback || currentForm.length === 0}
                     className="bg-blue-600 hover:bg-blue-700"
                 >
-                    <Save className="h-4 w-4" />
+                    {updatingFeedback ? (
+                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
                 </Button>
                 {canSendReminder() && (
                     <Button
@@ -693,7 +723,11 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                     disabled={sendingFeedback || currentForm.length === 0}
                                 className="bg-primary hover:bg-primary/80"
             >
-                <Send className="h-4 w-4" />
+                {sendingFeedback ? (
+                  <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
             </Button>
                 </>
             )}
@@ -711,13 +745,6 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                     <Grid3X3 className="h-6 w-6 text-primary" />
                     <h1 className="text-lg font-bold">Edit Form</h1>
                 </div>
-                <Input
-                    placeholder="Form Name"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    className="border-gray-600 w-full sm:w-64"
-                    disabled={!canEditForm()}
-                />
                 <Badge className={getStatusColor(feedbackData?.state || '')}>
                     {getStateDisplayText(feedbackData?.state)}
                     </Badge>
@@ -729,7 +756,11 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                     disabled={updatingFeedback || currentForm.length === 0}
                     className="bg-blue-600 hover:bg-blue-700"
                     >
-                    <Save className="h-4 w-4 mr-2" />
+                    {updatingFeedback ? (
+                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
                     {getUpdateButtonText()}
                 </Button>
                 )}
@@ -752,7 +783,11 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                                         disabled={sendingFeedback || currentForm.length === 0}
                                         className="bg-primary hover:bg-primary/80"
                 >
-                    <Send className="h-4 w-4 mr-2" />
+                    {sendingFeedback ? (
+                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
                                         {sendingFeedback ? 'Sending...' : 'Send Form'}
                 </Button>
                 )}
@@ -839,7 +874,23 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
             <div className="lg:col-span-6">
                             <Card className="min-h-[400px] lg:min-h-[600px]">
                 <CardHeader>
-                <CardTitle className="">Form Canvas</CardTitle>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <CardTitle className="">Form Canvas</CardTitle>
+                    <Input
+                      placeholder="Form Name"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="border-gray-600 w-full sm:w-64"
+                      disabled={!canEditForm()}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getStatusColor(feedbackData?.state || '')}>
+                      {getStateDisplayText(feedbackData?.state)}
+                    </Badge>
+                  </div>
+                </div>
                 </CardHeader>
                 <CardContent>
                 {currentForm.length === 0 ? (
@@ -915,7 +966,7 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                                 {question.options && (
                                                                         <Badge variant="outline" className="text-xs">
                                     {question.options.length} options
-                                    </Badge>
+                                  </Badge>
                                 )}
                                 </div>
                                 {/* Show answer if available */}
@@ -1045,7 +1096,11 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                 disabled={updatingFeedback || currentForm.length === 0}
                 className="shadow-lg bg-blue-600 hover:bg-blue-700 text-white"
             >
-            <Save className="h-4 w-4" />
+            {updatingFeedback ? (
+              <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
             </Button>
                 {canSendReminder() && (
                     <Button
@@ -1179,15 +1234,41 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                                 {/* Due Date */}
                                 <div>
                                     <Label className="text-sm mb-2 block">Due Date (optional)</Label>
-                                    <Input
-                                        type="datetime-local"
-                                        value={dueDate}
-                                        onChange={(e) => setDueDate(e.target.value)}
-                                        className=""
-                                    />
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          className={cn(
+                                            "w-full justify-start text-left font-normal",
+                                            !dueDate && "text-muted-foreground"
+                                          )}
+                                        >
+                                          <CalendarIcon className="mr-2 h-4 w-4" />
+                                          {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                          mode="single"
+                                          selected={dueDate}
+                                          onSelect={(date) => setDueDate(date || undefined)}
+                                          initialFocus
+                                        />
+                                      </PopoverContent>
+                                    </Popover>
                                     <p className="text-xs text-gray-500 mt-1">
                                         Leave blank to automatically set 3 days from send date
                                     </p>
+                                    
+                                    {/* Past due date alert */}
+                                    {showPastDueAlert && (
+                                        <Alert className="mt-2 border-orange-200 bg-orange-50">
+                                            <AlertTriangle className="h-4 w-4 text-orange-600" />
+                                            <AlertDescription className="text-orange-800">
+                                                The due date from the database was in the past. We've automatically set it to 3 days from today.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
                                 </div>
 
                                 {/* Message */}
@@ -1213,6 +1294,9 @@ export default function EditFeedbackBuilder({ feedbackId }: Props) {
                     disabled={sendingFeedback || (!selectedCustomer && !customEmail)}
                     onClick={handleSendFeedback}
                 >
+                        {sendingFeedback ? (
+                          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
+                        ) : null}
                         {sendingFeedback ? 'Sending...' : 'Send Form'}
                 </Button>
                 </div>
