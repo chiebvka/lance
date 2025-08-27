@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
-import { getFeedbacks } from '@/lib/feedback';
+import { getOrganizationFeedback } from '@/lib/feedback';
 import FeedbackClient from './_components/feedback-client';
-import { Feedback } from './_components/columns';
 import { getAuthenticatedUser } from '@/utils/auth';
+import { Feedbacks } from '@/hooks/feedbacks/use-feedbacks';
 
 type Props = {}
 
@@ -13,16 +13,19 @@ export default async function page({}: Props) {
   const user = await getAuthenticatedUser(supabase);
 
 
-  let initialFeedbacks: Feedback[] = []
+  let initialFeedbacks: Feedbacks[] = []
   try {
-    initialFeedbacks = await getFeedbacks(supabase, user.id)
+    // Fetch org-scoped feedbacks similar to walls/receipts pages
+    initialFeedbacks = await getOrganizationFeedback(supabase)
   } catch {
     // return redirect('/error')
   }
   console.log(initialFeedbacks)
   return (
     <div  className='w-full py-4 px-6 border border-bexoni'>
-      <FeedbackClient initialFeedbacks={initialFeedbacks} />
+      <Suspense fallback={<div>Loading feedbacks...</div>}>
+        <FeedbackClient initialFeedbacks={initialFeedbacks}   />
+      </Suspense>
     </div>
   )
 }

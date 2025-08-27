@@ -185,7 +185,7 @@ export async function PUT(
   const { invoiceId } = params
   const body = await request.json()
 
-  console.log('[API][PUT] Incoming body:', body);
+      console.log('[API][PUT] Incoming body:', body);
 
   try {
     // Get user's profile to find their organization
@@ -213,6 +213,9 @@ export async function PUT(
     if (existingInvoice.organizationId !== profile.organizationId) {
       return NextResponse.json({ error: "Unauthorized to update this invoice" }, { status: 403 });
     }
+
+    console.log('[API][PUT] Existing invoice state:', existingInvoice.state);
+    console.log('[API][PUT] Existing invoice customerId:', existingInvoice.customerId);
 
     // Allow updating for most states (we handle state transitions in the UI)
     if (!["draft", "unassigned", "sent", "overdue", "cancelled", "settled"].includes(existingInvoice.state)) {
@@ -281,7 +284,23 @@ export async function PUT(
       
       finalRecipientEmail = customer.email;
       finalRecipientName = customer.name;
+    } else if (existingInvoice.customerId && emailToCustomer) {
+      // If no customerId provided but we're sending email and invoice has existing customer,
+      // fetch the customer data to get the email
+      const { data: existingCustomer, error: customerError } = await supabase
+        .from("customers")
+        .select("name, email")
+        .eq("id", existingInvoice.customerId)
+        .single();
+      
+      if (!customerError && existingCustomer) {
+        finalRecipientEmail = existingCustomer.email;
+        finalRecipientName = existingCustomer.name;
+      }
     }
+
+    console.log('[API][PUT] Final recipient email:', finalRecipientEmail);
+    console.log('[API][PUT] Final recipient name:', finalRecipientName);
 
     // Calculate totals from invoice details (only if invoiceDetails is provided)
     let subtotal, discountValue, taxAmount, vatAmount, totalAmount;
@@ -301,8 +320,11 @@ export async function PUT(
 
     // Determine final state
     let finalState = state || existingInvoice.state;
-    if (emailToCustomer && finalRecipientEmail) {
-      finalState = "sent";
+    // Special handling for cancelled invoices being assigned a customer
+    if (existingInvoice.state === 'cancelled' && customerId && !emailToCustomer) {
+        finalState = 'draft';
+    } else if (emailToCustomer && finalRecipientEmail) {
+        finalState = "sent";
     }
 
     // Update the invoice - build payload dynamically
@@ -360,16 +382,25 @@ export async function PUT(
 
     // Send email if requested and recipient email exists
     if (emailToCustomer && finalRecipientEmail && updatedInvoice) {
-      await sendInvoiceEmail(
-        supabase,
-        user,
-        updatedInvoice,
-        finalRecipientEmail,
-        finalRecipientName || null,
-        organizationName || organization?.name || 'Bexforte',
-        organizationLogoUrl || organization?.logoUrl || '',
-        profile.organizationId
-      );
+      console.log(`[API][PUT] Sending email to: ${finalRecipientEmail} for invoice: ${invoiceId}`);
+      try {
+        await sendInvoiceEmail(
+          supabase,
+          user,
+          updatedInvoice,
+          finalRecipientEmail,
+          finalRecipientName || null,
+          organizationName || organization?.name || 'Bexforte',
+          organizationLogoUrl || organization?.logoUrl || '',
+          profile.organizationId
+        );
+        console.log(`[API][PUT] Email sent successfully to: ${finalRecipientEmail}`);
+      } catch (emailError) {
+        console.error('Failed to send invoice email:', emailError);
+        // Don't fail the entire request if email fails
+      }
+    } else {
+      console.log(`[API][PUT] Email not sent. emailToCustomer: ${emailToCustomer}, finalRecipientEmail: ${finalRecipientEmail}, updatedInvoice: ${!!updatedInvoice}`);
     }
 
     return NextResponse.json({

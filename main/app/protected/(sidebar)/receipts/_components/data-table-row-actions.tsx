@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 
-import { MoreHorizontal, Loader2, CheckCircle, Clock, HardDriveDownload } from "lucide-react"
+import { MoreHorizontal, Loader2, CheckCircle, Clock, HardDriveDownload, Bubbles } from "lucide-react"
 import ConfirmModal from "@/components/modal/confirm-modal"
 import { downloadInvoiceAsPDF, type InvoicePDFData } from '@/utils/invoice-pdf'
 
@@ -87,43 +87,62 @@ export function DataTableRowActions<TData>({
   // Duplicate invoice mutation
   const duplicateReceiptMutation = useMutation({
     mutationFn: async (originalReceipt: Receipt) => {
-      // First, get the full invoice details
-      const { data: fullReceiptResponse } = await axios.get(`/api/receipts/${originalReceipt.id}`)
-      const fullReceipt = fullReceiptResponse.receipt
-      
-      // Create a copy with modified invoice number and reset certain fields
-      const duplicatedReceipt = {
-        // Basic invoice info
-        customerId: fullReceipt.customerId || null,
-        projectId: fullReceipt.projectId || null,
-        organizationName: fullReceipt.organizationName || null,
-        organizationLogoUrl: fullReceipt.organizationLogo || null,
-        organizationEmail: fullReceipt.organizationEmail || null,
-        recepientName: fullReceipt.recepientName || null,
-        recepientEmail: fullReceipt.recepientEmail || null,
-        issueDate: new Date(), // Set to current date for duplicate
-        dueDate: fullReceipt.dueDate ? new Date(new Date().getTime() + (3 * 24 * 60 * 60 * 1000)) : null, // 3 days from now
-        currency: fullReceipt.currency || "CAD",
-        hasVat: fullReceipt.hasVat || false,
-        hasTax: fullReceipt.hasTax || false,
-        hasDiscount: fullReceipt.hasDiscount || false,
-        vatRate: fullReceipt.vatRate || 0,
-        taxRate: fullReceipt.taxRate || 0,
-        discount: fullReceipt.discount || 0,
-        notes: fullReceipt.notes || "",
-        paymentInfo: fullReceipt.paymentInfo || null,
-        paymentDetails: fullReceipt.paymentDetails || null,
-        receiptDetails: fullReceipt.receiptDetails || [],
+        // Show loading toast with bubbles icon
+      const loadingToastId = toast.loading(
+        <div className="flex items-center gap-3">
+          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+          <span>Duplicating Receipt...</span>
+        </div>,
+        { duration: Infinity }
+      );
+
+      try {
+        // First, get the full invoice details
+        const { data: fullReceiptResponse } = await axios.get(`/api/receipts/${originalReceipt.id}`)
+        const fullReceipt = fullReceiptResponse.receipt
         
-        // Reset state and status for new invoice
-        state: "draft",
-        sentViaEmail: false,
-        emailSentAt: null,
-        emailToCustomer: false,
+        // Create a copy with modified invoice number and reset certain fields
+        const duplicatedReceipt = {
+          // Basic invoice info
+          customerId: fullReceipt.customerId || null,
+          projectId: fullReceipt.projectId || null,
+          organizationName: fullReceipt.organizationName || null,
+          organizationLogoUrl: fullReceipt.organizationLogo || null,
+          organizationEmail: fullReceipt.organizationEmail || null,
+          recepientName: fullReceipt.recepientName || null,
+          recepientEmail: fullReceipt.recepientEmail || null,
+          issueDate: new Date(), // Set to current date for duplicate
+          paymentConfirmedAt: new Date(),
+          dueDate: fullReceipt.dueDate ? new Date(new Date().getTime() + (3 * 24 * 60 * 60 * 1000)) : null, // 3 days from now
+          currency: fullReceipt.currency || "CAD",
+          hasVat: fullReceipt.hasVat || false,
+          hasTax: fullReceipt.hasTax || false,
+          hasDiscount: fullReceipt.hasDiscount || false,
+          vatRate: fullReceipt.vatRate || 0,
+          taxRate: fullReceipt.taxRate || 0,
+          discount: fullReceipt.discount || 0,
+          notes: fullReceipt.notes || "",
+          paymentInfo: fullReceipt.paymentInfo || null,
+          paymentDetails: fullReceipt.paymentDetails || null,
+          receiptDetails: fullReceipt.receiptDetails || [],
+          
+          // Reset state and status for new invoice
+          state: "draft",
+          sentViaEmail: false,
+          emailSentAt: null,
+          emailToCustomer: false,
+        }
+        
+        console.log("Sending duplicate receipt data:", duplicatedReceipt)
+        const result = await axios.post('/api/receipts/create', duplicatedReceipt)
+        toast.dismiss(loadingToastId);
+        return result
+        
+      } catch (error) {
+         // Dismiss loading toast on error
+         toast.dismiss(loadingToastId);
+        throw error;
       }
-      
-      console.log("Sending duplicate receipt data:", duplicatedReceipt)
-      return axios.post('/api/receipts/create', duplicatedReceipt)
     },
     onSuccess: () => {
       toast.success("Receipt duplicated successfully!")

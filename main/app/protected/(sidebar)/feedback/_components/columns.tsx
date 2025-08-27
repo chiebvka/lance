@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTableColumnHeader } from "./data-table-column-header"
 import { DataTableRowActions } from "./data-table-row-actions"
+import { Feedbacks } from "@/hooks/feedbacks/use-feedbacks"
 
 export  interface Feedback {
     id: string
@@ -38,7 +39,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-  export const columns: ColumnDef<Feedback>[] = [
+  export const columns: ColumnDef<Feedbacks>[] = [
     {
       id: "select",
       header: ({ table }) => (

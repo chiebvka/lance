@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { AlertTriangle, BarChart3, Bell, Calendar, Clock, Copy, Edit, ExternalLink, FileText, HardDriveDownload, Mail, MessageSquareShare, SquareArrowOutUpRight, User, DollarSign, Receipt, CalendarDays, CalendarFold, GitCommitVertical, Grip, Trash2, UserPlus, X, Check, Ban } from 'lucide-react';
+import { AlertTriangle, BarChart3, Bell, Bubbles, Calendar, Clock, Copy, Edit, ExternalLink, FileText, HardDriveDownload, Mail, MessageSquareShare, SquareArrowOutUpRight, User, DollarSign, Receipt, CalendarDays, CalendarFold, GitCommitVertical, Grip, Trash2, UserPlus, X, Check, Ban } from 'lucide-react';
 import { differenceInDays, isBefore, format } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
@@ -114,6 +114,10 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
     const [selectedAssignCustomerId, setSelectedAssignCustomerId] = useState<string | null>(null);
   
+    // Consolidated loading state for all actions
+    const [isActionLoading, setIsActionLoading] = useState(false);
+    const [currentAction, setCurrentAction] = useState<string>('');
+
     // State management functions
     const handleDeleteReceipt = async () => {
         try {
@@ -127,7 +131,128 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
         }
     };
 
+    const handleSendReceipt = async () => {
+        if (!receipt.customerId && !receipt.recepientEmail) {
+          toast.error('No assigned customer to send receipt to');
+          return;
+        }
+        
+        // Get the recipient email - prefer customer email from database, fallback to receipt recipient
+        const recipientEmail = receipt.customerId 
+          ? (await queryClient.getQueryData(['customers']) as any[])?.find(c => c.id === receipt.customerId)?.email
+          : receipt.recepientEmail;
+        
+        if (!recipientEmail) {
+          toast.error('No valid email address found for customer');
+          return;
+        }
+        
+        setIsActionLoading(true);
+        setCurrentAction('Sending...');
+        try {
+          await updateReceiptMutation.mutateAsync({
+            receiptId: receipt.id,
+            receiptData: {
+              state: 'sent',
+              emailToCustomer: true,
+              // Ensure we have the recipient email for the API to send the email
+              recepientEmail: recipientEmail,
+              recepientName: receipt.recepientName,
+            }
+          });
+          toast.success('Receipt sent to customer!');
+        } catch (error) {
+          console.error('Error sending receipt:', error);
+          toast.error('Failed to send receipt');
+        } finally {
+          setIsActionLoading(false);
+          setCurrentAction('');
+        }
+      };
+
+    const handleRestart = async (emailToCustomer: boolean = false) => {
+        setIsActionLoading(true);
+        setCurrentAction(emailToCustomer ? 'Restarting and emailing...' : 'Restarting...');
+        try {
+            // Get the recipient email - prefer customer email from database, fallback to receipt recipient
+            const recipientEmail = receipt.customerId 
+              ? (await queryClient.getQueryData(['customers']) as any[])?.find(c => c.id === receipt.customerId)?.email
+              : receipt.recepientEmail;
+            
+            if (emailToCustomer && !recipientEmail) {
+              toast.error('No valid email address found for customer');
+              return;
+            }
+
+            // Build the update data
+            const updateData: any = {
+                state: emailToCustomer ? 'sent' : 'draft',
+                emailToCustomer: emailToCustomer,
+            };
+
+            // If the receipt already has a customer assigned, we need to ensure the API has the customer data
+            if (receipt.customerId) {
+                updateData.customerId = receipt.customerId;
+                updateData.recepientEmail = recipientEmail;
+                updateData.recepientName = receipt.recepientName;
+            } else if (recipientEmail) {
+                // Fallback for receipts without customerId but with recipient email
+                updateData.recepientEmail = recipientEmail;
+                updateData.recepientName = receipt.recepientName;
+            }
+            
+            await updateReceiptMutation.mutateAsync({
+                receiptId: receipt.id,
+                receiptData: updateData
+            });
+            toast.success(`Receipt restarted as ${emailToCustomer ? 'sent' : 'draft'}!`);
+        } catch (error) {
+            console.error('Error restarting receipt:', error);
+            toast.error("Failed to restart receipt");
+        } finally {
+            setIsActionLoading(false);
+            setCurrentAction('');
+        }
+    }
+
+    const handleRestartAndAssign = async (customerId: string, emailToCustomer: boolean) => {
+        const selectedCustomer = customers.find(c => c.id === customerId);
+        if (!selectedCustomer) {
+          toast.error("Selected customer not found");
+          return;
+        }
+
+        setIsActionLoading(true);
+        setCurrentAction(emailToCustomer ? 'Restarting, assigning and emailing...' : 'Restarting and assigning...');
+        try {
+          const updateData: any = {
+            state: emailToCustomer ? 'sent' : 'draft',
+            customerId: customerId,
+            recepientName: selectedCustomer.name,
+            recepientEmail: selectedCustomer.email,
+          };
+          
+          if (emailToCustomer) {
+            updateData.emailToCustomer = true;
+          }
+          
+          await updateReceiptMutation.mutateAsync({
+            receiptId: receipt.id,
+            receiptData: updateData
+          });
+          toast.success(emailToCustomer ? "Receipt restarted and email sent!" : "Receipt restarted and customer assigned!");
+        } catch (error) {
+          console.error('Error restarting and assigning receipt:', error);
+          toast.error("Failed to restart and assign receipt");
+        } finally {
+          setIsActionLoading(false);
+          setCurrentAction('');
+        }
+    };
+
     const handleMarkAsSettled = async (settleDate: Date) => {
+        setIsActionLoading(true);
+        setCurrentAction('Marking as settled...');
         try {
           await updateReceiptMutation.mutateAsync({
             receiptId: receipt.id,
@@ -139,45 +264,61 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
           });
           toast.success("Receipt marked as settled!");
         } catch (error) {
-          console.error('Error marking invoice as settled:', error);
-          toast.error("Failed to mark invoice as settled");
+          console.error('Error marking receipt as settled:', error);
+          toast.error("Failed to mark receipt as settled");
+        } finally {
+          setIsActionLoading(false);
+          setCurrentAction('');
         }
     };
 
     const handleUnassign = async () => {
+        setIsActionLoading(true);
+        setCurrentAction('Unassigning...');
         try {
+          const updateData: any = {
+            customerId: null,
+            recepientName: null,
+            recepientEmail: null,
+          };
+          
+          // Only change state to unassigned if current state is not cancelled, settled, or draft
+          if (!['cancelled', 'settled', 'draft'].includes(receipt.state?.toLowerCase() || '')) {
+            updateData.state = 'unassigned';
+          }
+          
           await updateReceiptMutation.mutateAsync({
             receiptId: receipt.id,
-            receiptData: {
-              state: 'unassigned',
-              customerId: null,
-              recepientName: null,
-              recepientEmail: null,
-            }
+            receiptData: updateData
           });
           toast.success("Receipt unassigned successfully!");
         } catch (error) {
-          console.error('Error unassigning invoice:', error);
+          console.error('Error unassigning receipt:', error);
           toast.error("Failed to unassign receipt");
+        } finally {
+          setIsActionLoading(false);
+          setCurrentAction('');
         }
     };
 
     const handleCancel = async () => {
-    try {
-        await updateReceiptMutation.mutateAsync({
-        receiptId: receipt.id,
-        receiptData: {
-            state: 'cancelled',
-            customerId: null, // Unassign customer when cancelling
-            recepientName: null, // Clear recipient name
-            recepientEmail: null, // Clear recipient email
+        setIsActionLoading(true);
+        setCurrentAction('Cancelling...');
+        try {
+            await updateReceiptMutation.mutateAsync({
+            receiptId: receipt.id,
+            receiptData: {
+                state: 'cancelled',
+            }
+            });
+            toast.success("Receipt cancelled successfully!");
+        } catch (error) {
+            console.error('Error cancelling receipt:', error);
+            toast.error("Failed to cancel receipt");
+        } finally {
+            setIsActionLoading(false);
+            setCurrentAction('');
         }
-        });
-        toast.success("Receipt cancelled and unassigned successfully!");
-    } catch (error) {
-        console.error('Error cancelling receipt:', error);
-        toast.error("Failed to cancel receipt");
-    }
     };
 
     const handleAssignToCustomer = async (customerId: string, emailToCustomer: boolean) => {
@@ -187,25 +328,78 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
           return;
         }
 
+        setIsActionLoading(true);
+        setCurrentAction(emailToCustomer ? 'Assigning and emailing...' : 'Assigning...');
         try {
+          const updateData: any = {
+            customerId: customerId,
+            recepientName: selectedCustomer.name,
+            recepientEmail: selectedCustomer.email,
+          };
+          
+          // For cancelled receipts, set state to draft unless emailing
+          if (receipt.state === 'cancelled') {
+            updateData.state = emailToCustomer ? 'sent' : 'draft';
+          } else if (emailToCustomer) {
+            updateData.state = 'sent';
+          }
+          
+          if (emailToCustomer) {
+            updateData.emailToCustomer = true;
+          }
+          
           await updateReceiptMutation.mutateAsync({
             receiptId: receipt.id,
-            receiptData: {
-              state: 'draft', // Reset to draft when reassigning (including from cancelled)
-              customerId: customerId,
-              recepientName: selectedCustomer.name,
-              recepientEmail: selectedCustomer.email,
-              emailToCustomer,
-            }
+            receiptData: updateData
           });
           toast.success(emailToCustomer ? "Receipt assigned and email sent!" : "Receipt assigned to customer successfully!");
         } catch (error) {
           console.error('Error assigning receipt to customer:', error);
           toast.error(emailToCustomer ? "Failed to assign and email customer" : "Failed to assign receipt to customer");
+        } finally {
+          setIsActionLoading(false);
+          setCurrentAction('');
+        }
+    };
+
+    const handleUpdateAssignedCustomer = async (customerId: string, emailToCustomer: boolean) => {
+        const selectedCustomer = customers.find(c => c.id === customerId);
+        if (!selectedCustomer) {
+          toast.error("Selected customer not found");
+          return;
+        }
+
+        setIsActionLoading(true);
+        setCurrentAction(emailToCustomer ? 'Updating and emailing...' : 'Updating...');
+        try {
+          const updateData: any = {
+            customerId: customerId,
+            recepientName: selectedCustomer.name,
+            recepientEmail: selectedCustomer.email,
+          };
+          
+          if (emailToCustomer) {
+            updateData.state = 'sent';
+            updateData.emailToCustomer = true;
+          }
+          
+          await updateReceiptMutation.mutateAsync({
+            receiptId: receipt.id,
+            receiptData: updateData
+          });
+          toast.success(emailToCustomer ? "Receipt updated and email sent!" : "Receipt updated successfully!");
+        } catch (error) {
+          console.error('Error updating assigned customer:', error);
+          toast.error(emailToCustomer ? "Failed to update and email customer" : "Failed to update receipt");
+        } finally {
+          setIsActionLoading(false);
+          setCurrentAction('');
         }
     };
 
     const handleSetToUnassigned = async () => {
+        setIsActionLoading(true);
+        setCurrentAction('Setting to unassigned...');
         try {
           await updateReceiptMutation.mutateAsync({
             receiptId: receipt.id,
@@ -213,29 +407,65 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
               state: 'unassigned',
             }
           });
-          toast.success("Invoice set to unassigned successfully!");
+          toast.success("Receipt set to unassigned successfully!");
         } catch (error) {
-          console.error('Error setting invoice to unassigned:', error);
-          toast.error("Failed to set invoice to unassigned");
+          console.error('Error setting receipt to unassigned:', error);
+          toast.error("Failed to set receipt to unassigned");
+        } finally {
+          setIsActionLoading(false);
+          setCurrentAction('');
         }
     };
 
+
     // Helper function to get available actions based on state
     const getAvailableActions = (state: string) => {
+        const isAssigned = receipt.customerId || receipt.recepientEmail;
+        const actions: string[] = [];
+        
         switch (state.toLowerCase()) {
-        case 'draft':
-            return ['assign', 'delete'];
-        case 'sent':
-            return ['settle', 'unassign', 'cancel', 'delete'];
-        case 'unassigned':
-            return ['cancel', 'settle', 'delete', 'assign', 'create_receipt'];
-        case 'cancelled':
-            return ['assign', 'delete']; // Allow direct assignment since cancelled receipts are now unassigned
-        case 'settled':
-            return ['unassigned', 'delete', 'create_receipt'];
-        default:
-            return ['delete'];
+            case 'draft':
+                actions.push('delete');
+                if (isAssigned) {
+                    actions.push('send', 'assign', 'unassign'); // assign here means update customer
+                } else {
+                    actions.push('assign');
+                }
+                break;
+            case 'sent':
+                actions.push('settle', 'cancel', 'delete');
+                if (isAssigned) {
+                    actions.push('assign', 'unassign'); // assign here means update customer
+                }
+                break;
+            case 'unassigned':
+                actions.push('cancel', 'settle', 'delete', 'assign');
+                break;
+            case 'cancelled':
+                actions.push('delete');
+                if (isAssigned) {
+                    actions.push('restart', 'assign', 'unassign'); // assign here means update customer
+                } else {
+                    actions.push('restart', 'assign'); // assign here means assign new customer
+                }
+                break;
+            case 'settled':
+                actions.push('unassigned', 'delete');
+                if (isAssigned) {
+                    actions.push('assign'); // assign here means update customer
+                }
+                break;
+            case 'overdue':
+                actions.push('settle', 'cancel', 'delete');
+                if (isAssigned) {
+                    actions.push('assign', 'unassign'); // assign here means update customer
+                }
+                break;
+            default:
+                actions.push('delete');
         }
+        
+        return actions;
     };
 
 
@@ -330,10 +560,107 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 w-8 p-0 border rounded-none">
-              <Grip size={12} />
+              {isActionLoading ? (
+                <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+              ) : (
+                <Grip size={12} />
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+                      {/* Show loading state at the top when any action is loading */}
+                      {isActionLoading && (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground border-b">
+                          {currentAction}
+                        </div>
+                      )}
+             {/* Restart Receipt - when cancelled and has customer */}
+             {getAvailableActions(state).includes('restart') && receipt.customerId && (
+                 <DropdownMenuSub>
+                     <DropdownMenuSubTrigger disabled={isActionLoading}>
+                         <UserPlus className="w-4 h-4 mr-2" />
+                         Restart Receipt
+                     </DropdownMenuSubTrigger>
+                     <DropdownMenuSubContent>
+                         <DropdownMenuItem onClick={() => handleRestart(false)} disabled={isActionLoading}>
+                             Restart as Draft
+                         </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => handleRestart(true)} disabled={isActionLoading}>
+                             Restart and Email
+                         </DropdownMenuItem>
+                     </DropdownMenuSubContent>
+                 </DropdownMenuSub>
+             )}
+
+             {/* Restart Receipt - when cancelled and no customer */}
+             {getAvailableActions(state).includes('restart') && !receipt.customerId && (
+                 <DropdownMenuSub>
+                     <DropdownMenuSubTrigger disabled={isActionLoading}>
+                         <UserPlus className="w-4 h-4 mr-2" />
+                         Restart Receipt
+                     </DropdownMenuSubTrigger>
+                     <DropdownMenuSubContent>
+                         <DropdownMenuItem onClick={() => handleRestart(false)} disabled={isActionLoading}>
+                             Restart Only
+                         </DropdownMenuItem>
+                         <DropdownMenuSub>
+                             <DropdownMenuSubTrigger>Restart & Assign</DropdownMenuSubTrigger>
+                             <DropdownMenuSubContent className="w-64 h-[350px] p-0">
+                                 <div className="flex flex-col h-full">
+                                     <Command className="flex-1">
+                                         <CommandInput placeholder="Search customers..." />
+                                         <CommandList className="h-full max-h-none">
+                                             <CommandEmpty>No customers found.</CommandEmpty>
+                                             <CommandGroup>
+                                                 {customers.map((customer) => (
+                                                     <CommandItem
+                                                         key={customer.id}
+                                                         value={customer.name}
+                                                         onSelect={() => setSelectedAssignCustomerId(customer.id)}
+                                                         className={`cursor-pointer ${selectedAssignCustomerId === customer.id ? 'bg-muted' : ''}`}
+                                                     >
+                                                         <Check className={`mr-2 h-4 w-4 ${selectedAssignCustomerId === customer.id ? 'opacity-100' : 'opacity-0'}`} />
+                                                         {customer.name}
+                                                     </CommandItem>
+                                                 ))}
+                                             </CommandGroup>
+                                         </CommandList>
+                                     </Command>
+                                     <div className="p-2 border-t flex gap-2">
+                                         <Button
+                                             size="sm"
+                                             className="flex-1 rounded-none"
+                                             disabled={!selectedAssignCustomerId || isActionLoading}
+                                             onClick={() => selectedAssignCustomerId && handleRestartAndAssign(selectedAssignCustomerId, false)}
+                                         >
+                                             Assign Only
+                                         </Button>
+                                         <Button
+                                             size="sm"
+                                             variant="outline"
+                                             className="flex-1 rounded-none"
+                                             disabled={!selectedAssignCustomerId || isActionLoading}
+                                             onClick={() => selectedAssignCustomerId && handleRestartAndAssign(selectedAssignCustomerId, true)}
+                                         >
+                                             Assign & Email
+                                         </Button>
+                                     </div>
+                                 </div>
+                             </DropdownMenuSubContent>
+                         </DropdownMenuSub>
+                     </DropdownMenuSubContent>
+                 </DropdownMenuSub>
+             )}
+            {/* Send Receipt */}
+            {getAvailableActions(state).includes('send') && (
+                <DropdownMenuItem 
+                  onClick={handleSendReceipt}
+                  disabled={isActionLoading}
+                >
+                  <MessageSquareShare className="w-4 h-4 mr-2" />
+                  Send Receipt
+                </DropdownMenuItem>
+              )}
             {/* Mark as settled with date picker */}
             {getAvailableActions(state).includes('settle') && (
               <DropdownMenuSub>
@@ -357,17 +684,22 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
               </DropdownMenuSub>
             )}
             
-            {/* Assign to customer with customer selection */}
+            {/* Assign/Update customer */}
             {getAvailableActions(state).includes('assign') && (
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
+            <DropdownMenuSubTrigger disabled={isActionLoading}>
               <UserPlus className="w-4 h-4 mr-2" />
-              Assign to customer
+              {receipt.customerId
+                    ? 'Update Customer'
+                    : receipt.state === 'cancelled' 
+                    ? 'Assign & Restart'
+                    : 'Assign Customer'
+                }
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-64 h-[350px] p-0">
+            <DropdownMenuSubContent className="w-92 h-[350px] p-0">
               <div className="flex flex-col h-full">
                 <Command className="flex-1">
-                  <CommandInput placeholder="Search customers..." />
+                  <CommandInput placeholder="Search customers..." disabled={isActionLoading} />
                   <CommandList className="h-full max-h-none">
                     <CommandEmpty>No customers found.</CommandEmpty>
                     <CommandGroup>
@@ -375,10 +707,10 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
                         <CommandItem
                           key={customer.id}
                           value={customer.name}
-                          onSelect={() => setSelectedAssignCustomerId(customer.id)}
-                          className={`cursor-pointer ${selectedAssignCustomerId === customer.id ? 'bg-muted' : ''}`}
+                          onSelect={() => !isActionLoading && setSelectedAssignCustomerId(customer.id)}
+                          disabled={isActionLoading}
                         >
-                          <Check className={`mr-2 h-4 w-4 ${selectedAssignCustomerId === customer.id ? 'opacity-100' : 'opacity-0'}`} />
+                          <Check className={`mr-2 h-4 w-4 ${(selectedAssignCustomerId ?? receipt.customerId) === customer.id ? 'opacity-100' : 'opacity-0'}`} />
                           {customer.name}
                         </CommandItem>
                       ))}
@@ -389,19 +721,29 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
                   <Button
                     size="sm"
                     className="flex-1 rounded-none"
-                    disabled={!selectedAssignCustomerId}
-                    onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
+                    disabled={!selectedAssignCustomerId || isActionLoading}
+                    onClick={() => selectedAssignCustomerId && (receipt.customerId ? handleUpdateAssignedCustomer(selectedAssignCustomerId, false) : handleAssignToCustomer(selectedAssignCustomerId, false))}
                   >
-                    Assign only
+                    {receipt.customerId 
+                          ? 'Update Only' 
+                          : receipt.state === 'cancelled' 
+                          ? 'Assign & Restart as Draft' 
+                          : 'Assign Only'
+                      }
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     className="flex-1 rounded-none"
-                    disabled={!selectedAssignCustomerId}
-                    onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
+                    disabled={!selectedAssignCustomerId || isActionLoading}
+                    onClick={() => selectedAssignCustomerId && (receipt.customerId ? handleUpdateAssignedCustomer(selectedAssignCustomerId, true) : handleAssignToCustomer(selectedAssignCustomerId, true))}
                   >
-                    Assign & Email
+                    {receipt.customerId 
+                          ? 'Update & Email' 
+                          : receipt.state === 'cancelled' 
+                          ? 'Assign, Restart & Email' 
+                          : 'Assign & Email'
+                      }
                   </Button>
                 </div>
               </div>
@@ -411,21 +753,21 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
             
             {/* Direct action items */}
             {getAvailableActions(state).includes('unassign') && (
-              <DropdownMenuItem onClick={handleUnassign}>
+              <DropdownMenuItem onClick={handleUnassign} disabled={isActionLoading}>
                 <X className="w-4 h-4 mr-2" />
-                Unassign
+                Unassign Customer
               </DropdownMenuItem>
             )}
             
             {getAvailableActions(state).includes('cancel') && (
-              <DropdownMenuItem onClick={handleCancel}>
+              <DropdownMenuItem onClick={handleCancel} disabled={isActionLoading}>
                 <Ban className="w-4 h-4 mr-2" />
                 Cancel
               </DropdownMenuItem>
             )}
             
             {getAvailableActions(state).includes('unassigned') && (
-              <DropdownMenuItem onClick={handleSetToUnassigned}>
+              <DropdownMenuItem onClick={handleSetToUnassigned} disabled={isActionLoading}>
                 <User className="w-4 h-4 mr-2" />
                 Mark as unassigned
               </DropdownMenuItem>
@@ -479,7 +821,7 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CalendarFold className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Due Date</span>
+            <span className="text-sm font-medium">Payment Date</span>
           </div>
           <span className="text-sm">{paid}</span>
         </div>

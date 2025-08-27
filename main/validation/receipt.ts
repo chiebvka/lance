@@ -31,6 +31,8 @@ const receiptCreateSchema = z.object({
     paymentStatus: z.string().optional(),
     paymentDate: z.date().optional(),
     paymentNotes: z.string().optional(),
+    emailToCustomer: z.boolean().optional(),
+    paidOn: z.string().optional().nullable(),
     receiptDetails:z.array(z.object({
         position: z.number().optional(),
         description: z.string().nullable().optional(),

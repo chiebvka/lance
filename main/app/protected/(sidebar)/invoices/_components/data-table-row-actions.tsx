@@ -139,6 +139,7 @@ export function DataTableRowActions<TData>({
           recepientName: fullInvoice.recepientName || null,
           recepientEmail: fullInvoice.recepientEmail || null,
           issueDate: new Date(), // Set to current date for duplicate
+
           dueDate: fullInvoice.dueDate ? new Date(new Date().getTime() + (3 * 24 * 60 * 60 * 1000)) : null, // 3 days from now
           currency: fullInvoice.currency || "CAD",
           hasVat: fullInvoice.hasVat || false,

@@ -119,7 +119,7 @@ export async function POST(
       recepientName: invoice.recepientName,
       recepientEmail: invoice.recepientEmail,
       paymentConfirmedAt: new Date().toISOString(),
-      issueDate: new Date().toISOString(), // Current date for receipt
+      issueDate: new Date().toISOString(), // Current date for receipt // Current date for receipt
       // dueDate is left null for receipts as specified
       currency: invoice.currency || organization.baseCurrency || 'CAD',
       receiptDetails: invoice.invoiceDetails, // Copy invoice details to receipt details

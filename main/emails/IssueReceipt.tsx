@@ -23,7 +23,7 @@ import {
     logoUrl?: string
   }
   
-  export default function IssueInvoice({
+  export default function IssueReceipt({
     senderName = "Development Team",
     clientName = "Client",
     receiptName = "Your Receipt",

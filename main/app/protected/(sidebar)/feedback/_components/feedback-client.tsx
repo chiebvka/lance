@@ -19,7 +19,7 @@ import {
 import CreateSearchFilter from "@/components/general/create-search-filter"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Bubbles, Trash2, Save, ChevronDown } from "lucide-react";
 import { 
     DropdownMenu,
@@ -41,7 +41,7 @@ import { toast } from 'sonner'
 import { z } from 'zod';
 import { columns, Feedback } from './columns';
 import { FilterTag } from '@/components/filtering/search-filter';
-import { useFeedbacks } from '@/hooks/feedbacks/use-feedbacks';
+import { Feedbacks, useFeedbacks } from '@/hooks/feedbacks/use-feedbacks';
 import { getDefaultColumns, getTableColumnsWithDefaults, setTableColumns } from '@/cookie-persist/tableColumns';
 import { DataTableViewOptions } from './data-table-view-options';
 
@@ -52,9 +52,10 @@ import JSZip from 'jszip'; // We'll use this for zipping later
 import { downloadFeedbackAsCSV } from '@/utils/exportCsv';
 import { Progress } from "@/components/ui/progress"
 import ProjectClientSkeleton from '../../projects/_components/project-client-skeleton';
+import { parseAsArrayOf, parseAsIsoDateTime, parseAsString, useQueryStates } from 'nuqs'; 
 
 type Props = {
-  initialFeedbacks: Feedback[]
+  initialFeedbacks: Feedbacks[]
 }
 
 // ... (previous imports and code remain the same)
@@ -75,13 +76,76 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [activeFilters, setActiveFilters] = useState<{
-    state: string[];
-    date?: DateRange;
-  }>({
-    state: [],
-    date: undefined,
-  });
+  // const [activeFilters, setActiveFilters] = useState<{
+  //   state: string[];
+  //   date?: DateRange;
+  // }>({
+  //   state: [],
+  //   date: undefined,
+  // });
+
+
+
+  // nuqs for URL params (replaces useSearchParams, big useEffect, updateURL)
+  const [params, setParams] = useQueryStates({
+    query: parseAsString.withDefault(''),
+    feedbackId: parseAsString.withOptions({ clearOnDefault: true }), // null to remove
+    state: parseAsArrayOf(parseAsString).withDefault([]),
+    type: parseAsString.withDefault('details'),
+    sentAtFrom: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    sentAtTo: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    filledOnFrom: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    filledOnTo: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    dueDateFrom: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+    dueDateTo: parseAsIsoDateTime.withOptions({ clearOnDefault: true }),
+  }, { history: 'push' }); // Push to URL on change
+
+  // Derive activeFilters from params
+  const activeFilters = useMemo(() => ({
+    state: params.state,
+    sentAt: params.sentAtFrom ? { from: params.sentAtFrom, to: params.sentAtTo ?? undefined } : undefined,
+    filledOn: params.filledOnFrom ? { from: params.filledOnFrom, to: params.filledOnTo ?? undefined } : undefined,
+    dueDate: params.dueDateFrom ? { from: params.dueDateFrom, to: params.dueDateTo ?? undefined } : undefined,
+  }), [params]);
+
+  // Build filterTags from activeFilters
+  const filterTagsMemo = useMemo<FilterTag[]>(() => {
+    const tags: FilterTag[] = [];
+
+    if (activeFilters.sentAt?.from) {
+      let label = format(activeFilters.sentAt.from, 'PPP');
+      if (activeFilters.sentAt.to) {
+        label = `${format(activeFilters.sentAt.from, 'PPP')} - ${format(activeFilters.sentAt.to, 'PPP')}`;
+      }
+      tags.push({ key: 'sent-at-date-range', label: 'Issue Date', value: label });
+    }
+
+    if (activeFilters.filledOn?.from) {
+      let label = format(activeFilters.filledOn.from, 'PPP');
+      if (activeFilters.filledOn.to) {
+        label = `${format(activeFilters.filledOn.from, 'PPP')} - ${format(activeFilters.filledOn.to, 'PPP')}`;
+      }
+      tags.push({ key: 'filled-on-date-range', label: 'Filled On', value: label });
+    }
+
+    if (activeFilters.dueDate?.from) {
+      let label = format(activeFilters.dueDate.from, 'PPP');
+      if (activeFilters.dueDate.to) {
+        label = `${format(activeFilters.dueDate.from, 'PPP')} - ${format(activeFilters.dueDate.to, 'PPP')}`;
+      }
+      tags.push({ key: 'due-date-range', label: 'Due Date', value: label });
+    }
+
+    activeFilters.state.forEach(value => {
+      tags.push({ 
+        key: `state-${value}`, 
+        label: 'State', 
+        value: value.charAt(0).toUpperCase() + value.slice(1) 
+      });
+    });
+
+    return tags;
+  }, [activeFilters]);
 
   const { 
     data: feedbacks = [], 
@@ -95,8 +159,8 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
 
   // Fix hydration issue: Use consistent column visibility for both server and client
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
-    const allColumns = ['name', 'recepientName', 'recepientEmail', 'state', 'dueDate', 'filledOn'];
-    const defaultVisibleColumns = ['name', 'recepientEmail', 'state', 'dueDate'];
+    const defaultVisibleColumns = ['name', 'recepientEmail', 'state', 'dueDate', 'filledOn'];
+    const allColumns = ['name', 'recepientName', 'recepientEmail', 'state', 'dueDate', 'filledOn', 'sentAt'];
 
     const state: VisibilityState = {};
     for (const col of allColumns) {
@@ -112,61 +176,23 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
   // Single comprehensive useEffect to handle all initialization
   useEffect(() => {
     setIsHydrated(true);
-
-    const query = searchParams.get('query') || '';
-    const feedbackId = searchParams.get('feedbackId');
-    const stateFilters = searchParams.getAll('state');
-    const dateFrom = searchParams.get('dateFrom');
-    const dateTo = searchParams.get('dateTo');
-
-    setSearchQuery(query);
-    setSelectedFeedbackId(feedbackId);
-
-    let dateRange: DateRange | undefined = undefined;
-    if (dateFrom) {
-      dateRange = { from: parseISO(dateFrom) };
-      if (dateTo) {
-        dateRange.to = parseISO(dateTo);
-      }
+    const savedColumns = getTableColumnsWithDefaults('feedbacks');
+    const allColumns = ['name', 'recepientName', 'recepientEmail', 'state', 'dueDate', 'filledOn', 'sentAt'];
+    
+    const newState: VisibilityState = {};
+    for (const col of allColumns) {
+      newState[col] = savedColumns.includes(col);
     }
-
-    setActiveFilters({
-      state: stateFilters,
-      date: dateRange,
-    });
-
-    const tags: FilterTag[] = [];
-
-    if (dateRange?.from) {
-      let label = format(dateRange.from, 'PPP');
-      if (dateRange.to) {
-        label = `${format(dateRange.from, 'PPP')} - ${format(dateRange.to, 'PPP')}`;
-      }
-      tags.push({ key: 'date-range', label: 'Date', value: label });
-    }
-
-    stateFilters.forEach(value => {
-      tags.push({ 
-        key: `state-${value}`, 
-        label: 'State', 
-        value: value.charAt(0).toUpperCase() + value.slice(1) 
-      });
-    });
-
-    setFilterTags(tags);
+    
+    setColumnVisibility(newState);
   }, [searchParams]);
 
   useEffect(() => {
-    if (isHydrated && typeof window !== 'undefined') {
-      const savedColumns = getTableColumnsWithDefaults('feedbacks');
-      const allColumns = ['name', 'recepientName', 'recepientEmail', 'state', 'dueDate', 'filledOn'];
-      
-      const newState: VisibilityState = {};
-      for (const col of allColumns) {
-        newState[col] = savedColumns.includes(col);
-      }
-      
-      setColumnVisibility(newState);
+    if (isHydrated) {
+    const visibleCols = Object.entries(columnVisibility)
+      .filter(([_, v]) => v)
+      .map(([k]) => k);
+    setTableColumns('feedbacks', visibleCols);
     }
   }, [isHydrated]);
 
@@ -182,26 +208,53 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
   const filteredFeedbacks = useMemo(() => {
     let filtered = [...feedbacks];
 
-    if (searchQuery) {
+    if (params.query) {
       filtered = filtered.filter(feedback => 
-        feedback.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        feedback.recepientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        feedback.recepientEmail?.toLowerCase().includes(searchQuery.toLowerCase())
+        feedback.name?.toLowerCase().includes(params.query.toLowerCase()) ||
+        feedback.recepientName?.toLowerCase().includes(params.query.toLowerCase()) ||
+        feedback.recepientEmail?.toLowerCase().includes(params.query.toLowerCase())
       );
     }
 
-    if (activeFilters.date?.from) {
+    if (activeFilters.sentAt?.from) {
       filtered = filtered.filter(feedback => {
-        if (!feedback.created_at || !activeFilters.date?.from) return false;
-        const feedbackDate = new Date(feedback.created_at);
+        if (!feedback?.sentAt || !activeFilters.sentAt?.from) return false;
+        const feedbackDate = new Date(feedback.sentAt);
         if (isNaN(feedbackDate.getTime())) return false;
 
-        if (activeFilters.date.to) {
-          return isWithinInterval(feedbackDate, { start: activeFilters.date.from, end: activeFilters.date.to });
+        if (activeFilters.sentAt.to) {
+          return isWithinInterval(feedbackDate, { start: activeFilters.sentAt.from, end: activeFilters.sentAt.to });
         }
-        return isSameDay(feedbackDate, activeFilters.date.from);
+        return isSameDay(feedbackDate, activeFilters.sentAt.from);
       });
     }
+  // Apply issue date filter
+  if (activeFilters.filledOn?.from) {
+    filtered = filtered.filter(feedback => {
+    if (!feedback.filledOn) return false;
+    const rDate = new Date(feedback.filledOn);
+    if (isNaN(rDate.getTime())) return false;
+    
+    if (activeFilters?.filledOn?.to) {
+    return isWithinInterval(rDate, { start: activeFilters?.filledOn?.from!, end: activeFilters?.filledOn?.to! });
+    }
+    return isSameDay(rDate, activeFilters?.filledOn?.from!);
+    });
+  }
+
+  // Apply issue date filter
+  if (activeFilters.dueDate?.from) {
+    filtered = filtered.filter(feedback => {
+    if (!feedback.dueDate) return false;
+    const rDate = new Date(feedback.dueDate);
+    if (isNaN(rDate.getTime())) return false;
+    
+    if (activeFilters?.dueDate?.to) {
+    return isWithinInterval(rDate, { start: activeFilters?.dueDate?.from!, end: activeFilters?.dueDate?.to! });
+    }
+    return isSameDay(rDate, activeFilters?.dueDate?.from!);
+    });
+  }
 
     if (activeFilters.state.length > 0) {
       filtered = filtered.filter(feedback => 
@@ -210,11 +263,11 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
     }
 
     return filtered;
-  }, [feedbacks, searchQuery, activeFilters]);
+  }, [feedbacks, params.query, activeFilters]);
 
   const feedbackBeingEdited = useMemo(() => {
-    return feedbacks.find(p => p.id === selectedFeedbackId)
-  }, [feedbacks, selectedFeedbackId])
+    return feedbacks.find(p => p.id === params.feedbackId)
+  }, [feedbacks, params.feedbackId])
 
   const deleteFeedbackMutation = useMutation({
     mutationFn: async (feedbackId: string) => {
@@ -241,7 +294,7 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
 
   const table = useReactTable({
     data: filteredFeedbacks,
-    columns: columns,
+    columns: columns as any,
     state: {
       sorting,
       columnVisibility,
@@ -261,55 +314,82 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
 
-  const updateURL = (newFilters: typeof activeFilters, search?: string) => {
-    const params = new URLSearchParams(searchParams);
-    
-    if (search !== undefined) {
-      if (search) {
-        params.set('query', search);
-      } else {
-        params.delete('query');
-      }
-    }
+  const selectedFeedbacks = useMemo(() => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows;
+    const selected = selectedRows.map(row => row.original);
+    return selected as Feedbacks[];
+  }, [table, rowSelection]);
 
-    params.delete('state');
-    params.delete('dateFrom');
-    params.delete('dateTo');
-
-    if (newFilters.date?.from) {
-      params.append('dateFrom', newFilters.date.from.toISOString());
-      if (newFilters.date.to) {
-        params.append('dateTo', newFilters.date.to.toISOString());
-      }
-    }
-    newFilters.state.forEach(value => params.append('state', value));
-
-    router.replace(`${pathname}?${params.toString()}`);
-  };
 
   const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    updateURL(activeFilters, value);
+    setParams({ query: value || null });
   };
 
-  const handleDateChange = (date: DateRange | undefined) => {
-    const newFilters = { ...activeFilters, date };
-    setActiveFilters(newFilters);
-    updateURL(newFilters);
-    updateFilterTags('date', date, !!date);
+
+  const handleSentAtChange = (date: DateRange | undefined) => {
+    setParams({
+      sentAtFrom: date?.from ? date.from : null,
+      sentAtTo: date?.to ? date.to : null,
+    });
   }
 
+  const handleFilledOnChange = (date: DateRange | undefined) => {
+    setParams({
+      filledOnFrom: date?.from ? date.from : null,
+      filledOnTo: date?.to ? date.to : null,
+    });
+  }
+
+  const handleDueDateChange = (date: DateRange | undefined) => {
+    setParams({
+      dueDateFrom: date?.from ? date.from : null,
+      dueDateTo: date?.to ? date.to : null,
+    });
+  }
+
+
+
+
+
   const handleFilterChange = (filterType: 'state', value: string, checked: boolean) => {
-    const newFilters = { ...activeFilters };
-    if (checked) {
-      newFilters[filterType] = [...newFilters[filterType], value];
-    } else {
-      newFilters[filterType] = newFilters[filterType].filter(item => item !== value);
+    setParams((prev) => {
+      let newArr = [...(prev[filterType] || [])];
+      if (checked) {
+        newArr.push(value);
+      } else {
+        newArr = newArr.filter(item => item !== value);
+      }
+      return { [filterType]: newArr.length ? newArr : null };
+    });
+  };
+
+  const handleRemoveFilter = (key: string) => {
+    if (key === 'sent-at-date-range') {
+      handleSentAtChange(undefined);
+      return;
     }
-    
-    setActiveFilters(newFilters);
-    updateURL(newFilters);
-    updateFilterTags(filterType, value, checked);
+    if (key === 'filled-on-date-range') {
+      handleFilledOnChange(undefined);
+      return;
+    }
+    if (key === 'due-date-range') {
+      handleDueDateChange(undefined);
+      return;
+    }
+    const [filterType, value] = key.split('-') as ['state', string];
+    handleFilterChange(filterType, value, false);
+  };
+
+  const handleClearAllFilters = () => {
+    setParams({
+      state: null,
+      sentAtFrom: null,
+      sentAtTo: null,
+      filledOnFrom: null,
+      filledOnTo: null,
+      dueDateFrom: null,
+      dueDateTo: null,
+    });
   };
 
   const handleDeleteFromSheet = () => {
@@ -321,35 +401,6 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
     setSelectedFeedbackId(null);
   };
 
-  const editFooter = (
-    <>
-      <SheetClose asChild>
-        <Button variant="ghost" onClick={handleCloseSheet}>Cancel</Button>
-      </SheetClose>
-      <Button variant="outlinebrimary" className="px-3 sm:px-4">
-        <Save className="h-4 w-4 mr-2" />
-        Update Feedback
-      </Button>
-
-      <div className="inline-flex rounded-md shadow-sm">
-        <Button
-          className="rounded-r-none px-3 sm:px-4"
-        >
-          Update Feedback
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              className="rounded-l-none border-l border-purple-700 px-3"
-            >
-              <span className="sr-only">Open options</span>
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-        </DropdownMenu>
-      </div>
-    </>
-  );
 
   const updateFilterTags = (filterType: 'state' | 'paymentType' | 'hasServiceAgreement' | 'type' | 'date', value: string | DateRange | undefined, checked: boolean) => {
     setFilterTags(prev => {
@@ -387,55 +438,20 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
     });
   };
 
-  const handleRemoveFilter = (key: string) => {
-    if (key === 'date-range') {
-      handleDateChange(undefined);
-      return;
-    }
-    const [filterType, value] = key.split('-') as ['state', string];
-    handleFilterChange(filterType, value, false);
-  };
 
-  const handleClearAllFilters = () => {
-    setActiveFilters({ state: [], date: undefined });
-    setFilterTags([]);
-    updateURL({ state: [], date: undefined });
-  };
+
 
   const handleFeedbackSelect = (feedbackId: string) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('feedbackId', feedbackId);
-    router.push(`${pathname}?${params.toString()}`);
+    setParams({ feedbackId, type: 'details' });
   };
 
-  const handleCreateSuccess = () => {
-    closeRef.current?.click();
-    const params = new URLSearchParams(searchParams);
-    params.delete('createFeedback');
-    router.replace(`${pathname}?${params.toString()}`);
-    queryClient.invalidateQueries({ queryKey: ['feedbacks'] });
-  };
 
-  const handleEditSuccess = () => {
-    editCloseRef.current?.click();
-    setSelectedFeedbackId(null);
-    const params = new URLSearchParams(searchParams);
-    params.delete('feedbackId');
-    router.replace(`${pathname}?${params.toString()}`);
-    queryClient.invalidateQueries({ queryKey: ['feedbacks'] });
-  };
 
   const handleConfirmDelete = () => {
-    if (selectedFeedbackId) {
-      const currentParams = new URLSearchParams(searchParams.toString());
-      currentParams.delete('feedbackId');
-      const newUrl = currentParams.toString() ? `${pathname}?${currentParams.toString()}` : pathname;
-      router.replace(newUrl);
-      setSelectedFeedbackId(null);
-
-      deleteFeedbackMutation.mutate(selectedFeedbackId);
+    if (params.feedbackId) {
+      deleteFeedbackMutation.mutate(params.feedbackId)
     }
-    setDeleteModalOpen(false);
+    setDeleteModalOpen(false)
   }
 
   const filterContent = (
@@ -444,15 +460,53 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
       <DropdownMenuSeparator />
       
       <DropdownMenuSub>
-        <DropdownMenuSubTrigger>Date</DropdownMenuSubTrigger>
+        <DropdownMenuSubTrigger>Issue Date</DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="p-0">
           <Calendar
             initialFocus
             mode="range"
             captionLayout="dropdown"
-            defaultMonth={activeFilters.date?.from}
-            selected={activeFilters.date}
-            onSelect={handleDateChange}
+            defaultMonth={activeFilters.sentAt?.from}
+            selected={activeFilters.sentAt}
+            onSelect={handleSentAtChange}
+            numberOfMonths={1}
+            fromYear={2015}
+            toYear={2045}
+          />
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+
+      <DropdownMenuSeparator />
+
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>Filled On</DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="p-0">
+          <Calendar
+            initialFocus
+            mode="range"
+            captionLayout="dropdown"
+            defaultMonth={activeFilters.filledOn?.from}
+            selected={activeFilters.filledOn}
+            onSelect={handleFilledOnChange}
+            numberOfMonths={1}
+            fromYear={2015}
+            toYear={2045}
+          />
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+
+      <DropdownMenuSeparator />
+
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>Due Date</DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="p-0">
+          <Calendar
+            initialFocus
+            mode="range"
+            captionLayout="dropdown"
+            defaultMonth={activeFilters.dueDate?.from}
+            selected={activeFilters.dueDate}
+            onSelect={handleDueDateChange}
             numberOfMonths={1}
             fromYear={2015}
             toYear={2045}
@@ -489,6 +543,12 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
           >
             Overdue
           </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={activeFilters.state.includes('cancelled')}
+            onCheckedChange={(checked: boolean) => handleFilterChange('state', 'cancelled', checked)}
+          >
+            Cancelled
+          </DropdownMenuCheckboxItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
 
@@ -496,13 +556,6 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
     </div>
   );
 
-  const selectedFeedbacks = useMemo(() => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows;
-    const selected = selectedRows.map(row => row.original);
-    console.log('Row selection:', rowSelection);
-    console.log('Selected feedbacks:', selected);
-    return selected;
-  }, [table, rowSelection]);
 
   const sanitizeFilename = (name: string): string => {
     return name
@@ -531,27 +584,7 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
     if (selectedFeedbacks.length > 1) {
       setIsExporting(true);
 
-      const loadingToast = toast.loading(
-        <div className="flex flex-col gap-3 py-2">
-          <div className="flex flex-col gap-1">
-            <div className="font-medium text-base">Preparing your feedbacks for export...</div>
-            <div className="text-sm text-muted-foreground">
-              Processing {selectedFeedbacks.length} feedback forms
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 w-full">
-            <div className="flex justify-between text-sm">
-              <span>Progress</span>
-              <span>0%</span>
-            </div>
-            <Progress value={0} className="h-2 w-full" />
-          </div>
-        </div>,
-        {
-          duration: Infinity,
-          className: "w-[380px] p-4",
-        }
-      );
+      const loadingToast = toast.loading('Preparing export...');
 
       try {
         const zip = new JSZip();
@@ -563,30 +596,26 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
           const feedback = selectedFeedbacks[i];
           const progress = Math.round(((i + 1) / selectedFeedbacks.length) * 100);
 
+      
           toast.loading(
             <div className="flex flex-col gap-3 py-2">
               <div className="flex flex-col gap-1">
-                <div className="font-medium text-base">
-                  Processing feedback {i + 1} of {selectedFeedbacks.length}...
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Working on: {feedback.name || `Feedback ${feedback.id}`}
-                </div>
+                <div className="font-medium text-base">Exporting feedbacks</div>
+                <div className="text-sm text-muted-foreground">Please wait while we prepare your files...</div>
               </div>
               <div className="flex flex-col gap-2 w-full">
                 <div className="flex justify-between text-sm">
                   <span>Progress</span>
                   <span>{progress}%</span>
                 </div>
-                <Progress value={progress} className="h-2 w-full" />
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                </div>
               </div>
             </div>,
-            {
-              id: loadingToast,
-              duration: Infinity,
-              className: "w-[380px] p-4",
-            }
-          );
+            { id: loadingToast, duration: Infinity, className: 'w-[380px] p-4' }
+          )
+
 
           const mappedFeedback = {
             name: feedback.name || `Feedback ${feedback.id}`,
@@ -623,23 +652,21 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
         toast.loading(
           <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col gap-1">
-              <div className="font-medium text-base">Finalizing your export...</div>
-              <div className="text-sm text-muted-foreground">Creating zip file</div>
+              <div className="font-medium text-base">Exporting feedbacks</div>
+              <div className="text-sm text-muted-foreground">Please wait while we prepare your files...</div>
             </div>
             <div className="flex flex-col gap-2 w-full">
               <div className="flex justify-between text-sm">
                 <span>Progress</span>
                 <span>100%</span>
               </div>
-              <Progress value={100} className="h-2 w-full" />
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: '100%' }}></div>
+              </div>
             </div>
           </div>,
-          {
-            id: loadingToast,
-            duration: Infinity,
-            className: "w-[380px] p-4",
-          }
-        );
+          { id: loadingToast, duration: Infinity, className: 'w-[380px] p-4' }
+        )
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -754,7 +781,7 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
         placeholder="Search feedbacks..." 
         onSearch={handleSearch}
         filterContent={filterContent}
-        filterTags={filterTags}
+        filterTags={filterTagsMemo}
         onRemoveFilter={handleRemoveFilter}
         onClearAllFilters={handleClearAllFilters}
         sheetTriggerText="Create Feedback"
@@ -773,20 +800,26 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
       />
 
       <Sheet
-        key={selectedFeedbackId}
-        open={!!selectedFeedbackId}
+        key={params.feedbackId}
+        open={!!params.feedbackId}
         onOpenChange={open => { if (!open) handleCloseSheet(); }}
       >
         <SheetContent 
           side="right" 
           bounce="right" 
           withGap={true} 
-          className="w-full flex flex-col p-0 sm:w-3/4 md:w-1/2 lg:w-[40%]"
+          className={`w-full flex flex-col p-0 ${
+            params.type === 'details' 
+              ? 'sm:w-3/4 md:w-1/2 lg:w-[40%]' 
+              : 'sm:w-3/4 md:w-1/2 lg:w-[55%]'
+          }`}
         >
           <SheetHeader className="p-4 border-b">
             <div className="flex justify-between items-center">
-              <SheetTitle>Edit Feedback</SheetTitle>
-              {selectedFeedbackId && (
+              <SheetTitle>
+                {params.type === 'details' ? 'Feedback Details' : 'Edit Feedback'}
+              </SheetTitle>
+              {params.type === 'edit' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -798,12 +831,28 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
                   Delete Feedback
                 </Button>
               )}
+                {params.feedbackId && params.type === 'details' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 rounded-none border-destructive text-destructive hover:bg-destructive/10 mr-7 hover:text-destructive"
+                    onClick={handleDeleteFromSheet}
+                    disabled={deleteFeedbackMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Feedback
+                  </Button>
+                )}
             </div>
           </SheetHeader>
           <ScrollArea className="flex-grow">
-            <div className="p-4">
-              {selectedFeedbackId && feedbackBeingEdited && (
-                <FeedbackSheet feedback={feedbackBeingEdited} />
+            <div >
+              {params.feedbackId && feedbackBeingEdited && (
+                params.type === 'details' ? (
+                  <FeedbackSheet feedback={feedbackBeingEdited} />
+                ) : (
+                  <></>
+                )
               )}
             </div>
           </ScrollArea>
@@ -816,22 +865,39 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
         <div className="flex items-center justify-between">
           <DataTableViewOptions table={table} />
         </div>
-        <Suspense fallback={<ProjectClientSkeleton />}>
+        {isHydrated ? (
+          <>
+          <ScrollArea className='w-full'>
+            <div className="min-w-[1100px]">
+              <DataTable 
+                table={table} 
+                onFeedbackSelect={handleFeedbackSelect} 
+                searchQuery={searchQuery}
+              />
+            </div>
+            <ScrollBar orientation="horizontal" />
+           </ScrollArea>
+           <Pagination
+              currentPage={table.getState().pagination.pageIndex + 1}
+              totalPages={table.getPageCount()}
+              pageSize={table.getState().pagination.pageSize}
+              totalItems={table.getFilteredRowModel().rows.length}
+              onPageChange={page => table.setPageIndex(page - 1)}
+              onPageSizeChange={size => table.setPageSize(size)}
+              itemName="feedbacks"
+            />
+          </>
+        ) : (
+          <ProjectClientSkeleton />
+        )}
+        {/* <Suspense fallback={<ProjectClientSkeleton />}>
           <DataTable 
             table={table} 
             onFeedbackSelect={handleFeedbackSelect} 
             searchQuery={searchQuery}
           />
-          <Pagination
-            currentPage={table.getState().pagination.pageIndex + 1}
-            totalPages={table.getPageCount()}
-            pageSize={table.getState().pagination.pageSize}
-            totalItems={table.getFilteredRowModel().rows.length}
-            onPageChange={page => table.setPageIndex(page - 1)}
-            onPageSizeChange={size => table.setPageSize(size)}
-            itemName="feedbacks"
-          />
-        </Suspense>
+    
+        </Suspense> */}
       </div>
       
       {selectedFeedbacks.length > 0 && <ExportBar />}

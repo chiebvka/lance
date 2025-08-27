@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { getOrganizationFeedback, getOrganizationFeedbackTemplates, getUserDraftFeedbacks } from "@/lib/feedback";
+import { ratelimit } from "@/utils/rateLimit";
 
 export async function GET() {
   const supabase = await createClient();
@@ -10,79 +12,43 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch feedback templates
-    const { data: templates, error: templatesError } = await supabase
-      .from("feedback_templates")
-      .select(`
-        id,
-        name,
-        questions,
-        isDefault,
-        created_at,
-        organizationId,
-        createdBy
-      `)
-      .or(`createdBy.eq.${user.id},isDefault.eq.true`)
-      .order("created_at", { ascending: false });
-
-    // Fetch feedback drafts
-    const { data: drafts, error: draftsError } = await supabase
-      .from("feedbacks")
-      .select(`
-        id,
-        name,
-        customerId,
-        projectId,
-        questions,
-        dueDate,
-        questions,
-        answers,
-        token,
-        state,
-        recepientEmail,
-        created_at,
-        createdBy,
-        customers (
-          id,
-          name,
-          email
-        ),
-        projects (
-          id,
-          name
-        )
-      `)
-      .eq("createdBy", user.id)
-      .eq("state", "draft")
-      .order("created_at", { ascending: false });
-
-
-
-      const { data: feedbacks, error: feedbacksError } = await supabase
-        .from("feedbacks")
-        .select("*") // or your desired fields
-        .eq("createdBy", user.id)
-        .order("created_at", { ascending: false });
-
-        if (feedbacksError) {
-          return NextResponse.json({ success: false, error: "Could not fetch feedbacks" }, { status: 500 });
-        }
-
-    if (templatesError) {
-      console.error("Error fetching feedback templates:", templatesError);
+    // Fetch feedback templates via shared org-scoped getter
+    let templates: any[] = []
+    try {
+      templates = await getOrganizationFeedbackTemplates(supabase)
+    } catch (e) {
+      console.error("Error fetching feedback templates:", e)
       return NextResponse.json(
         { error: "Could not fetch feedback templates from database." },
         { status: 500 }
-      );
+      )
     }
 
-    if (draftsError) {
-      console.error("Error fetching feedback drafts:", draftsError);
+    // Fetch feedback drafts
+    // Fetch drafts via shared helper
+    let drafts: any[] = []
+    try {
+      drafts = await getUserDraftFeedbacks(supabase)
+    } catch (e) {
+      console.error("Error fetching draft feedbacks:", e)
       return NextResponse.json(
         { error: "Could not fetch feedback drafts from database." },
         { status: 500 }
-      );
+      )
     }
+
+    // Fetch organization-scoped feedbacks using shared lib function
+    let feedbacks = [] as any[]
+    try {
+      feedbacks = await getOrganizationFeedback(supabase)
+    } catch (e) {
+      console.error("Error fetching organization feedbacks:", e)
+      return NextResponse.json({ success: false, error: "Could not fetch feedbacks" }, { status: 500 });
+    }
+
+    // templates already handled via try/catch above
+
+    // drafts handled via try/catch above
 
     // Transform templates data
     const templatesWithDetails = (templates || []).map((template) => ({
@@ -116,28 +82,7 @@ export async function GET() {
         : 'Unknown'
     }));
 
-    const feedbacksWithDetails = (feedbacks ?? []).map((feedback) => ({
-      id: feedback.id || '',
-      name: feedback?.name || 'Untitled Feedback',
-      filledOn: feedback?.filledOn || '',
-      recepientName: feedback?.recepientName || '',
-      recepientEmail: feedback?.recepientEmail || '',
-      state: feedback?.state || 'active',
-      dueDate: feedback?.dueDate || '',
-      token: feedback?.token || '',
-      created_at: feedback?.created_at || '',
-      updated_at: feedback?.updated_at || '',
-      questions: feedback?.questions || [], 
-      answers: feedback?.answers || [],
-      projectId: feedback?.projectId?.[0]?.id ?? null,
-      customerId: feedback?.customerId?.[0]?.id ?? null,
-      templateId: feedback?.templateId?.[0]?.id ?? null,
-      // Optionally, for display:
-      projectName: feedback?.projectId?.[0]?.name ?? null,
-      customerName: feedback?.customerId?.[0]?.name ?? null,
-      customerEmail: feedback?.customerId?.[0]?.email ?? null,
-      templateName: feedback?.templateId?.[0]?.name ?? null,
-    }));
+    const feedbacksWithDetails = feedbacks
     
     console.log(feedbacksWithDetails)
     return NextResponse.json({ 
@@ -162,25 +107,49 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limiting
+    const ip = (request.headers as any).get?.('x-forwarded-for') ??
+      (request.headers as any).get?.('x-real-ip') ??
+      '127.0.0.1';
+    const { success, limit, reset, remaining } = await ratelimit.limit(ip);
+    if (!success) {
+      return NextResponse.json(
+        { 
+          error: 'Too many requests. Please try again later.',
+          limit,
+          reset,
+          remaining
+        },
+        { status: 429 }
+      );
+    }
+
     const { templateId, name, questions } = await request.json();
 
     if (!templateId) {
       return NextResponse.json({ error: "Template ID is required" }, { status: 400 });
     }
 
-    // Check if user owns this template
+    // Get user's organization to validate ownership by organizationId
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organizationId')
+      .eq('profile_id', user.id)
+      .single();
+    if (profileError || !profile?.organizationId) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
+
+    // Check if template belongs to user's organization
     const { data: existingTemplate, error: checkError } = await supabase
       .from("feedback_templates")
-      .select("createdBy")
+      .select("id, organizationId")
       .eq("id", templateId)
+      .eq("organizationId", profile.organizationId)
       .single();
 
     if (checkError || !existingTemplate) {
-      return NextResponse.json({ error: "Template not found" }, { status: 404 });
-    }
-
-    if (existingTemplate.createdBy !== user.id) {
-      return NextResponse.json({ error: "Unauthorized to update this template" }, { status: 403 });
+      return NextResponse.json({ error: "Template not found for your organization" }, { status: 404 });
     }
 
     // Update the template

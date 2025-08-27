@@ -20,7 +20,7 @@ import {
 import CreateSearchFilter, { DropdownOption } from "@/components/general/create-search-filter"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { columns } from "./columns"
 import ReceiptForm from './receipt-form'
 import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload } from "lucide-react"
@@ -44,7 +44,7 @@ import { getTableColumns, setTableColumns, getTableColumnsWithDefaults, getDefau
 import ConfirmModal from '@/components/modal/confirm-modal'
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { Receipt, useReceipts } from '@/hooks/receipts/use-receipts';
+import { fetchReceipt, Receipt, useReceipts } from '@/hooks/receipts/use-receipts';
 import Pagination from '@/components/pagination';
 // import { createClient } from '@/utils/supabase/client'
 import { currencies, type Currency } from '@/data/currency'
@@ -190,6 +190,7 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
 
   // Load saved column visibility (client-only)
   useEffect(() => {
+    setIsHydrated(true);
     const savedColumns = getTableColumnsWithDefaults('receipts');
     const allColumns = ['receiptNumber', 'creationMethod', 'totalAmount', 'state', 'issueDate', 'paymentConfirmedAt', 'taxRate', 'vatRate'];
     
@@ -203,11 +204,13 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
 
   // Persist column visibility to cookie on change
   useEffect(() => {
+    if (isHydrated) {
     const visibleCols = Object.entries(columnVisibility)
       .filter(([_, v]) => v)
       .map(([k]) => k);
     setTableColumns('receipts', visibleCols);
-  }, [columnVisibility]);
+    }
+  }, [columnVisibility, isHydrated]);
 
   const filteredReceipts = useMemo(() => {
       let filtered = [...receipts];
@@ -343,10 +346,24 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
       if (selectedReceipts.length === 1) {
         // Single receipt download
         const receipt = selectedReceipts[0] as unknown as ReceiptPDFData;
+        let fullReceipt
+        try {
+          fullReceipt = await fetchReceipt(receipt.id);
+        } catch (error) {
+          toast.error(`Failed to fetch receipt details for receipt ${receipt.receiptNumber} using basic data `);
+          fullReceipt = receipt;
+        }
+
+        console.log('Single receipt for PDF:', receipt);
+        console.log('Receipt details:', receipt.receiptDetails);
         
-        const filename = (receipt as any).receiptNumber 
-          ? `${(receipt as any).receiptNumber}.pdf`
-          : `receipt-${(receipt as any).id}.pdf`;
+        const receiptData: ReceiptPDFData = {
+          ...fullReceipt,
+        };
+        
+        const filename = (receipt).receiptNumber 
+          ? `${(receipt).receiptNumber}.pdf`
+          : `receipt-${(receipt).id}.pdf`;
         
         await generateReceiptPDFBlob(receipt).then(blob => {
           const url = URL.createObjectURL(blob);
@@ -371,15 +388,12 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
           const receipt = selectedReceipts[i] as unknown as ReceiptPDFData;
           const progress = Math.round(((i + 1) / selectedReceipts.length) * 100);
 
+   
           toast.loading(
             <div className="flex flex-col gap-3 py-2">
               <div className="flex flex-col gap-1">
-                <div className="font-medium text-base">
-                  Processing receipt {i + 1} of {selectedReceipts.length}...
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Working on: {(receipt as any).receiptNumber || `Receipt ${(receipt as any).id}`}
-                </div>
+                <div className="font-medium text-base">Exporting receipts</div>
+                <div className="text-sm text-muted-foreground">Please wait while we prepare your files...</div>
               </div>
               <div className="flex flex-col gap-2 w-full">
                 <div className="flex justify-between text-sm">
@@ -387,19 +401,16 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
                   <span>{progress}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300" 
-                    style={{ width: `${progress}%` }}
-                  ></div>
+                  <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
                 </div>
               </div>
             </div>,
-            {
-              id: loadingToast,
-              duration: Infinity,
-              className: "w-[380px] p-4",
-            }
-          );
+            { id: loadingToast, duration: Infinity, className: 'w-[380px] p-4' }
+          )
+
+          console.log('Bulk receipt for PDF:', receipt);
+          console.log('receipt details:', receipt.receiptDetails);
+
 
           const receiptData: ReceiptPDFData = {
             ...(receipt as any),
@@ -424,8 +435,8 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
         toast.loading(
           <div className="flex flex-col gap-3 py-2">
             <div className="flex flex-col gap-1">
-              <div className="font-medium text-base">Finalizing your export...</div>
-              <div className="text-sm text-muted-foreground">Creating zip file</div>
+              <div className="font-medium text-base">Exporting receipts</div>
+              <div className="text-sm text-muted-foreground">Please wait while we prepare your files...</div>
             </div>
             <div className="flex flex-col gap-2 w-full">
               <div className="flex justify-between text-sm">
@@ -433,19 +444,12 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
                 <span>100%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-primary h-2 rounded-full transition-all duration-300" 
-                  style={{ width: '100%' }}
-                ></div>
+                <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: '100%' }}></div>
               </div>
             </div>
           </div>,
-          {
-            id: loadingToast,
-            duration: Infinity,
-            className: "w-[380px] p-4",
-          }
-        );
+          { id: loadingToast, duration: Infinity, className: 'w-[380px] p-4' }
+        )
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -1236,14 +1240,19 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
         <div className="flex items-center justify-between">
           <DataTableViewOptions table={table} />
         </div>
-        <Suspense fallback={<ProjectClientSkeleton />}>
-          <DataTable 
-            table={table} 
-            onReceiptSelect={handleReceiptSelect} 
-            searchQuery={searchQuery}
-          />
-
-          <Pagination
+        {isHydrated ? (
+          <>
+          <ScrollArea className='w-full'>
+            <div className="min-w-[1100px]">
+              <DataTable 
+                table={table} 
+                onReceiptSelect={handleReceiptSelect} 
+                searchQuery={searchQuery}
+              />
+            </div>
+            <ScrollBar orientation="horizontal" />
+           </ScrollArea>
+           <Pagination
             currentPage={table.getState().pagination.pageIndex + 1}
             totalPages={table.getPageCount()}
             pageSize={table.getState().pagination.pageSize}
@@ -1252,8 +1261,16 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
             onPageSizeChange={size => table.setPageSize(size)}
             itemName="receipts"
           />
-        </Suspense>
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <ProjectClientSkeleton />
+          </div>
+        )}
       </div>
+
+  
+  
 
       {/* Export Bar */}
       {selectedReceipts.length > 0 && <ExportBar />}

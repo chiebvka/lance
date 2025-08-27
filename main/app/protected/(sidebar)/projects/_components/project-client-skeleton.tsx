@@ -1,4 +1,5 @@
 // ... existing imports ...
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function ProjectClientSkeleton() {
@@ -11,7 +12,8 @@ export default function ProjectClientSkeleton() {
       <div className="flex items-center justify-between">
         <Skeleton className="h-8 w-40" />
       </div>
-      <div className="rounded-none border overflow-x-auto">
+      <ScrollArea className="w-full">
+      <div className="rounded-none min-w-[1100px] border overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-bexoni/10">
             <tr>
@@ -35,6 +37,8 @@ export default function ProjectClientSkeleton() {
           </tbody>
         </table>
       </div>
+      <ScrollBar orientation="horizontal" />
+      </ScrollArea>
       <div className="flex justify-between items-center mt-4">
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-8 w-24" />

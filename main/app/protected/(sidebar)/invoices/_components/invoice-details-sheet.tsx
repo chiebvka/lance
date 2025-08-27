@@ -133,16 +133,9 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [selectedAssignCustomerId, setSelectedAssignCustomerId] = useState<string | null>(null);
   
-  // Loading states for different actions
-  const [isAssigning, setIsAssigning] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isUnassigning, setIsUnassigning] = useState(false);
-  const [isUnassigningAndUnpublishing, setIsUnassigningAndUnpublishing] = useState(false);
-  const [isUnassigningFromCancelled, setIsUnassigningFromCancelled] = useState(false);
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [isSettingToUnassigned, setIsSettingToUnassigned] = useState(false);
-  const [isMarkingAsSettled, setIsMarkingAsSettled] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+  // Consolidated loading state for all actions
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [currentAction, setCurrentAction] = useState<string>('');
   
   // State management functions
   const handleDeleteInvoice = async () => {
@@ -162,7 +155,8 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
   };
 
   const handleMarkAsSettled = async (settleDate: Date) => {
-    setIsMarkingAsSettled(true);
+    setIsActionLoading(true);
+    setCurrentAction('Marking as settled...');
     try {
       await updateInvoiceMutation.mutateAsync({
         invoiceId: invoice.id,
@@ -176,33 +170,89 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       console.error('Error marking invoice as settled:', error);
       toast.error("Failed to mark invoice as settled");
     } finally {
-      setIsMarkingAsSettled(false);
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
-  const handleUnassign = async () => {
-    setIsUnassigning(true);
+  const handleRestart = async (emailToCustomer: boolean) => {
+    setIsActionLoading(true);
+    setCurrentAction(emailToCustomer ? 'Restarting and emailing...' : 'Restarting...');
     try {
+        // Get the recipient email - prefer customer email from database, fallback to invoice recipient
+        const recipientEmail = invoice.customerId 
+          ? (await queryClient.getQueryData(['customers']) as any[])?.find(c => c.id === invoice.customerId)?.email
+          : invoice.recepientEmail;
+        
+        if (emailToCustomer && !recipientEmail) {
+          toast.error('No valid email address found for customer');
+          return;
+        }
+
+        // Build the update data
+        const updateData: any = {
+            state: emailToCustomer ? 'sent' : 'draft',
+            emailToCustomer: emailToCustomer,
+        };
+
+        // If the invoice already has a customer assigned, we need to ensure the API has the customer data
+        if (invoice.customerId) {
+            updateData.customerId = invoice.customerId;
+            updateData.recepientEmail = recipientEmail;
+            updateData.recepientName = invoice.recepientName || invoice.customerName;
+        } else if (recipientEmail) {
+            // Fallback for invoices without customerId but with recipient email
+            updateData.recepientEmail = recipientEmail;
+            updateData.recepientName = invoice.recepientName;
+        }
+
+        await updateInvoiceMutation.mutateAsync({
+            invoiceId: invoice.id,
+            invoiceData: updateData
+        });
+        
+        toast.success(`Invoice restarted as ${emailToCustomer ? 'sent' : 'draft'}!`);
+    } catch (error) {
+        console.error('Error restarting invoice:', error);
+        toast.error("Failed to restart invoice");
+    } finally {
+        setIsActionLoading(false);
+        setCurrentAction('');
+    }
+}
+
+  const handleUnassign = async () => {
+    setIsActionLoading(true);
+    setCurrentAction('Unassigning...');
+    try {
+      const updateData: any = {
+        customerId: null,
+        recepientName: null,
+        recepientEmail: null,
+      };
+      
+      // Only change state to unassigned if current state is not cancelled, settled, or draft
+      if (!['cancelled', 'settled', 'draft'].includes(invoice.state?.toLowerCase() || '')) {
+        updateData.state = 'unassigned';
+      }
+      
       await updateInvoiceMutation.mutateAsync({
         invoiceId: invoice.id,
-        invoiceData: {
-          state: 'unassigned',
-          customerId: null,
-          recepientName: null,
-          recepientEmail: null,
-        }
+        invoiceData: updateData
       });
       toast.success("Invoice unassigned successfully!");
     } catch (error) {
       console.error('Error unassigning invoice:', error);
       toast.error("Failed to unassign invoice");
     } finally {
-      setIsUnassigning(false);
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handleUnassignAndUnpublish = async () => {
-    setIsUnassigningAndUnpublishing(true);
+    setIsActionLoading(true);
+    setCurrentAction('Unassigning and setting to draft...');
     try {
       await updateInvoiceMutation.mutateAsync({
         invoiceId: invoice.id,
@@ -218,33 +268,34 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       console.error('Error unassigning and unpublishing invoice:', error);
       toast.error("Failed to unassign and unpublish invoice");
     } finally {
-      setIsUnassigningAndUnpublishing(false);
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handleCancel = async () => {
-    setIsCancelling(true);
+    setIsActionLoading(true);
+    setCurrentAction('Cancelling...');
     try {
       await updateInvoiceMutation.mutateAsync({
         invoiceId: invoice.id,
         invoiceData: {
           state: 'cancelled',
-          customerId: null, // Unassign customer when cancelling
-          recepientName: null, // Clear recipient name
-          recepientEmail: null, // Clear recipient email
         }
       });
-      toast.success("Invoice cancelled and unassigned successfully!");
+      toast.success("Invoice cancelled successfully!");
     } catch (error) {
       console.error('Error cancelling invoice:', error);
       toast.error("Failed to cancel invoice");
     } finally {
-      setIsCancelling(false);
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handleUnassignFromCancelled = async () => {
-    setIsUnassigningFromCancelled(true);
+    setIsActionLoading(true);
+    setCurrentAction('Unassigning and setting to draft...');
     try {
       await updateInvoiceMutation.mutateAsync({
         invoiceId: invoice.id,
@@ -260,7 +311,8 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       console.error('Error unassigning cancelled invoice:', error);
       toast.error("Failed to unassign cancelled invoice");
     } finally {
-      setIsUnassigningFromCancelled(false);
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
@@ -271,7 +323,8 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       return;
     }
 
-    setIsAssigning(true);
+    setIsActionLoading(true);
+    setCurrentAction(emailToCustomer ? 'Assigning and emailing...' : 'Assigning...');
     try {
       await updateInvoiceMutation.mutateAsync({
         invoiceId: invoice.id,
@@ -288,7 +341,8 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       console.error('Error assigning invoice to customer:', error);
       toast.error(emailToCustomer ? "Failed to assign and email customer" : "Failed to assign invoice to customer");
     } finally {
-      setIsAssigning(false);
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
@@ -299,7 +353,8 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       return;
     }
 
-    setIsUpdating(true);
+    setIsActionLoading(true);
+    setCurrentAction(emailToCustomer ? 'Updating and emailing...' : 'Updating...');
     try {
       await updateInvoiceMutation.mutateAsync({
         invoiceId: invoice.id,
@@ -315,12 +370,14 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       console.error('Error updating assigned customer:', error);
       toast.error(emailToCustomer ? "Failed to update and email customer" : "Failed to update invoice");
     } finally {
-      setIsUpdating(false);
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handleSetToUnassigned = async () => {
-    setIsSettingToUnassigned(true);
+    setIsActionLoading(true);
+    setCurrentAction('Setting to unassigned...');
     try {
       await updateInvoiceMutation.mutateAsync({
         invoiceId: invoice.id,
@@ -333,7 +390,8 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       console.error('Error setting invoice to unassigned:', error);
       toast.error("Failed to set invoice to unassigned");
     } finally {
-      setIsSettingToUnassigned(false);
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
@@ -371,7 +429,8 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       return;
     }
     
-    setIsSending(true);
+    setIsActionLoading(true);
+    setCurrentAction('Sending...');
     try {
       await updateInvoiceMutation.mutateAsync({
         invoiceId: invoice.id,
@@ -388,42 +447,56 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       console.error('Error sending invoice:', error);
       toast.error('Failed to send invoice');
     } finally {
-      setIsSending(false);
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   // Helper function to get available actions based on state
   const getAvailableActions = (state: string) => {
-    const baseActions = {
-      'draft': ['assign', 'delete', 'send'],
-      'sent': ['settle', 'unassign', 'cancel', 'delete'],
-      'unassigned': ['cancel', 'settle', 'delete', 'assign', 'create_receipt'],
-      'cancelled': ['assign', 'delete'], // Allow direct assignment since cancelled invoices are now unassigned
-      'settled': ['unassigned', 'delete', 'create_receipt'],
-      'overdue': ['settle', 'unassign', 'cancel', 'delete'],
-    };
+    const isAssigned = invoice.customerId || invoice.recepientEmail;
+    const actions: string[] = [];
     
-    const actions = baseActions[state.toLowerCase() as keyof typeof baseActions] || ['delete'];
-    
-    // If invoice is assigned, add assign action to more states for updating customer
-    if (isAssigned && ['sent', 'overdue', 'settled'].includes(state.toLowerCase())) {
-      if (!actions.includes('assign')) {
-        actions.push('assign');
-      }
-    }
-    
-    // For draft invoices, if they're assigned, add unassign action
-    if (state === 'draft' && isAssigned) {
-      if (!actions.includes('unassign')) {
-        actions.push('unassign');
-      }
-    }
-    
-    // For cancelled invoices, if they're assigned, also add unassign action
-    if (state === 'cancelled' && isAssigned) {
-      if (!actions.includes('unassign')) {
-        actions.push('unassign');
-      }
+    switch (state.toLowerCase()) {
+        case 'draft':
+            actions.push('delete');
+            if (isAssigned) {
+                actions.push('send', 'assign', 'unassign'); // assign here means update customer
+            } else {
+                actions.push('assign');
+            }
+            break;
+        case 'sent':
+            actions.push('settle', 'cancel', 'delete');
+            if (isAssigned) {
+                actions.push('assign', 'unassign'); // assign here means update customer
+            }
+            break;
+        case 'unassigned':
+            actions.push('cancel', 'settle', 'delete', 'assign', 'create_receipt');
+            break;
+        case 'cancelled':
+            actions.push('delete');
+            if (isAssigned) {
+                actions.push('restart', 'assign', 'unassign'); // assign here means update customer
+            } else {
+                actions.push('restart', 'assign'); // assign here means assign new customer
+            }
+            break;
+        case 'settled':
+            actions.push('unassigned', 'delete', 'create_receipt');
+            if (isAssigned) {
+                actions.push('assign'); // assign here means update customer
+            }
+            break;
+        case 'overdue':
+            actions.push('settle', 'cancel', 'delete');
+            if (isAssigned) {
+                actions.push('assign', 'unassign'); // assign here means update customer
+            }
+            break;
+        default:
+            actions.push('delete');
     }
     
     return actions;
@@ -521,54 +594,68 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 w-8 p-0 border rounded-none">
-                <Grip size={12} />
+                {isActionLoading ? (
+                  <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+                ) : (
+                  <Grip size={12} />
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              {/* Show loading state at the top when any action is loading */}
+              {isActionLoading && (
+                <div className="px-2 py-1.5 text-sm text-muted-foreground border-b">
+                  {currentAction}
+                </div>
+              )}
+              
+              {/* Restart Invoice */}
+                {getAvailableActions(state).includes('restart') && invoice.customerId && (
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger disabled={isActionLoading}>
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Restart Invoice
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => handleRestart(false)} disabled={isActionLoading}>
+                                Restart as Draft
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRestart(true)} disabled={isActionLoading}>
+                                Restart and Email
+                            </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                )}
               {/* Send Invoice */}
               {getAvailableActions(state).includes('send') && isAssigned && (
                 <DropdownMenuItem 
                   onClick={handleSendInvoice}
-                  disabled={isSending}
+                  disabled={isActionLoading}
                 >
                   <MessageSquareShare className="w-4 h-4 mr-2" />
-                  {isSending ? (
-                    <>
-                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                      Sending...
-                    </>
-                  ) : (
-                    'Send Invoice'
-                  )}
+                  Send Invoice
                 </DropdownMenuItem>
               )}
               
               {/* Mark as settled with date picker */}
-              {getAvailableActions(state).includes('settle') && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={isMarkingAsSettled}>
-                    <Check className="w-4 h-4 mr-2" />
-                    {isMarkingAsSettled ? (
-                      <>
-                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                        Marking as settled...
-                      </>
-                    ) : (
-                      'Mark as settled'
-                    )}
-                  </DropdownMenuSubTrigger>
+                              {getAvailableActions(state).includes('settle') && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger disabled={isActionLoading}>
+                      <Check className="w-4 h-4 mr-2" />
+                      Mark as settled
+                    </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="p-0 h-[350px] w-auto">
                     <CalendarComponent
                       mode="single"
                       selected={new Date()}
                       onSelect={(date) => {
-                        if (date && !isMarkingAsSettled) {
+                        if (date && !isActionLoading) {
                           handleMarkAsSettled(date);
                         }
                       }}
                       initialFocus
                       className="h-full"
-                      disabled={isMarkingAsSettled}
+                      disabled={isActionLoading}
                     />
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
@@ -577,21 +664,19 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
               {/* Assign to customer or update assigned customer */}
               {getAvailableActions(state).includes('assign') && (
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={isAssigning || isUpdating}>
+                  <DropdownMenuSubTrigger disabled={isActionLoading}>
                     <UserPlus className="w-4 h-4 mr-2" />
-                    {isAssigning || isUpdating ? (
-                      <>
-                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                        {isAssigned ? 'Updating...' : 'Assigning...'}
-                      </>
-                    ) : (
-                      isAssigned ? 'Update assigned customer' : 'Assign to customer'
-                    )}
+                    {isAssigned
+                        ? 'Update assigned customer'
+                        : invoice.state === 'cancelled' && !invoice.customerId
+                        ? 'Assign & Restart'
+                        : 'Assign to customer'
+                    }
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-64 h-[350px] p-0">
                     <div className="flex flex-col h-full">
                       <Command className="flex-1">
-                        <CommandInput placeholder="Search customers..." autoFocus disabled={isAssigning || isUpdating} />
+                        <CommandInput placeholder="Search customers..." autoFocus disabled={isActionLoading} />
                         <CommandList className="h-full max-h-none">
                           <CommandEmpty>No customers found.</CommandEmpty>
                           <CommandGroup>
@@ -599,8 +684,8 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
                               <CommandItem
                                 key={customer.id}
                                 value={customer.name}
-                                onSelect={() => !isAssigning && !isUpdating && setSelectedAssignCustomerId(customer.id)}
-                                disabled={isAssigning || isUpdating}
+                                onSelect={() => !isActionLoading && setSelectedAssignCustomerId(customer.id)}
+                                disabled={isActionLoading}
                               >
                                 <Check
                                   className={`mr-2 h-4 w-4 ${
@@ -617,33 +702,29 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
                         <Button
                      
                           className="flex-1"
-                          disabled={!selectedAssignCustomerId || isAssigning || isUpdating}
+                          disabled={!selectedAssignCustomerId || isActionLoading}
                           onClick={() => selectedAssignCustomerId && (isAssigned ? handleUpdateAssignedCustomer(selectedAssignCustomerId, false) : handleAssignToCustomer(selectedAssignCustomerId, false))}
                         >
-                          {isAssigning || isUpdating ? (
-                            <>
-                              <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                              {isAssigned ? 'Updating...' : 'Assigning...'}
-                            </>
-                          ) : (
-                            isAssigned ? 'Update only' : 'Assign only'
-                          )}
+                          {isAssigned 
+                            ? 'Update only' 
+                            : invoice.state === 'cancelled' 
+                            ? 'Assign & Restart as Draft' 
+                            : 'Assign only'
+                          }
                         </Button>
                         <Button
                       
                           variant="outline"
                           className="flex-1"
-                          disabled={!selectedAssignCustomerId || isAssigning || isUpdating}
+                          disabled={!selectedAssignCustomerId || isActionLoading}
                           onClick={() => selectedAssignCustomerId && (isAssigned ? handleUpdateAssignedCustomer(selectedAssignCustomerId, true) : handleAssignToCustomer(selectedAssignCustomerId, true))}
                         >
-                          {isAssigning || isUpdating ? (
-                            <>
-                              <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                              {isAssigned ? 'Updating...' : 'Assigning...'}
-                            </>
-                          ) : (
-                            isAssigned ? 'Update & Email' : 'Assign & Email'
-                          )}
+                          {isAssigned 
+                            ? 'Update & Email' 
+                            : invoice.state === 'cancelled' 
+                            ? 'Assign, Restart & Email' 
+                            : 'Assign & Email'
+                          }
                         </Button>
                       </div>
                     </div>
@@ -654,43 +735,22 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
               {/* Unassign options */}
               {getAvailableActions(state).includes('unassign') && isAssigned && (
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={isUnassigning || isUnassigningAndUnpublishing}>
+                  <DropdownMenuSubTrigger disabled={isActionLoading}>
                     <X className="w-4 h-4 mr-2" />
-                    {isUnassigning || isUnassigningAndUnpublishing ? (
-                      <>
-                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                        Unassigning...
-                      </>
-                    ) : (
-                      'Unassign Customer'
-                    )}
+                    Unassign Customer
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem 
                       onClick={handleUnassign}
-                      disabled={isUnassigning || isUnassigningAndUnpublishing}
+                      disabled={isActionLoading}
                     >
-                      {isUnassigning ? (
-                        <>
-                          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                          Unassigning...
-                        </>
-                      ) : (
-                        'Unassign '
-                      )}
+                      Unassign
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={handleUnassignAndUnpublish}
-                      disabled={isUnassigning || isUnassigningAndUnpublishing}
+                      disabled={isActionLoading}
                     >
-                      {isUnassigningAndUnpublishing ? (
-                        <>
-                          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                          Unassigning...
-                        </>
-                      ) : (
-                        'Unassign & Set to Draft'
-                      )}
+                      Unassign & Set to Draft
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
@@ -698,53 +758,32 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
               
               {/* Unassign from cancelled state */}
               {state === 'cancelled' && isAssigned && (
-                <DropdownMenuItem 
-                  onClick={handleUnassignFromCancelled}
-                  disabled={isUnassigningFromCancelled}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  {isUnassigningFromCancelled ? (
-                    <>
-                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                      Unassigning...
-                    </>
-                  ) : (
-                    'Unassign & Set to Draft'
-                  )}
-                </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                    onClick={handleUnassignFromCancelled}
+                    disabled={isActionLoading}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Unassign & Set to Draft
+                  </DropdownMenuItem>
               )}
               
               {getAvailableActions(state).includes('cancel') && (
                 <DropdownMenuItem 
                   onClick={handleCancel}
-                  disabled={isCancelling}
+                  disabled={isActionLoading}
                 >
                   <Ban className="w-4 h-4 mr-2" />
-                  {isCancelling ? (
-                    <>
-                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                      Cancelling...
-                    </>
-                  ) : (
-                    'Cancel'
-                  )}
+                  Cancel
                 </DropdownMenuItem>
               )}
               
               {getAvailableActions(state).includes('unassigned') && (
                 <DropdownMenuItem 
                   onClick={handleSetToUnassigned}
-                  disabled={isSettingToUnassigned}
+                  disabled={isActionLoading}
                 >
                   <User className="w-4 h-4 mr-2" />
-                  {isSettingToUnassigned ? (
-                    <>
-                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                      Setting...
-                    </>
-                  ) : (
-                    'Mark as unassigned'
-                  )}
+                  Mark as unassigned
                 </DropdownMenuItem>
               )}
               
