@@ -237,31 +237,28 @@ export function PreviewChartArea({
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <Select value={metric} onValueChange={(value) => setMetric(value as MetricType)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select metric" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="invoices">Invoices</SelectItem>
-              <SelectItem value="receipts">Receipts</SelectItem>
-              <SelectItem value="feedbacks">Feedbacks</SelectItem>
-              <SelectItem value="projects">Projects</SelectItem>
-            </SelectContent>
-          </Select>
-          <SelectCalendar
-            dateFrom={params.dateFrom}
-            dateTo={params.dateTo}
-            onDateRangeChange={handleDateRangeChange}
-            maxDateRange={maxDateRange}
-            defaultTimeRange={DEFAULT_PRESET}
-          />
-        </div>
+  
         <Card className="pt-0">
           <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
-            <div className="grid flex-1 gap-1">
-              <CardTitle>Loading...</CardTitle>
-              <CardDescription>Fetching {metric} data...</CardDescription>
+            <div className="flex items-center justify-between gap-4">
+              <Select value={metric} onValueChange={(value) => setMetric(value as MetricType)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Select metric" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="invoices">Invoices</SelectItem>
+                  <SelectItem value="receipts">Receipts</SelectItem>
+                  <SelectItem value="feedbacks">Feedbacks</SelectItem>
+                  <SelectItem value="projects">Projects</SelectItem>
+                </SelectContent>
+              </Select>
+              {/* <SelectCalendar
+                dateFrom={params.dateFrom}
+                dateTo={params.dateTo}
+                onDateRangeChange={handleDateRangeChange}
+                maxDateRange={maxDateRange}
+                defaultTimeRange={DEFAULT_PRESET}
+              /> */}
             </div>
           </CardHeader>
           <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
@@ -321,35 +318,36 @@ export function PreviewChartArea({
   return (
     <div className="space-y-6">
       {/* Metric Selector */}
-      <div className="flex items-center justify-between gap-4">
-        <Select value={metric} onValueChange={(value) => setMetric(value as MetricType)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select metric" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="invoices">Invoices</SelectItem>
-            <SelectItem value="receipts">Receipts</SelectItem>
-            <SelectItem value="feedbacks">Feedbacks</SelectItem>
-            <SelectItem value="projects">Projects</SelectItem>
-          </SelectContent>
-        </Select>
 
-        {/* Date Range Filter */}
-        <SelectCalendar
-         dateFrom={params.dateFrom}
-         dateTo={params.dateTo}
-         onDateRangeChange={handleDateRangeChange}
-         maxDateRange={maxDateRange}
-         defaultTimeRange={DEFAULT_PRESET}
-        />
-      </div>
 
       {/* Main Chart */}
       <Card className="pt-0">
         <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
           <div className="grid flex-1 gap-1">
             <CardTitle>
-              {useAreaChart ? "Area Chart" : "Bar Chart"} - Interactive
+              {/* {useAreaChart ? "Area Chart" : "Bar Chart"} - Interactive       */}
+              <div className="flex items-center justify-between gap-4">
+                <Select value={metric} onValueChange={(value) => setMetric(value as MetricType)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select metric" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="invoices">Invoices</SelectItem>
+                    <SelectItem value="receipts">Receipts</SelectItem>
+                    <SelectItem value="feedbacks">Feedbacks</SelectItem>
+                    <SelectItem value="projects">Projects</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Date Range Filter */}
+                <SelectCalendar
+                dateFrom={params.dateFrom}
+                dateTo={params.dateTo}
+                onDateRangeChange={handleDateRangeChange}
+                maxDateRange={maxDateRange}
+                defaultTimeRange={DEFAULT_PRESET}
+                />
+              </div>
             </CardTitle>
             <CardDescription>
               {params.dateFrom && params.dateTo 

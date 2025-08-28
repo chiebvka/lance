@@ -25,11 +25,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return createPageMetadata({
       title: metadata.name || 'Path',
       description: metadata.description || 'A page to share links and contact information.',
+      image: `/api/og?type=paths&id=${pathId}`,
     })
   } catch (error) {
     return createPageMetadata({
       title: 'Path Not Found',
       description: 'The requested path could not be found.',
+      image: `/api/og?type=paths&id=${pathId}`,
     })
   }
 }

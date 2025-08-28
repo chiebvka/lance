@@ -32,8 +32,9 @@ export async function generateMetadata(
       title: `Invoice ${num} – ${org}`,
       description: `Invoice ${num} from ${org}. View, pay and download securely via BexForte.`,
       path: `/i/${invoiceId}`,
+      image: `/api/og?type=invoices&id=${invoiceId}`,
     })
   } catch {
-    return createPageMetadata({ title: 'Invoice', description: 'View your invoice securely. Pay, download and share via BexForte.', path: `/i/${invoiceId}` })
+    return createPageMetadata({ title: 'Invoice', description: 'View your invoice securely. Pay, download and share via BexForte.', path: `/i/${invoiceId}`, image: `/api/og?type=invoices&id=${invoiceId}` })
   }
 }

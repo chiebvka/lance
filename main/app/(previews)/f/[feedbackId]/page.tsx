@@ -58,4 +58,5 @@ export default async function FeedbackPage({ params, searchParams }: PageProps) 
 export const metadata: Metadata = createPageMetadata({
   title: 'Feedback Form',
   description: 'Fill and submit the requested feedback securely via BexForte.',
+  image: '/api/og?type=feedback&id=%5Bdynamic%5D',
 });

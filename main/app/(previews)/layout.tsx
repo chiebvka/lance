@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "Walls, Feedback, Invoices, Projects & Receipts Preview",
+  title: "Walls,Paths, Feedback, Invoices, Projects & Receipts Preview",
   description:
-    "Public preview pages for BexForte: share walls, feedback forms, invoices, projects and receipts with your customers.",
+    "Public preview pages for BexForte: share walls, paths, feedback forms, invoices, projects and receipts with your customers.",
 });
 
 export default async function Layout({

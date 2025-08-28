@@ -13,15 +13,16 @@ interface LogoProps {
 const LogoComponent = ({ height = 60, width = 80 }: LogoProps) => {
   const { resolvedTheme } = useTheme()
   
-  const logoSrc = resolvedTheme === 'dark' ? '/lance.ico' : '/lance.ico'
+  const logoSrc = resolvedTheme === 'dark' ? '/bexlights.png' : '/bexdarks.png'
 
   return (
     <Link href="/">
-      <Image 
+      <img 
         height={height}
         width={width}
         alt='logo'
         src={logoSrc}
+        loading="lazy"
         className="object-contain"
       />
     </Link>

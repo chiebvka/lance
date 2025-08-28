@@ -37,6 +37,22 @@ const nextConfig: NextConfig = {
 
     ],
   },
+  webpack: (config, { isServer }) => {
+    // Handle native modules for @resvg/resvg-js
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push('@resvg/resvg-js');
+    } else {
+      // Exclude from client-side bundle
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+      };
+    }
+    
+    return config;
+  },
 };
 
 export default nextConfig;

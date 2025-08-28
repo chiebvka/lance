@@ -123,6 +123,18 @@ export default function DashboardCarousel() {
   // Dashboard cards data
   const dashboardCards = [
     {
+      title: "Calendar",
+      icon: Calendar,
+      action: <span className="text-sm text-muted-foreground">2025</span>,
+      content: (
+        <div className="px-6 h-full flex flex-col">
+          <ScrollArea className="flex-1 min-h-0 overflow-hidden">
+            <UpcomingCalendar embedded />
+          </ScrollArea>
+        </div>
+      )
+    },
+    {
       title: "Invoices",
       icon: Receipt,
       action: (
@@ -157,46 +169,6 @@ export default function DashboardCarousel() {
                     <div className="flex items-center justify-between w-full hover:bg-bexoni/10 py-1">
                       <p className="text-xs truncate">{inv.invoiceNumber || 'Invoice'}</p>
                       <Badge className={`text-xs capitalize ${getInvoiceStateColor(inv.state)}`}>{inv.state}</Badge>
-                    </div>
-                    <Separator className="w-full" />
-                  </Link>
-                ))
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-      )
-    },
-    {
-      title: "Projects",
-      icon: FolderKanban,
-      action: (
-        <Link href="/protected/projects">
-          <Button size="icon" className="h-7 w-7 rounded-none p-0">
-            <Plus className="h-4 w-4" />
-          </Button>
-        </Link>
-      ),
-      content: (
-        <div className="flex flex-col h-full px-6 min-w-0">
-          <div className="flex justify-between text-sm text-primary font-bold my-3 flex-shrink-0">
-            <span>Name</span>
-            <span className="text-right">State</span>
-          </div>
-          
-          {/* Scrollable content area */}
-          <ScrollArea className="flex-1 min-h-0  overflow-hidden">
-            <div className="space-y-2">
-              {isLoadingRecent ? (
-                <div className="text-sm text-muted-foreground">Loading...</div>
-              ) : recentProjects.length === 0 ? (
-                <div className="text-sm text-muted-foreground">No projects found</div>
-              ) : (
-                recentProjects.map((p) => (
-                  <Link key={p.id} href={`/protected/projects?projectId=${p.id}`} className="block">
-                    <div className="flex items-center justify-between w-full hover:bg-bexoni/10 py-1">
-                      <p className="text-xs truncate">{p.name || 'Project'}</p>
-                      <Badge className={`text-xs capitalize ${getProjectStatusColor(p.status)}`}>{p.status}</Badge>
                     </div>
                     <Separator className="w-full" />
                   </Link>
@@ -252,6 +224,46 @@ export default function DashboardCarousel() {
       )
     },
     {
+      title: "Projects",
+      icon: FolderKanban,
+      action: (
+        <Link href="/protected/projects">
+          <Button size="icon" className="h-7 w-7 rounded-none p-0">
+            <Plus className="h-4 w-4" />
+          </Button>
+        </Link>
+      ),
+      content: (
+        <div className="flex flex-col h-full px-6 min-w-0">
+          <div className="flex justify-between text-sm text-primary font-bold my-3 flex-shrink-0">
+            <span>Name</span>
+            <span className="text-right">State</span>
+          </div>
+          
+          {/* Scrollable content area */}
+          <ScrollArea className="flex-1 min-h-0  overflow-hidden">
+            <div className="space-y-2">
+              {isLoadingRecent ? (
+                <div className="text-sm text-muted-foreground">Loading...</div>
+              ) : recentProjects.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No projects found</div>
+              ) : (
+                recentProjects.map((p) => (
+                  <Link key={p.id} href={`/protected/projects?projectId=${p.id}`} className="block">
+                    <div className="flex items-center justify-between w-full hover:bg-bexoni/10 py-1">
+                      <p className="text-xs truncate">{p.name || 'Project'}</p>
+                      <Badge className={`text-xs capitalize ${getProjectStatusColor(p.status)}`}>{p.status}</Badge>
+                    </div>
+                    <Separator className="w-full" />
+                  </Link>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      )
+    },
+    {
       title: "Receipts",
       icon: ReceiptText,
       action: (
@@ -292,18 +304,6 @@ export default function DashboardCarousel() {
       )
     },
     {
-      title: "Calendar",
-      icon: Calendar,
-      action: <span className="text-sm text-muted-foreground">2025</span>,
-      content: (
-        <div className="px-6 h-full flex flex-col">
-          <ScrollArea className="flex-1 min-h-0 overflow-hidden">
-            <UpcomingCalendar embedded />
-          </ScrollArea>
-        </div>
-      )
-    },
-    {
       title: "Recent Activity",
       icon: TrendingUp,
       action: <span className="text-sm text-muted-foreground">All</span>,
@@ -337,9 +337,9 @@ export default function DashboardCarousel() {
   
   return (
     <div className="space-y-6 max-w-8xl mx-auto">
-      <div className="mb-6 relative">
-        <h2 className="text-2xl font-bold text-gray-900">Dashboard Overview</h2>
-        <p className="text-gray-600">Manage your business metrics and activities</p>
+      <div className="my-6 relative">
+        <h2 className="text-lg font-bold text-primary">Quick view</h2>
+        {/* <p className="text-gray-600">Manage your business metrics and activities</p> */}
         
         {/* Navigation arrows positioned at top right */}
         <div className="absolute top-0 right-0 flex space-x-2">
@@ -370,7 +370,7 @@ export default function DashboardCarousel() {
           align: "start",
           loop: false,
         }}
-        className="w-full"
+        className="w-full mb-6"
         setApi={setApi}
         onMouseEnter={plugin.current.stop}
         onMouseLeave={plugin.current.reset}
@@ -378,7 +378,7 @@ export default function DashboardCarousel() {
         <CarouselContent className="-ml-2 md:-ml-4">
           {dashboardCards.map((card, index) => (
             <CarouselItem key={index} className="pl-2 md:pl-4 basis-full sm:basis-2/3 md:basis-1/2 lg:basis-2/5 xl:basis-1/3 2xl:basis-1/4">
-              <Card className="h-full min-h-[400px] max-h-[400px] flex flex-col">
+              <Card className="h-full min-h-[420px] max-h-[420px] flex flex-col">
                 <CardHeader className="flex flex-row items-center  w-full justify-between space-y-0 my-4 pb-2 flex-shrink-0">
                   <div className="flex space-x-2 items-center">
                     <card.icon className="h-5 w-5 text-primary" />

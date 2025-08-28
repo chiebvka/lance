@@ -25,11 +25,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return createPageMetadata({
       title: metadata.name || 'Wall',
       description: metadata.description || 'A beautiful wall page to share instructions, media and links in one URL.',
+      image: `/api/og?type=walls&id=${wallId}`,
     })
   } catch (error) {
     return createPageMetadata({
       title: 'Wall Not Found',
       description: 'The requested wall could not be found.',
+      image: `/api/og?type=walls&id=${wallId}`,
     })
   }
 }
+

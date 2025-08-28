@@ -97,7 +97,13 @@ export default async function page({ params, searchParams }: PageProps) {
   )
 }
 
-export const metadata: Metadata = createPageMetadata({
-  title: 'Project Wall',
-  description: 'A single wall with instructions, assets and approvals for your project.',
-});
+export async function generateMetadata(
+  { params }: { params: Promise<{ projectId: string }> }
+): Promise<Metadata> {
+  const { projectId } = await params
+  return createPageMetadata({
+    title: 'Project Wall',
+    description: 'A single wall with instructions, assets and approvals for your project.',
+    image: `/api/og?type=projects&id=${projectId}`,
+  })
+}

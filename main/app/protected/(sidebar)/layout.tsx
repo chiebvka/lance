@@ -45,7 +45,7 @@ export default async function ProtectedLayout({
         <SidebarProvider defaultOpen={false}>
             <AppSidebar user={user} />
             <SidebarInset>
-                <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 px-4 border-b-2 border-primary bg-background/95 backdrop-blur-sm">
+                <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 px-4 border-b border-primary bg-background/95 backdrop-blur-sm">
                   <div className="md:hidden">
                     <MobileSidebarTrigger />
                   </div>

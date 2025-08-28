@@ -1,6 +1,6 @@
 import React from 'react';
-import { GalleryVerticalEnd } from 'lucide-react';
-import { Toaster } from "sonner";
+import { Bubbles, GalleryVerticalEnd } from 'lucide-react';
+// import { Toaster } from "sonner";
 import Link from 'next/link';
 import ForgotForm from './_components/ForgotForm';
 import type { Metadata } from 'next'
@@ -11,13 +11,13 @@ type Props = {}
 export default function page({}: Props) {
   return (
     <div className="border border-bexoni">
-        <Toaster richColors />
+        {/* <Toaster richColors /> */}
         <div className="grid min-h-svh lg:grid-cols-2">
         <div className="flex flex-col gap-4 p-6 md:p-10">
             <div className="flex justify-center gap-2 md:justify-start">
             <Link href="/" className="flex items-center gap-2 font-medium">
-                <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-                <GalleryVerticalEnd className="size-4" />
+                <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-none">
+                <Bubbles className="size-4" />
                 </div>
                 Acme Inc.
             </Link>

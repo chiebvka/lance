@@ -278,8 +278,8 @@ export default function SpotlightCommand({}: Props) {
           className="relative min-w-[200px] cursor-pointer hidden md:block"
           onClick={() => setIsCommandOpen(true)}
         >
-          <div className="flex items-center w-full h-9 px-3 py-2 border border-input bg-background/95 backdrop-blur-sm rounded-md text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent/50 transition-colors">
-            <ScanSearch className="mr-2 h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center w-full h-9 px-3 py-2 border border-primary bg-background/95 backdrop-blur-sm rounded-none text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent/50 transition-colors">
+            <ScanSearch className="mr-2 h-4 w-4 text-primary" />
             <span className="text-muted-foreground flex-1">Search projects, customers, invoices...</span>
             <Badge variant="outline" className="ml-2 font-mono text-xs">
               ⌘K

@@ -226,6 +226,42 @@ export default function UpcomingCalendar({ embedded = false }: Props) {
 
   const Body = (
     <div className="pt-0 p-4">
+
+        {/* Selected Date Details */}
+        {selectedDate && (
+          <div className="mt-3 p-2 bg-lightCard dark:bg-darkCard  rounded-none">
+            <div className="text-xs font-medium mb-2">
+              {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+            </div>
+            <div className="space-y-1">
+              {getItemsForDate(selectedDate).map((item) => (
+                <div key={item.id} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${getTypeInfo(item.type).bg}`} />
+                    <span className="font-medium">{item.title}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className={`text-xs ${getStatusColor(item.status)}`}
+                    >
+                      {item.status}
+                    </Badge>
+                    <Link 
+                      href={getItemLink(item)}
+                      className="text-blue-600 hover:text-blue-800 underline text-xs"
+                    >
+                      View
+                    </Link>
+                  </div>
+                </div>
+              ))}
+              {getItemsForDate(selectedDate).length === 0 && (
+                <span className="text-xs text-gray-500">No items due on this date</span>
+              )}
+            </div>
+          </div>
+        )}
         {/* Month Summary */}
         <div className="mb-3 p-2 bg-lightCard dark:bg-darkCard  border border-primary rounded-none">
           <div className="text-xs  mb-1">This month:</div>
@@ -349,41 +385,7 @@ export default function UpcomingCalendar({ embedded = false }: Props) {
           </div>
  
 
-        {/* Selected Date Details */}
-        {selectedDate && (
-          <div className="mt-3 p-2 bg-gray-50 rounded-md">
-            <div className="text-xs font-medium mb-2">
-              {format(selectedDate, 'EEEE, MMMM d, yyyy')}
-            </div>
-            <div className="space-y-1">
-              {getItemsForDate(selectedDate).map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-2 h-2 rounded-full ${getTypeInfo(item.type).bg}`} />
-                    <span className="font-medium">{item.title}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant="secondary"
-                      className={`text-xs ${getStatusColor(item.status)}`}
-                    >
-                      {item.status}
-                    </Badge>
-                    <Link 
-                      href={getItemLink(item)}
-                      className="text-blue-600 hover:text-blue-800 underline text-xs"
-                    >
-                      View
-                    </Link>
-                  </div>
-                </div>
-              ))}
-              {getItemsForDate(selectedDate).length === 0 && (
-                <span className="text-xs text-gray-500">No items due on this date</span>
-              )}
-            </div>
-          </div>
-        )}
+  
     </div>
   )
 

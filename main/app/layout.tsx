@@ -20,12 +20,48 @@ import SeoStructuredData from "@/components/SeoStructuredData";
 //   ? `https://${process.env.VERCEL_URL}`
 //   : "http://localhost:3000";
 
-export const metadata: Metadata = createPageMetadata({
+export const metadata: Metadata = {
   title: siteConfig.name,
-  description:
-    "BexForte is an all‑in‑one manager for client work: organize customers, send walls, collect feedback, manage projects, invoices and receipts.",
-  path: "/",
-});
+  description: "BexForte is an all‑in‑one manager for client work: organize customers, send walls, collect feedback, manage projects, invoices and receipts.",
+  openGraph: {
+    type: "website",
+    url: siteConfig.url,
+    siteName: siteConfig.name,
+    title: siteConfig.name,
+    description: "BexForte is an all‑in‑one manager for client work: organize customers, send walls, collect feedback, manage projects, invoices and receipts.",
+    images: [{ 
+      url: `${siteConfig.url}/opengraph-image.png`,
+      width: 1200,
+      height: 630,
+      alt: "BexForte - Client Operations Suite"
+    }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    creator: siteConfig.twitter,
+    title: siteConfig.name,
+    description: "BexForte is an all‑in‑one manager for client work: organize customers, send walls, collect feedback, manage projects, invoices and receipts.",
+    images: [`${siteConfig.url}/opengraph-image.png`],
+  },
+  metadataBase: new URL(siteConfig.url),
+  alternates: { canonical: siteConfig.url },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+  icons: {
+    icon: "/lance.ico",
+    shortcut: "/lance.ico",
+    apple: "/lance.ico",
+  },
+  category: "business",
+  creator: siteConfig.creator,
+  authors: [{ name: siteConfig.creator }],
+};
 
 const geistSans = Geist({
   display: "swap",
