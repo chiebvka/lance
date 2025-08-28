@@ -736,7 +736,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
   };
 
   const footer = (
-    <>
+    <div className='flex gap-2 justify-end'>
       <SheetClose asChild>
         <Button variant="ghost" ref={closeRef}>Cancel</Button>
       </SheetClose>
@@ -789,7 +789,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </>
+    </div>
   );
 
   const handleEditSaveDraft = () => {
@@ -805,7 +805,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
   };
 
   const editFooter = (
-    <>
+    <div className='flex gap-2 justify-end'>
       <SheetClose asChild>
         <Button variant="ghost" onClick={handleCloseSheet}>Cancel</Button>
       </SheetClose>
@@ -853,7 +853,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </>
+    </div>
   );
 
   const filterContent = (

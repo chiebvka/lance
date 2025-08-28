@@ -306,7 +306,7 @@ function getMetricMeta(metric?: string | null) {
       config: {
         sent: { color: 'hsl(250, 95%, 70%)' },
         overdue: { color: 'hsl(0, 85%, 75%)' },
-        settled: { color: 'hsl(250, 95%, 25%)' }
+        settled: { color: 'hsl(91, 95%, 41%)' }
       }
     },
     projects: {
@@ -314,16 +314,16 @@ function getMetricMeta(metric?: string | null) {
       config: {
         pending: { color: 'hsl(250, 95%, 70%)' },
         inProgress: { color: 'hsl(45, 85%, 65%)' },
-        signed: { color: 'hsl(120, 85%, 65%)' },
+        signed: { color: 'hsl(172, 85%, 65%)' },
         overdue: { color: 'hsl(0, 85%, 75%)' },
-        completed: { color: 'hsl(250, 95%, 25%)' }
+        completed: { color: 'hsl(91, 95%, 41%)' }
       }
     },
     feedbacks: {
       seriesKeys: ['sent', 'completed', 'overdue'],
       config: {
         sent: { color: 'hsl(250, 95%, 70%)' },
-        completed: { color: 'hsl(250, 95%, 25%)' },
+        completed: { color: 'hsl(91, 95%, 41%)' },
         overdue: { color: 'hsl(0, 85%, 75%)' }
       }
     },
@@ -332,7 +332,7 @@ function getMetricMeta(metric?: string | null) {
       config: {
         manual: { color: 'hsl(250, 95%, 70%)' },
         auto: { color: 'hsl(250, 95%, 40%)' },
-        invoice: { color: 'hsl(250, 95%, 25%)' }
+        invoice: { color: 'hsl(201, 85%, 65%)' }
       }
     }
   };

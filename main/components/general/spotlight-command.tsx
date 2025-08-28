@@ -172,7 +172,7 @@ export default function SpotlightCommand({}: Props) {
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="relative backdrop-blur-sm">
+            <Button variant="outline" className="relative backdrop-blur-sm">
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
                 <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-red-500">
@@ -247,7 +247,7 @@ export default function SpotlightCommand({}: Props) {
         {/* Notes/Menu */}
         <DropdownMenu >
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="bg-background/95 backdrop-blur-sm hidden md:block">
+            <Button variant="outline"  className="relative items-center justify-center backdrop-blur-sm hidden md:block">
               <StickyNote className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>

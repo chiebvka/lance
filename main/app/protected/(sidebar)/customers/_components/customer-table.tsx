@@ -263,7 +263,7 @@ export default function CustomerTable({ customer, onCustomerSelect }: CustomerTa
             </div>
           ) : (
             // Existing table content
-            <div className="just lei">
+            <div className="justify-center">
               <Table>
                 <TableHeader>
                   {paginatedCustomers.map((customer, index) => (
@@ -273,16 +273,17 @@ export default function CustomerTable({ customer, onCustomerSelect }: CustomerTa
                       onClick={() => onCustomerSelect?.(customer.id)}
                     >
                       <TableCell className="space-y-2  p-0 py-1.5">
-                        <div className="relative flex items-start shadow-sm bg-lightCard dark:bg-darkCard gap-0">
+                        <div className="relative  flex items-start shadow-sm bg-lightCard dark:bg-darkCard gap-0">
 
                           {/* Customer card */}
                           <div
-                            className="flex-1 cursor-pointer shadow-sm hover:shadow-lg border-bexoni transition-shadow border p-2 m-0"
+                            className="w-full cursor-pointer shadow-sm hover:shadow-lg border-bexoni transition-shadow border p-2 m-0"
                             onClick={() => handleCustomerClick(customer)}
                           >
-                            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2">
-                              <div className="flex items-start gap-2 flex-1">
-                                <Avatar className="h-12 w-12 flex-shrink-0">
+                            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between md:gap-2 gap-1">
+                              {/* Left side: Avatar, name, and email (stays on left for both mobile and desktop) */}
+                              <div className="flex items-center gap-2 flex-1">
+                                <Avatar className="h-8 w-8 md:h-12 md:w-12 flex-shrink-0">
                                   {/* <AvatarImage src={customer.avatar || "/placeholder.svg"} /> */}
                                   <AvatarFallback>
                                     {customer.name
@@ -292,15 +293,16 @@ export default function CustomerTable({ customer, onCustomerSelect }: CustomerTa
                                   </AvatarFallback>
                                 </Avatar>
 
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 mb-3">
-                                    <p className="text-base text-primary font-medium truncate">{customer.name}</p> 
+                                <div className="w-full min-w-0">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 md:mb-3">
+                                    <p className="md:text-base text-sm text-primary font-medium truncate">{customer.name}</p> 
                                     <div className="hidden sm:block w-[3px] h-4 bg-bexoni flex-shrink-0" />
-                                    <div className="flex items-center gap-2 flex-1">
-                                      <p className="text-sm dark:text-gray-300 font-medium truncate">{customer.email}</p>
-                                      <div className="flex items-center gap-2 ml-auto">
-                                        <TooltipProvider>
-                                          <Tooltip>
+                                    <div className="flex flex-col md:flex-row items-center gap-2 flex-1">
+                                      <p className="hidden md:block text-xs md:text-sm font-medium truncate">{customer.email}</p>
+                                      {/* Desktop Layout: Rating text and meter side by side */}
+                                      <div className="hidden md:flex flex-col md:flex-row items-center justify-center gap-2 md:ml-auto">
+                                        <TooltipProvider >
+                                          <Tooltip >
                                             <TooltipTrigger asChild>
                                               <div className="flex items-center gap-1 cursor-help">
                                                 <span className="text-xs text-primary font-medium underline decoration-primary">
@@ -319,8 +321,6 @@ export default function CustomerTable({ customer, onCustomerSelect }: CustomerTa
                                                   <li>• Customer project volume history </li>
                                                   <li>• Customer interaction rate </li>
                                                   <li>• Penalties for overdue invoices</li>
-                                                  {/* <li>• On-time payment history (30%)</li> */}
-                                                  {/* <li>• Invoice payment completion rate (70%)</li> */}
                                                 </ul>
                                                 <p className="text-xs text-muted-foreground pt-1">
                                                   Higher scores indicate more reliable payment behavior.
@@ -337,13 +337,50 @@ export default function CustomerTable({ customer, onCustomerSelect }: CustomerTa
                                       </div>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-4 text-sm mb-2">
+                                  <div className=" hidden md:flex items-center gap-4 text-sm mb-2">
                                     <div className="flex items-center gap-1">
                                       <Clock className="h-4 w-4 dark:text-gray-300 flex-shrink-0" />
                                       <span className="truncate dark:text-gray-300">Last activity: {customer.lastActivity}</span>
                                     </div>
                                   </div>
                                 </div>
+                              </div>
+
+                              {/* Mobile Layout: Right side with rating section - aligned with customer name */}
+                              <div className="md:hidden flex flex-col items-center gap-1 ml-auto -mt-6 mb-3 self-center">
+                                <TooltipProvider >
+                                  <Tooltip >
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center gap-1 cursor-help">
+                                        <span className="text-xs text-primary font-medium underline decoration-primary">
+                                          Customer Rating
+                                        </span>
+                                        <InfoIcon className="h-3 w-3 text-primary" />
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-xs">
+                                      <div className="space-y-2">
+                                        <p className="font-semibold">Customer Reliability Score</p>
+                                        <p className="text-xs">This rating is calculated based on:</p>
+                                        <ul className="text-xs space-y-1">
+                                          <li>• Invoice payment completion rate </li>
+                                          <li>• On-time payment history </li>
+                                          <li>• Customer project volume history </li>
+                                          <li>• Customer interaction rate </li>
+                                          <li>• Penalties for overdue invoices</li>
+                                        </ul>
+                                        <p className="text-xs text-muted-foreground pt-1">
+                                          Higher scores indicate more reliable payment behavior.
+                                        </p>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                                <CustomerRatingMeter 
+                                  rating={customer.rating} 
+                                  size="sm" 
+                                  showLabel={false}
+                                />
                               </div>
 
                               <div className="grid grid-cols-4 lg:flex lg:gap-6 gap-3 text-center">

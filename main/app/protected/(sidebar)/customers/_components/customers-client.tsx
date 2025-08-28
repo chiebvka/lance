@@ -345,7 +345,7 @@ export default function CustomersClient() {
   }
 
   const footer = (
-    <>
+    <div className='flex gap-2 justify-end'>
       <SheetClose asChild>
         <Button variant="ghost" ref={closeRef}>Cancel</Button>
       </SheetClose>
@@ -359,11 +359,11 @@ export default function CustomersClient() {
           'Create Customer'
         )}
       </Button>
-    </>
+    </div>
   );
 
   const editFooter = (
-    <>
+    <div className='flex gap-2 justify-end'>
       <SheetClose asChild>
         <Button variant="ghost" onClick={handleCloseSheet}>Cancel</Button>
       </SheetClose>
@@ -377,7 +377,7 @@ export default function CustomersClient() {
           'Update Customer'
         )}
       </Button>
-    </>
+    </div>
   );
 
   const filterContent = (

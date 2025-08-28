@@ -67,7 +67,7 @@ export default function CustomerForm({ onSuccess, onLoadingChange }: Props) {
   const onSubmit = async (values: CustomerFormValues) => {
     onLoadingChange(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 4000));
+      // await new Promise(resolve => setTimeout(resolve, 4000));
       const response = await axios.post('/api/customers/create', values);
       toast.success(response.data.success || "Customer created successfully!");
       form.reset();

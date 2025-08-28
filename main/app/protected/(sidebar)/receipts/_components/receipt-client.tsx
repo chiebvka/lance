@@ -779,7 +779,7 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
   ]
 
   const footer = (
-    <>
+    <div className='flex gap-2 justify-end'>
       <SheetClose asChild>
         <Button variant="ghost" ref={closeRef}>Cancel</Button>
       </SheetClose>
@@ -832,11 +832,11 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </>
+    </div>
   );
 
   const editFooter = (
-    <>
+    <div className='flex gap-2 justify-end'>
       <SheetClose asChild>
         <Button variant="ghost" onClick={handleCloseSheet}>Cancel</Button>
       </SheetClose>
@@ -884,7 +884,7 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </>
+    </div>
   );
 
   const filterContent = (

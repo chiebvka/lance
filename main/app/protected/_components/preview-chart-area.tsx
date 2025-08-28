@@ -44,27 +44,27 @@ const chartConfigs: Record<MetricType, ChartConfig> = {
     visitors: { label: "Invoices" },
     sent: { label: "Sent", color: "hsl(250, 95%, 70%)" },
     overdue: { label: "Overdue", color: "hsl(0, 85%, 75%)" },
-    settled: { label: "Settled", color: "hsl(250, 95%, 25%)" },
+    settled: { label: "Settled", color: "hsl(91, 95%, 41%)" },
   },
   receipts: {
     views: { label: "Receipts" },
     manual: { label: "Manual", color: "hsl(250, 95%, 70%)" },
     auto: { label: "Auto", color: "hsl(250, 95%, 40%)" },
-    invoice: { label: "From Invoice", color: "hsl(250, 95%, 25%)" },
+    invoice: { label: "From Invoice", color: "hsl(201, 85%, 65%)" },
   },
   feedbacks: {
     views: { label: "Feedbacks" },
     sent: { label: "Sent", color: "hsl(250, 95%, 70%)" },
-    completed: { label: "Completed", color: "hsl(250, 95%, 25%)" },
+    completed: { label: "Completed", color: "hsl(91, 95%, 41%)" },
     overdue: { label: "Overdue", color: "hsl(0, 85%, 75%)" },
   },
   projects: {
     visitors: { label: "Projects" },
     pending: { label: "Pending", color: "hsl(250, 95%, 70%)" },
     inProgress: { label: "In Progress", color: "hsl(45, 85%, 65%)" },
-    signed: { label: "Signed", color: "hsl(120, 85%, 65%)" },
+    signed: { label: "Signed", color: "hsl(172, 85%, 65%)" },
     overdue: { label: "Overdue", color: "hsl(0, 85%, 75%)" },
-    completed: { label: "Completed", color: "hsl(250, 95%, 25%)" },
+    completed: { label: "Completed", color: "hsl(91, 95%, 41%)" },
   },
 }
 

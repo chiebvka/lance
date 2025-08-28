@@ -207,8 +207,8 @@ export default function CommandFilter({
                 const IconComponent = iconMap[category.title];
                 return (
                   <div key={category.title} className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                      {IconComponent && <IconComponent className="h-4 w-4" />}
+                    <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                      {IconComponent && <IconComponent className="h-4 w-4 text-primary" />}
                       {category.title}
                     </div>
                     <div className="space-y-1">
