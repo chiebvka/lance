@@ -2,6 +2,7 @@
 import Feedback from '@/validation/forms/feedback';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import { toast } from 'sonner';
 
 export interface Feedbacks {
     id: string
@@ -144,7 +145,7 @@ export function useFeedbacks(initialData?: Feedbacks[]) {
     })
   }
 
-  export function useDeleteFeedback() {
+  export function useDeleteFeedback(onSuccess?: () => void) {
     const queryClient = useQueryClient()
     
     return useMutation({
@@ -155,6 +156,11 @@ export function useFeedbacks(initialData?: Feedbacks[]) {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['feedbacks'] })
+        if (onSuccess) onSuccess()
+      },
+      onError: (error: any) => {
+        toast.error(error?.response?.data?.error || 'Failed to delete feedback')
+        if (onSuccess) onSuccess()
       },
     })
   }

@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { MoreHorizontal, Loader2, Edit, Copy, ExternalLink, Trash } from "lucide-react"
+import { MoreHorizontal, Loader2, Edit, Copy, ExternalLink, Trash, Bubbles } from "lucide-react"
 import ConfirmModal from "@/components/modal/confirm-modal"
 import { Wall } from "@/hooks/walls/use-walls"
 
@@ -71,12 +71,22 @@ export function DataTableRowActions<TData>({
 
   // Duplicate wall mutation
   const duplicateWallMutation = useMutation({
-    mutationFn: async (wallData: any) => {
-      const { data } = await axios.post('/api/walls/create', {
-        ...wallData,
-        name: `${wallData.name} (Copy)`,
-      })
-      return data
+    mutationFn: async () => {
+      const loadingToastId = toast.loading(
+        <div className="flex items-center gap-3">
+        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+        <span>Duplicating Wall...</span>
+      </div>,
+        { duration: Infinity }
+      )
+      try {
+        const { data } = await axios.post(`/api/walls/${wall.id}/duplicate`)
+        toast.dismiss(loadingToastId)
+        return data
+      } catch (e) {
+        toast.dismiss(loadingToastId)
+        throw e
+      }
     },
     onSuccess: () => {
       toast.success("Wall duplicated successfully!");
@@ -90,14 +100,8 @@ export function DataTableRowActions<TData>({
   })
 
   const handleDuplicate = () => {
-    if (wall) {
-      duplicateWallMutation.mutate({
-        name: wall.name,
-        description: wall.description,
-        content: wall.content,
-        notes: wall.notes,
-        private: wall.private,
-      })
+    if (wall?.id) {
+      duplicateWallMutation.mutate()
     }
   }
 

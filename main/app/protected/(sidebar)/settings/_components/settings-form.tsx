@@ -2,9 +2,9 @@
 import SettingsFileUpload from "@/components/settings/settings-file-upload";
 import SettingsInput from "@/components/settings/settings-input";
 import SettingsDelete from "@/components/settings/settings-delete";
-import ConfirmModal from "@/components/modal/confirm-modal";
+import OrganizationConfirmModal from "@/components/settings/organization-confirm-modal";
 import SettingsCombobox from "@/components/settings/settings-combobox";
-import { Organization, useOrganization, useUpdateOrganization, useUploadOrganizationLogo, useDeleteOrganizationLogo, useDeleteOrganization } from "@/hooks/organizations/use-organization";
+import { Organization, useOrganization, useUpdateOrganization, useUploadOrganizationLogo, useDeleteOrganizationLogo, useDeleteOrganization, useOrganizationCounts } from "@/hooks/organizations/use-organization";
 import { countries } from "@/data/countries";
 import { currencies } from "@/data/currency";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,6 +22,9 @@ export default function SettingsForm() {
   const uploadLogo = useUploadOrganizationLogo();
   const deleteLogo = useDeleteOrganizationLogo();
   const deleteOrganization = useDeleteOrganization();
+  
+  // Get organization counts for deletion confirmation
+  const { data: organizationCounts } = useOrganizationCounts(organization?.id || '');
 
 
   // Track user input separately from organization data
@@ -139,7 +142,7 @@ export default function SettingsForm() {
         itemType="team"
       />
 
-      <ConfirmModal
+      <OrganizationConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={() => deleteOrganization.mutate(undefined, {
@@ -149,12 +152,15 @@ export default function SettingsForm() {
             }, 2000);
           }
         })}
-        title="Delete Team"
-        itemName="your team"
-        itemType="team"
-        description="Permanently remove your Team and all of its contents from the Lance platform. This action is not reversible — please continue with caution."
+        organizationName={organization?.name || "your organization"}
+        invoiceCount={organizationCounts?.invoiceCount || 0}
+        projectCount={organizationCounts?.projectCount || 0}
+        receiptCount={organizationCounts?.receiptCount || 0}
+        feedbackCount={organizationCounts?.feedbackCount || 0}
+        wallCount={organizationCounts?.wallCount || 0}
+        pathCount={organizationCounts?.pathCount || 0}
+        customerCount={organizationCounts?.customerCount || 0}
         isLoading={deleteOrganization.isPending}
-        warningMessage="This will permanently delete your team and all associated data including projects, invoices, customers, and settings. This action cannot be undone."
       />
     </div>
   );

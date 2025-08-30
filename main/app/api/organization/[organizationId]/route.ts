@@ -215,6 +215,183 @@ export async function DELETE(
       }
     }
 
+    // Get all walls for the organization to delete their assets from R2
+    const { data: walls } = await supabase
+      .from('walls')
+      .select('content')
+      .eq('organizationId', profile.organizationId);
+    
+    console.log(`Found ${walls?.length || 0} walls to process for R2 cleanup`);
+
+    // Delete wall assets from R2
+    let wallFilesDeleted = 0;
+    if (walls && walls.length > 0) {
+      for (const wall of walls) {
+        if (wall.content) {
+          try {
+            // Parse content to find asset URLs
+            const content = typeof wall.content === 'string' ? JSON.parse(wall.content) : wall.content;
+            console.log('Wall content structure:', JSON.stringify(content, null, 2));
+            
+            // Look for image, video, or file URLs in the content
+            if (content.blocks) {
+              for (const block of content.blocks) {
+                if (['image', 'video', 'file'].includes(block.type)) {
+                  const fileId = block.props?.fileId || block.props?.cloudflareUrl;
+                  if (fileId) {
+                    try {
+                      // Extract key from URL using the same logic as wall deletion
+                      let fileKey = '';
+                      if (fileId.includes('/')) {
+                        // For URLs like https://domain.com/walls/images/file.jpg
+                        const urlParts = fileId.split('/');
+                        if (urlParts.length >= 4) {
+                          // Find the domain part and get everything after it
+                          const domainIndex = urlParts.findIndex((part: string) => 
+                            part.includes('.r2.dev') || 
+                            part.includes('.cloudflarestorage.com') ||
+                            part === process.env.R2_CUSTOM_DOMAIN
+                          );
+                          if (domainIndex !== -1 && domainIndex < urlParts.length - 1) {
+                            fileKey = urlParts.slice(domainIndex + 1).join('/');
+                          }
+                        }
+                      }
+                      
+                      // If we couldn't extract the key from URL, treat the fileId as the key
+                      if (!fileKey) {
+                        fileKey = fileId;
+                      }
+                      
+                      console.log(`Extracted wall fileKey: ${fileKey} from fileId: ${fileId}`);
+                      
+                      // Validate the key format
+                      const allowedPrefixes = ['walls/', 'gallery/', 'organizations/'];
+                      const isValidKey = allowedPrefixes.some(prefix => fileKey.startsWith(prefix));
+                      
+                      if (isValidKey && fileKey) {
+                        await deleteFileFromR2(fileKey);
+                        wallFilesDeleted++;
+                        console.log(`Successfully deleted wall asset: ${fileId} (key: ${fileKey})`);
+                      } else {
+                        console.warn(`Skipping deletion of invalid file key: ${fileKey} from URL: ${fileId}`);
+                      }
+                    } catch (assetDeleteError) {
+                      console.error('Error deleting wall asset from R2:', assetDeleteError);
+                      // Continue with other assets even if one fails
+                    }
+                  }
+                }
+              }
+            }
+          } catch (parseError) {
+            console.error('Error parsing wall content:', parseError);
+            // Continue with other walls even if one fails to parse
+          }
+        }
+      }
+    }
+
+    // Get all paths for the organization to delete their assets from R2
+    const { data: paths } = await supabase
+      .from('paths')
+      .select('content')
+      .eq('organizationId', profile.organizationId);
+    
+    console.log(`Found ${paths?.length || 0} paths to process for R2 cleanup`);
+
+    // Delete path assets from R2
+    let pathFilesDeleted = 0;
+    if (paths && paths.length > 0) {
+      for (const path of paths) {
+        if (path.content) {
+          try {
+            // Parse content to find asset URLs
+            const content = typeof path.content === 'string' ? JSON.parse(path.content) : path.content;
+            console.log('Path content structure:', JSON.stringify(content, null, 2));
+            
+                        // Look for image, video, or file URLs in the content
+            if (content.blocks) {
+              console.log(`Processing ${content.blocks.length} blocks in path content`);
+              for (const block of content.blocks) {
+                console.log(`Processing path block type: ${block.type}, props:`, JSON.stringify(block.props || {}));
+                if (['image', 'video', 'file'].includes(block.type)) {
+                  const fileId = block.props?.fileId || block.props?.cloudflareUrl;
+                  console.log(`Found path file block with fileId: ${fileId}`);
+                  if (fileId) {
+                    try {
+                      // Extract key from URL using the same logic as wall deletion
+                      let fileKey = '';
+                      if (fileId.includes('/')) {
+                        // For URLs like https://domain.com/paths/images/file.jpg
+                        const urlParts = fileId.split('/');
+                        if (urlParts.length >= 4) {
+                          // Find the domain part and get everything after it
+                          const domainIndex = urlParts.findIndex((part: string) => 
+                            part.includes('.r2.dev') || 
+                            part.includes('.cloudflarestorage.com') ||
+                            part === process.env.R2_CUSTOM_DOMAIN
+                          );
+                          if (domainIndex !== -1 && domainIndex < urlParts.length - 1) {
+                            fileKey = urlParts.slice(domainIndex + 1).join('/');
+                          }
+                        }
+                      }
+                      
+                      // If we couldn't extract the key from URL, treat the fileId as the key
+                      if (!fileKey) {
+                        fileKey = fileId;
+                      }
+                      
+                      console.log(`Extracted path fileKey: ${fileKey} from fileId: ${fileId}`);
+                      
+                      // Validate the key format
+                      const allowedPrefixes = ['paths/', 'gallery/', 'organizations/'];
+                      const isValidKey = allowedPrefixes.some(prefix => fileKey.startsWith(prefix));
+                      
+                      if (isValidKey && fileKey) {
+                        await deleteFileFromR2(fileKey);
+                        pathFilesDeleted++;
+                        console.log(`Successfully deleted path asset: ${fileId} (key: ${fileKey})`);
+                      } else {
+                        console.warn(`Skipping deletion of invalid file key: ${fileKey} from URL: ${fileId}`);
+                      }
+                    } catch (assetDeleteError) {
+                      console.error('Error deleting path asset from R2:', assetDeleteError);
+                      // Continue with other assets even if one fails
+                    }
+                  }
+                }
+              }
+            }
+          } catch (parseError) {
+            console.error('Error parsing path content:', parseError);
+            // Continue with other paths even if one fails to parse
+          }
+        }
+      }
+    }
+
+    // Clean up any other organization-related files from R2
+    // This includes any files that might be stored in organizations/ folder
+    try {
+      // Note: R2 doesn't have a direct "list" operation in the S3 client
+      // We'll rely on the content parsing above to catch most files
+      // For any other files that might exist, they would need to be tracked
+      // in the database or cleaned up through other means
+      
+      // Additional cleanup: Check if there are any other organization assets
+      // that might not be referenced in walls/paths content
+      // This could include files uploaded directly to organizations/assets/
+      
+      console.log('Organization R2 cleanup completed');
+      console.log(`Deleted assets from ${walls?.length || 0} walls and ${paths?.length || 0} paths`);
+      console.log(`Total files deleted: ${wallFilesDeleted + pathFilesDeleted} (${wallFilesDeleted} from walls, ${pathFilesDeleted} from paths)`);
+    } catch (cleanupError) {
+      console.error('Error during R2 cleanup:', cleanupError);
+      // Continue with organization deletion even if R2 cleanup fails
+    }
+
     // If there is a Stripe subscription, cancel it first (at period end)
     const { data: orgForCancel } = await supabase
       .from('organization')

@@ -154,7 +154,7 @@ export function useUpdatePath() {
     })
 }
 
-export function useDeletePath() {
+export function useDeletePath(onSuccess?: () => void) {
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: async (pathId: string) => {
@@ -164,6 +164,11 @@ export function useDeletePath() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['paths'] })
+            if (onSuccess) onSuccess()
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.error || 'Failed to delete path')
+            if (onSuccess) onSuccess()
         },
     })
 }

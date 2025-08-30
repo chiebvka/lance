@@ -42,10 +42,9 @@ export async function GET(
         customer:customerId (id, name),
         organization:organizationId (id, name, email, logoUrl)
       `)
-      .eq('id', wallId)
-      .eq('state', 'published');
+      .eq('id', wallId);
 
-    // If token is provided, allow private walls
+    // If token is provided, allow access to private walls regardless of state
     if (token) {
       query = query.eq('token', token);
     } else {

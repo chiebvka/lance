@@ -95,6 +95,7 @@ export default function FeedbackSheet({ feedback }: Props) {
     } catch (error) {
       console.error('Error deleting feedback:', error);
       toast.error("Failed to delete feedback");
+      // Don't close the modal on error, let user try again
     }
   };
 
@@ -702,8 +703,13 @@ export default function FeedbackSheet({ feedback }: Props) {
                   <DropdownMenuItem 
                     onClick={() => setIsDeleteModalOpen(true)}
                     className="text-red-600"
+                    disabled={deleteFeedbackMutation.isPending}
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
+                    {deleteFeedbackMutation.isPending ? (
+                      <Bubbles className="w-4 h-4 mr-2 animate-spin [animation-duration:0.5s]" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
                     Delete
                   </DropdownMenuItem>
                 </>
@@ -888,7 +894,7 @@ export default function FeedbackSheet({ feedback }: Props) {
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
+        onClose={() => !deleteFeedbackMutation.isPending && setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteFeedback}
         title="Delete Feedback"
         itemName={feedback.name || feedback.id.slice(0, 8)}

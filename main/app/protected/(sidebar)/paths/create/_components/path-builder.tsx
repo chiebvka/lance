@@ -310,13 +310,13 @@ export default function PathBuilder() {
             <h1 className="text-base font-bold">Path Builder</h1>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={handleSaveDraft} disabled={saving || isLoadingCustomers || isLoadingProjects}>
+            <Button variant="ghost"  onClick={handleSaveDraft} disabled={saving || isLoadingCustomers || isLoadingProjects}>
               <Save className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setPreviewOpen(true)}>
+            <Button variant="ghost"  onClick={() => setPreviewOpen(true)}>
               <Eye className="h-4 w-4" />
             </Button>
-            <Button size="sm" onClick={() => setSendOpen(true)} disabled={isLoadingCustomers || isLoadingProjects}>
+            <Button  onClick={() => setSendOpen(true)} disabled={isLoadingCustomers || isLoadingProjects}>
               <Copy className="h-4 w-4 mr-2" />
               Publish Path
             </Button>
@@ -663,7 +663,7 @@ export default function PathBuilder() {
 
         {/* Publish Path Dialog */}
         <Dialog open={sendOpen} onOpenChange={setSendOpen}>
-          <DialogContent className="mx-4 max-w-lg">
+          <DialogContent className="md:mx-4 mx-auto max-w-lg">
             <DialogHeader>
               <DialogTitle>Publish Path</DialogTitle>
               <DialogDescription>Selecting a customer will email them a secure link to this path.</DialogDescription>

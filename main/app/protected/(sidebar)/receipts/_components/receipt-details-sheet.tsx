@@ -122,9 +122,11 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
     const handleDeleteReceipt = async () => {
         try {
         await deleteReceiptMutation.mutateAsync(receipt.id);
-        toast.success("Receipt deleted successfully!");
-        router.refresh();
         setIsDeleteModalOpen(false);
+        const params = new URLSearchParams(window.location.search);
+        params.delete('receiptId');
+        params.delete('type');
+        router.push(`${window.location.pathname}?${params.toString()}`);
         } catch (error) {
         console.error("Delete receipt error:", error);
         toast.error("Failed to delete receipt");
@@ -782,8 +784,13 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
                 <DropdownMenuItem 
                   onClick={() => setIsDeleteModalOpen(true)}
                   className="text-red-600"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
+                  disabled={deleteReceiptMutation.isPending}
+                  >
+                    {deleteReceiptMutation.isPending ? (
+                      <Bubbles className="w-4 h-4 mr-2 animate-spin [animation-duration:0.5s]" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
                   Delete
                 </DropdownMenuItem>
               </>
@@ -989,7 +996,7 @@ export default function ReceiptDetailsSheet({ receipt }: Props) {
     {/* Reminder Confirmation Modal */}
     <ReceiptConfirmModal
       isOpen={isReminderModalOpen}
-      onClose={() => setIsReminderModalOpen(false)}
+      onClose={() => !deleteReceiptMutation.isPending && setIsReminderModalOpen(false)}
       receiptId={receipt.id}
       receiptState={state}
       recipientEmail={receipt.recepientEmail ?? ''}

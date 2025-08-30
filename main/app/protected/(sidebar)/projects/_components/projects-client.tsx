@@ -26,7 +26,7 @@ import { columns } from "./columns"
 import ProjectForm, { ProjectFormRef } from './project-form'
 import EditProjectForm, { EditProjectFormRef } from './edit-project-form'
 import ProjectDetailsSheet from './project-details-sheet'
-import { Bubbles, Trash2, Save, ChevronDown } from "lucide-react"
+import { Bubbles, Trash2, Save, ChevronDown, Scroll } from "lucide-react"
 import { FilterTag } from '@/components/filtering/search-filter'
 import { 
   DropdownMenu,
@@ -314,7 +314,25 @@ export default function ProjectsClient({ initialProjects }: Props) {
     return projects.find(p => p.id === params.projectId)
   }, [projects, params.projectId])
 
-  const deleteProjectMutation = useDeleteProject();
+  // Check if we have any active search or filters
+  const hasActiveSearchOrFilters = useMemo(() => {
+    return params.query || 
+           activeFilters.state.length > 0 || 
+           activeFilters.paymentType.length > 0 || 
+           activeFilters.hasServiceAgreement.length > 0 || 
+           activeFilters.type.length > 0 ||
+           activeFilters.date;
+  }, [params.query, activeFilters]);
+
+  // Check if we should show empty state vs no results
+  const shouldShowEmptyState = useMemo(() => {
+    return projects.length === 0 && !hasActiveSearchOrFilters;
+  }, [projects.length, hasActiveSearchOrFilters]);
+
+  const deleteProjectMutation = useDeleteProject(() => {
+    // Close the delete modal when deletion completes (success or error)
+    setDeleteModalOpen(false)
+  });
 
   const table = useReactTable({
     data: filteredProjects,
@@ -688,7 +706,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
   // Update the event handlers to use the form ref
   const handleSaveDraft = () => {
     if (formRef.current) {
-      formRef.current.handleSubmit(false);
+      formRef.current.handleSaveDraft();
     }
   };
 
@@ -723,7 +741,8 @@ export default function ProjectsClient({ initialProjects }: Props) {
         toast.error(errorMessage);
       }
     }
-    setDeleteModalOpen(false)
+    // Don't close modal immediately - let the mutation handlers close it
+    // setDeleteModalOpen(false)
   }
 
   const handleSavingChange = (saving: boolean, action: 'draft' | 'project' = 'draft') => {
@@ -809,9 +828,9 @@ export default function ProjectsClient({ initialProjects }: Props) {
       <SheetClose asChild>
         <Button variant="ghost" onClick={handleCloseSheet}>Cancel</Button>
       </SheetClose>
-      <Button variant="outlinebrimary" onClick={handleEditSaveDraft} disabled={isSaving} className="px-3 sm:px-4">
+      <Button variant="outlinebrimary" onClick={handleEditSaveDraft} disabled={isSavingDraft || isCreatingProject} className="px-3 sm:px-4">
         <Save className="h-4 w-4 mr-2" />
-        {isSaving ?  (
+        {isSavingDraft ?  (
               <>
                 <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
                 Saving...
@@ -822,20 +841,20 @@ export default function ProjectsClient({ initialProjects }: Props) {
       <div className="inline-flex rounded-md shadow-sm">
         <Button
           onClick={() => handleEditPublishProject(false)}
-          disabled={!projectFormValid || isSaving}
+          disabled={!projectFormValid || isSavingDraft || isCreatingProject}
           className="rounded-r-none px-3 sm:px-4"
         >
-          {isSaving ? (
+          {isCreatingProject ? (
               <>
                 <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                Publishing...
+                Updating...
               </>
             ) : "Update Project"}
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              disabled={!projectFormValid || isSaving}
+              disabled={!projectFormValid || isSavingDraft || isCreatingProject}
               className="rounded-l-none border-l border-purple-700 px-3"
             >
               <span className="sr-only">Open options</span>
@@ -1053,7 +1072,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
                     onFormValidChange={setProjectFormValid}
                     onCustomerChange={setSelectedCustomer}
                     onProjectTypeChange={setProjectType}
-                    onSavingChange={setIsSaving}
+                    onSavingChange={handleSavingChange}
                   />
                 </div>
               )
@@ -1074,27 +1093,61 @@ export default function ProjectsClient({ initialProjects }: Props) {
         </div>
         {isHydrated ? (
           <>
-            <ScrollArea className="w-full">
-              <div className="min-w-[1100px]">
-                <DataTable 
-                  table={table} 
-                  onProjectSelect={(projectId: string) => {
-                    setParams({ projectId, type: 'details' });
-                  }} 
-                  searchQuery={params.query}
-                />
+            {shouldShowEmptyState ? (
+              // Empty state - no projects exist
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Scroll className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No projects yet</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  Get started by creating your first project. You can manage deliverables, 
+                  set payment milestones, and track project progress all in one place.
+                </p>
+                <Button onClick={() => closeRef.current?.click()}>
+                  Create your first project
+                </Button>
               </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-            <Pagination
-              currentPage={table.getState().pagination.pageIndex + 1}
-              totalPages={table.getPageCount()}
-              pageSize={table.getState().pagination.pageSize}
-              totalItems={table.getFilteredRowModel().rows.length}
-              onPageChange={page => table.setPageIndex(page - 1)}
-              onPageSizeChange={size => table.setPageSize(size)}
-              itemName="projects"
-            />
+            ) : filteredProjects.length === 0 ? (
+              // No results from search/filters
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Scroll className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No results found</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  No results for '{params.query || 'your search'}'. Try searching for projects by name, description, customer, or type.
+                </p>
+                <Button variant="outline" onClick={handleClearAllFilters}>
+                  Clear all filters
+                </Button>
+              </div>
+            ) : (
+              // Show project table
+              <>
+                <ScrollArea className="w-full">
+                  <div className="min-w-[1100px]">
+                    <DataTable 
+                      table={table} 
+                      onProjectSelect={(projectId: string) => {
+                        setParams({ projectId, type: 'details' });
+                      }} 
+                      searchQuery={params.query}
+                    />
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+                <Pagination
+                  currentPage={table.getState().pagination.pageIndex + 1}
+                  totalPages={table.getPageCount()}
+                  pageSize={table.getState().pagination.pageSize}
+                  totalItems={table.getFilteredRowModel().rows.length}
+                  onPageChange={page => table.setPageIndex(page - 1)}
+                  onPageSizeChange={size => table.setPageSize(size)}
+                  itemName="projects"
+                />
+              </>
+            )}
           </>
         ) : (
           <ProjectClientSkeleton />

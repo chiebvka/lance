@@ -6,7 +6,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import CreateSearchFilter from "@/components/general/create-search-filter"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
-import { Bubbles, Trash2 } from "lucide-react"
+import { Bubbles, Trash2, Scroll } from "lucide-react"
 import CustomerTable from './customer-table'
 import CustomerForm from './customer-form'
 import { FilterTag } from '@/components/filtering/search-filter'
@@ -18,7 +18,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu"
-import ConfirmModal from '@/components/modal/confirm-modal'
+import CustomerConfirmModal from './customer-confirm-modal'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -188,6 +188,16 @@ export default function CustomersClient() {
     return customers.find(c => c.id === selectedCustomerId)
   }, [customers, selectedCustomerId])
 
+  // Check if we have any active search or filters
+  const hasActiveSearchOrFilters = useMemo(() => {
+    return searchQuery || activeFilters.createdAt.length > 0 || activeFilters.rating.length > 0;
+  }, [searchQuery, activeFilters]);
+
+  // Check if we should show empty state vs no results
+  const shouldShowEmptyState = useMemo(() => {
+    return customers.length === 0 && !hasActiveSearchOrFilters;
+  }, [customers.length, hasActiveSearchOrFilters]);
+
   const deleteCustomerMutation = useMutation({
     mutationFn: async (customerId: string) => {
       return axios.delete(`/api/customers/${customerId}`);
@@ -195,6 +205,9 @@ export default function CustomersClient() {
     onSuccess: () => {
       toast.success("Customer deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      
+      // Close the delete modal
+      setDeleteModalOpen(false);
       
       const currentParams = new URLSearchParams(searchParams.toString());
       currentParams.delete('customerId');
@@ -205,6 +218,9 @@ export default function CustomersClient() {
       console.error("Delete customer error:", error.response?.data);
       const errorMessage = error.response?.data?.error || "Failed to delete customer";
       toast.error(errorMessage);
+      
+      // Close the delete modal on error too
+      setDeleteModalOpen(false);
     },
   });
 
@@ -341,7 +357,8 @@ export default function CustomersClient() {
     if (selectedCustomerId) {
       deleteCustomerMutation.mutate(selectedCustomerId)
     }
-    setDeleteModalOpen(false)
+    // Don't close modal immediately - let the mutation handlers close it
+    // setDeleteModalOpen(false)
   }
 
   const footer = (
@@ -500,12 +517,15 @@ export default function CustomersClient() {
         closeRef={closeRef}
       />
 
-      <ConfirmModal
+      <CustomerConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        itemName={customerBeingEdited?.name || "this customer"}
-        itemType="Customer"
+        customerName={customerBeingEdited?.name || "this customer"}
+        invoiceCount={customerBeingEdited?.invoiceCount || 0}
+        projectCount={customerBeingEdited?.projectCount || 0}
+        receiptCount={customerBeingEdited?.receiptCount || 0}
+        feedbackCount={customerBeingEdited?.feedbackCount || 0}
         isLoading={deleteCustomerMutation.isPending}
       />
 
@@ -546,10 +566,42 @@ export default function CustomersClient() {
       </Sheet>
 
       <div className="mt-6">
-        <CustomerTable 
-          customer={filteredCustomers} 
-          onCustomerSelect={handleCustomerSelect}
-        />
+        {shouldShowEmptyState ? (
+          // Empty state - no customers exist
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Scroll className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No customers yet</h3>
+            <p className="text-muted-foreground text-center max-w-md mb-6">
+              Get started by creating your first customer. You can add their contact information, 
+              track projects, and manage invoices all in one place.
+            </p>
+            <Button onClick={() => closeRef.current?.click()}>
+              Create your first customer
+            </Button>
+          </div>
+        ) : filteredCustomers.length === 0 ? (
+          // No results from search/filters
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Scroll className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No results found</h3>
+            <p className="text-muted-foreground text-center max-w-md mb-6">
+              No results for '{searchQuery || 'your search'}'. Try searching for customers by name or email address.
+            </p>
+            <Button variant="outline" onClick={handleClearAllFilters}>
+              Clear all filters
+            </Button>
+          </div>
+        ) : (
+          // Show customer table
+          <CustomerTable 
+            customer={filteredCustomers} 
+            onCustomerSelect={handleCustomerSelect}
+          />
+        )}
       </div>
     </>
   )

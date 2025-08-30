@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import customerSchema from "@/validation/customer";
 import { createClient } from "@/utils/supabase/server";
+import { ratelimit } from '@/utils/rateLimit';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -10,11 +11,38 @@ export async function POST(request: Request) {
     if (authError || !user) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for') ?? 
+      request.headers.get('x-real-ip') ?? 
+      '127.0.0.1';
+    const { success, limit, reset, remaining } = await ratelimit.limit(ip);
+
+    if (!success) {
+      return NextResponse.json(
+        { 
+          error: 'Too many requests. Please try again later.',
+          limit,
+          reset,
+          remaining
+        }, 
+        { status: 429 }
+      );
+    }
+
+    // Get user's profile to find their organization
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organizationId')
+      .eq('profile_id', user.id)
+      .single();
+
+    if (profileError || !profile?.organizationId) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
     
     const body = await request.json();
     const validatedFields = customerSchema.safeParse(body);
-
-    const profileId = user.id;
 
     if (!validatedFields.success) {
       return NextResponse.json(
@@ -25,7 +53,8 @@ export async function POST(request: Request) {
 
     const customerData = {
       ...validatedFields.data,
-      createdBy: profileId, // Ensure updated_at is set if not provided
+      createdBy: user.id,
+      organizationId: profile.organizationId,
     };
 
     const { data, error } = await supabase

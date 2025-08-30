@@ -27,7 +27,18 @@ export function SignupForm({
       toast.success(state.success);
     }
     if (state && "error" in state && state.error) {
-      toast.error(state.error);
+      // Check if it's a rate limit error and show appropriate message
+      if (state.error.includes("Too many")) {
+        toast.error(state.error, {
+          duration: 5000, // Show rate limit errors longer
+          action: {
+            label: "Got it",
+            onClick: () => toast.dismiss(),
+          },
+        });
+      } else {
+        toast.error(state.error);
+      }
     }
     // Potentially clear state here if desired, e.g., by calling a reset function passed from useFormState or setting a local state
   }, [state]);

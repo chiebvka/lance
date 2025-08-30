@@ -23,7 +23,7 @@ import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { columns } from "./columns"
 import ReceiptForm from './receipt-form'
-import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload } from "lucide-react"
+import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload, Scroll } from "lucide-react"
 import { FilterTag } from '@/components/filtering/search-filter'
 import { 
   DropdownMenu,
@@ -57,6 +57,7 @@ import EditReceipt, { EditReceiptRef } from './edit-receipt'
 import { generateReceiptPDFBlob, type ReceiptPDFData } from '@/utils/receipt-pdf'
 import JSZip from 'jszip';
 import { parseAsArrayOf, parseAsIsoDateTime, parseAsString, useQueryStates } from 'nuqs'; 
+import { usePathname, useSearchParams } from 'next/navigation';
 
 
 interface Props  {
@@ -66,6 +67,8 @@ interface Props  {
 
 export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const closeRef = useRef<HTMLButtonElement>(null);
   const editCloseRef = useRef<HTMLButtonElement>(null);
   const [filterTags, setFilterTags] = useState<FilterTag[]>([]);
@@ -162,6 +165,20 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
     isError, 
     error 
   } = useReceipts(initialReceipts);
+
+  // Check if we have any active search or filters
+  const hasActiveSearchOrFilters = useMemo(() => {
+    return params.query || 
+           activeFilters.state.length > 0 || 
+           activeFilters.creationMethod.length > 0 ||
+           activeFilters.issueDate ||
+           activeFilters.paymentDate;
+  }, [params.query, activeFilters]);
+
+  // Check if we should show empty state vs no results
+  const shouldShowEmptyState = useMemo(() => {
+    return receipts.length === 0 && !hasActiveSearchOrFilters;
+  }, [receipts.length, hasActiveSearchOrFilters]);
 
 
 
@@ -278,13 +295,9 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
     onSuccess: () => {
       toast.success("Receipt deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ['receipts'] });
-      setParams({ receiptId: null });
+      // setParams({ receiptId: null });
     },
-    onError: (error: any) => {
-      console.error("Delete receipt error:", error.response?.data);
-      const errorMessage = error.response?.data?.error || "Failed to delete receipt";
-      toast.error(errorMessage);
-    },
+
   });
 
   const table = useReactTable({
@@ -694,9 +707,22 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
 
   const handleConfirmDelete = () => {
     if (params.receiptId) {
-      deleteReceiptMutation.mutate(params.receiptId)
+      deleteReceiptMutation.mutate(params.receiptId, {
+        onSuccess: () => {
+          setDeleteModalOpen(false);
+          // Close the sheet by navigating back
+          setParams({ receiptId: null });
+        },
+        onError: (error: any) => {
+          console.error("Delete receipt error:", error.response?.data);
+          const errorMessage = error.response?.data?.error || "Failed to delete receipt";
+          toast.error(errorMessage);
+          // Don't close the modal on error, let user try again
+        }
+      });
+      // deleteReceiptMutation.mutate(params.receiptId)
     }
-    setDeleteModalOpen(false)
+    // setDeleteModalOpen(false)
   }
 
   const handleCustomerChange = (customer: any) => {
@@ -1091,7 +1117,7 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
 
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
+        onClose={() => !deleteReceiptMutation.isPending && setDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
         itemName={receiptBeingEdited?.receiptNumber || "this receipt"}
         itemType="Receipt"
@@ -1099,7 +1125,7 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
       />
 
       {/* Receipt Sheets */}
-      <Sheet open={!!params.receiptId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
+      <Sheet open={!!params.receiptId} onOpenChange={open => { if (!open && !deleteReceiptMutation.isPending) handleCloseSheet(); }}>
         <SheetContent 
           side="right" 
           bounce="right" 
@@ -1207,7 +1233,11 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
                     onClick={handleDeleteFromSheet}
                     disabled={deleteReceiptMutation.isPending}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleteReceiptMutation.isPending ? (
+                      <Bubbles className="h-4 w-4 mr-2 animate-spin [animation-duration:0.5s]" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
                     Delete Receipt
                   </Button>
                 )}
@@ -1242,25 +1272,59 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
         </div>
         {isHydrated ? (
           <>
-          <ScrollArea className='w-full'>
-            <div className="min-w-[1100px]">
-              <DataTable 
-                table={table} 
-                onReceiptSelect={handleReceiptSelect} 
-                searchQuery={searchQuery}
-              />
-            </div>
-            <ScrollBar orientation="horizontal" />
-           </ScrollArea>
-           <Pagination
-            currentPage={table.getState().pagination.pageIndex + 1}
-            totalPages={table.getPageCount()}
-            pageSize={table.getState().pagination.pageSize}
-            totalItems={table.getFilteredRowModel().rows.length}
-            onPageChange={page => table.setPageIndex(page - 1)}
-            onPageSizeChange={size => table.setPageSize(size)}
-            itemName="receipts"
-          />
+            {shouldShowEmptyState ? (
+              // Empty state - no receipts exist
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Scroll className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No receipts yet</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  Get started by creating your first receipt. You can track payments, 
+                  manage tax calculations, and generate professional receipts for your customers.
+                </p>
+                <Button onClick={() => closeRef.current?.click()}>
+                  Create your first receipt
+                </Button>
+              </div>
+            ) : filteredReceipts.length === 0 ? (
+              // No results from search/filters
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Scroll className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No results found</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  No results for '{params.query || 'your search'}'. Try searching for receipts by number, customer name, or amount.
+                </p>
+                <Button variant="outline" onClick={handleClearAllFilters}>
+                  Clear all filters
+                </Button>
+              </div>
+            ) : (
+              // Show receipt table
+              <>
+                <ScrollArea className='w-full'>
+                  <div className="min-w-[1100px]">
+                    <DataTable 
+                      table={table} 
+                      onReceiptSelect={handleReceiptSelect} 
+                      searchQuery={searchQuery}
+                    />
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+                <Pagination
+                  currentPage={table.getState().pagination.pageIndex + 1}
+                  totalPages={table.getPageCount()}
+                  pageSize={table.getState().pagination.pageSize}
+                  totalItems={table.getFilteredRowModel().rows.length}
+                  onPageChange={page => table.setPageIndex(page - 1)}
+                  onPageSizeChange={size => table.setPageSize(size)}
+                  itemName="receipts"
+                />
+              </>
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center h-full">

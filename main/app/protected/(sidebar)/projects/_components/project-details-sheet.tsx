@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { CalendarDays, ClipboardCopy, DollarSign, FileEdit, FileText, User, Tag, HardDriveDownload, Bell, ExternalLink, Grip, UserPlus, X, Ban, Check, Trash2, EyeOff, Loader2, Bubbles } from 'lucide-react'
 import { format, differenceInDays, isBefore } from 'date-fns'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -85,18 +85,23 @@ export default function ProjectDetailsSheet({ project }: Props) {
   const { data: customers = [] } = useCustomers()
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedAssignCustomerId, setSelectedAssignCustomerId] = useState<string | null>(null)
+
+
+
+  const [isActionLoading, setIsActionLoading] = useState(false)
+  const [currentAction, setCurrentAction] = useState<string>('')
   
   // Loading states for different actions
   const [isAssigning, setIsAssigning] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
-  const [isUnassigning, setIsUnassigning] = useState(false)
-  const [isUnassigningAndUnpublishing, setIsUnassigningAndUnpublishing] = useState(false)
-  const [isUnassigningFromCancelled, setIsUnassigningFromCancelled] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
-  const [isUnpublishing, setIsUnpublishing] = useState(false)
-  const [isUnpublishingAndUnassigning, setIsUnpublishingAndUnassigning] = useState(false)
-  const [isPublishing, setIsPublishing] = useState(false)
-  const [isRestarting, setIsRestarting] = useState(false)
+  // const [isUnassigning, setIsUnassigning] = useState(false)
+  // const [isUnassigningAndUnpublishing, setIsUnassigningAndUnpublishing] = useState(false)
+  // const [isUnassigningFromCancelled, setIsUnassigningFromCancelled] = useState(false)
+  // const [isCancelling, setIsCancelling] = useState(false)
+  // const [isUnpublishing, setIsUnpublishing] = useState(false)
+  // const [isUnpublishingAndUnassigning, setIsUnpublishingAndUnassigning] = useState(false)
+  // const [isPublishing, setIsPublishing] = useState(false)
+  // const [isRestarting, setIsRestarting] = useState(false)
 
   const state = (project.state ?? 'draft').toLowerCase()
   const status = (project.status ?? 'pending').toLowerCase()
@@ -160,7 +165,8 @@ export default function ProjectDetailsSheet({ project }: Props) {
   const updateMutation = useUpdateProject()
 
   const handleAssignToCustomer = (customerId: string, emailToCustomer: boolean) => {
-    setIsAssigning(true)
+    setIsActionLoading(true)
+    setCurrentAction(emailToCustomer ? 'Assigning and emailing...' : 'Assigning...')
     assignMutation.mutate({ projectId: project.id, customerId, emailToCustomer })
   }
 
@@ -171,7 +177,9 @@ export default function ProjectDetailsSheet({ project }: Props) {
       return
     }
 
-    setIsUpdating(true)
+    // setIsUpdating(true)
+    setIsActionLoading(true)
+    setCurrentAction(emailToCustomer ? 'Updating and emailing...' : 'Updating...')
     try {
       await updateMutation.mutateAsync({
         projectId: project.id,
@@ -187,12 +195,14 @@ export default function ProjectDetailsSheet({ project }: Props) {
       console.error('Error updating assigned customer:', error)
       toast.error(emailToCustomer ? "Failed to update and email customer" : "Failed to update project")
     } finally {
-      setIsUpdating(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   }
 
   const handlePublish = async (asPersonal: boolean, customerId?: string | null, emailToCustomer: boolean = false) => {
-    setIsPublishing(true);
+    setIsActionLoading(true);
+    setCurrentAction('Publishing...');
     try {
       const updateData: any = {
         action: "publish",
@@ -219,11 +229,15 @@ export default function ProjectDetailsSheet({ project }: Props) {
       console.error('Error publishing project:', error);
       toast.error("Failed to publish project");
     } finally {
-      setIsPublishing(false);
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handlePublishAndAssign = async (customerId: string, emailToCustomer: boolean = false) => {
+    setIsActionLoading(true);
+    setCurrentAction(emailToCustomer ? 'Publishing, assigning and emailing...' : 'Publishing and assigning...');
+
     try {
       const selectedCustomer = customers.find(c => c.id === customerId);
       if (!selectedCustomer) {
@@ -251,11 +265,15 @@ export default function ProjectDetailsSheet({ project }: Props) {
     } catch (error) {
       console.error('Error publishing and assigning project:', error);
       toast.error("Failed to publish and assign project");
+    } finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handleUnpublish = async () => {
-    setIsUnpublishing(true)
+    setIsActionLoading(true)
+    setCurrentAction('Unpublishing...')
     try {
       await unpublishMutation.mutateAsync(project.id);
       toast.success("Project unpublished successfully!");
@@ -263,12 +281,14 @@ export default function ProjectDetailsSheet({ project }: Props) {
       console.error('Error unpublishing project:', error);
       toast.error("Failed to unpublish project");
     } finally {
-      setIsUnpublishing(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   };
 
   const handleUnpublishAndUnassign = async () => {
-    setIsUnpublishingAndUnassigning(true)
+    setIsActionLoading(true)
+    setCurrentAction('Unpublishing and unassigning...')
     try {
       await unpublishMutation.mutateAsync(project.id);
       // After unpublishing, also unassign the customer
@@ -281,12 +301,14 @@ export default function ProjectDetailsSheet({ project }: Props) {
       console.error('Error unpublishing and unassigning project:', error);
       toast.error("Failed to unpublish and unassign project");
     } finally {
-      setIsUnpublishingAndUnassigning(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   };
 
   const handleUnassign = async ({ makePersonal = false, makeDraft = false }: { makePersonal?: boolean; makeDraft?: boolean }) => {
-    setIsUnassigning(true)
+    setIsActionLoading(true)
+    setCurrentAction('Unassigning...')
     try {
       await unassignMutation.mutateAsync({
         projectId: project.id,
@@ -296,12 +318,14 @@ export default function ProjectDetailsSheet({ project }: Props) {
     } catch (error) {
       console.error('Error unassigning project:', error);
     } finally {
-      setIsUnassigning(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   };
 
   const handleCancel = async () => {
-    setIsCancelling(true)
+    setIsActionLoading(true)
+    setCurrentAction('Cancelling...')
     try {
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'PATCH',
@@ -324,12 +348,14 @@ export default function ProjectDetailsSheet({ project }: Props) {
       console.error('Error cancelling project:', error);
       toast.error("Failed to cancel project");
     } finally {
-      setIsCancelling(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   };
 
   const handleRestart = async () => {
-    setIsRestarting(true)
+    setIsActionLoading(true)
+    setCurrentAction('Restarting...')
     try {
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'PATCH',
@@ -352,12 +378,14 @@ export default function ProjectDetailsSheet({ project }: Props) {
       console.error('Error restarting project:', error);
       toast.error("Failed to restart project");
     } finally {
-      setIsRestarting(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   };
 
   const handleUnassignFromCancelled = async () => {
-    setIsUnassigningFromCancelled(true)
+    setIsActionLoading(true)
+    setCurrentAction('Unassigning from cancelled project...')
     try {
       const response = await fetch(`/api/projects/${project.id}`, {
         method: 'PATCH',
@@ -380,7 +408,8 @@ export default function ProjectDetailsSheet({ project }: Props) {
       console.error('Error unassigning customer from cancelled project:', error);
       toast.error("Failed to unassign customer from cancelled project");
     } finally {
-      setIsUnassigningFromCancelled(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   };
 
@@ -388,36 +417,40 @@ export default function ProjectDetailsSheet({ project }: Props) {
   useEffect(() => {
     if (assignMutation.isSuccess) {
       setSelectedAssignCustomerId(null) // Reset selection after successful assignment
-      setIsAssigning(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   }, [assignMutation.isSuccess])
 
   // Add effect to handle unassign mutation success
   useEffect(() => {
     if (unassignMutation.isSuccess) {
-      setIsUnassigning(false)
-      setIsUnassigningAndUnpublishing(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   }, [unassignMutation.isSuccess])
 
   // Add effect to handle cancel mutation success
   useEffect(() => {
     if (cancelMutation.isSuccess) {
-      setIsCancelling(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   }, [cancelMutation.isSuccess])
 
   // Add effect to handle publish mutation success
   useEffect(() => {
     if (publishMutation.isSuccess) {
-      setIsPublishing(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   }, [publishMutation.isSuccess])
 
   // Add effect to handle unpublish mutation success
   useEffect(() => {
     if (unpublishMutation.isSuccess) {
-      setIsUnpublishing(false)
+      setIsActionLoading(false)
+      setCurrentAction('')
     }
   }, [unpublishMutation.isSuccess])
 
@@ -500,62 +533,48 @@ export default function ProjectDetailsSheet({ project }: Props) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 w-8 p-0 border rounded-none">
-                {(isPublishing || isUnpublishing || isUnpublishingAndUnassigning || isAssigning || isUpdating || isUnassigning || isUnassigningAndUnpublishing || isUnassigningFromCancelled || isCancelling || isRestarting || completeMutation.isPending) ? 
-                  <Loader2 size={12} className="animate-spin" /> : 
+              {isActionLoading ? (
+                  <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+                ) : (
                   <Grip size={12} />
-                }
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               {/* Publish options for draft projects */}
+              {/* Show loading state at the top when any action is loading */}
+              {isActionLoading && (
+                <div className="px-2 py-1.5 text-sm text-muted-foreground border-b">
+                  {currentAction}
+                </div>
+              )}
               {getAvailableActions(state, status, project.type || '').includes('publish_personal') && (
                 <>
                   {/* Show "Publish as is" if project has an assigned customer */}
                   {isAssigned && (
                     <DropdownMenuItem 
                       onClick={() => handlePublish(false)} 
-                      disabled={isPublishing}
+                      disabled={isActionLoading}
                     >
                       <UserPlus className="w-4 h-4 mr-2" />
-                      {isPublishing ? (
-                        <>
-                          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                          Publishing...
-                        </>
-                      ) : (
-                        'Publish as is'
-                      )}
+                      Publish as is
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem 
-                    onClick={() => handlePublish(true)} 
-                    disabled={isPublishing}
-                  >
+                    <DropdownMenuItem 
+                      onClick={() => handlePublish(true)} 
+                      disabled={isActionLoading}
+                    >
                     <User className="w-4 h-4 mr-2" />
-                    {isPublishing ? (
-                      <>
-                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                        Publishing...
-                      </>
-                    ) : (
-                      'Publish as Personal'
-                    )}
+                    Publish as Personal
                   </DropdownMenuItem>
                 </>
               )}
               
               {getAvailableActions(state, status, project.type || '').includes('publish_customer') && (
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={isPublishing}>
+                  <DropdownMenuSubTrigger disabled={isActionLoading}>
                     <UserPlus className="w-4 h-4 mr-2" />
-                    {isPublishing ? (
-                      <>
-                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                        Publishing...
-                      </>
-                    ) : (
-                      'Publish as Customer'
-                    )}
+                    Publish as Customer
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-72 p-0">
                     <Command>
@@ -563,13 +582,14 @@ export default function ProjectDetailsSheet({ project }: Props) {
                       <CommandList>
                         <CommandEmpty>No customers found.</CommandEmpty>
                         <CommandGroup>
-                          {customers.map((customer) => (
+                        {customers.map((customer) => (
                             <CommandItem
                               key={customer.id}
                               value={customer.name}
                               onSelect={() => {
                                 setSelectedAssignCustomerId(customer.id)
                               }}
+                              disabled={isActionLoading}
                             >
                               <Check
                                 className={`mr-2 h-4 w-4 ${selectedAssignCustomerId === customer.id ? "opacity-100" : "opacity-0"}`}
@@ -581,36 +601,20 @@ export default function ProjectDetailsSheet({ project }: Props) {
                       </CommandList>
                     </Command>
                     <div className="p-2 pt-1 flex gap-2 border-t">
-                      <Button
-                       
+                    <Button
                         className="flex-1"
-                        disabled={!selectedAssignCustomerId || isPublishing}
+                        disabled={!selectedAssignCustomerId || isActionLoading}
                         onClick={() => selectedAssignCustomerId && handlePublishAndAssign(selectedAssignCustomerId, false)}
                       >
-                        {isPublishing ? (
-                          <>
-                            <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                            Publishing...
-                          </>
-                        ) : (
-                          'Publish & Assign'
-                        )}
+                        Publish & Assign
                       </Button>
                       <Button
-                      
                         variant="outline"
                         className="flex-1"
-                        disabled={!selectedAssignCustomerId || isPublishing}
+                        disabled={!selectedAssignCustomerId || isActionLoading}
                         onClick={() => selectedAssignCustomerId && handlePublishAndAssign(selectedAssignCustomerId, true)}
                       >
-                        {isPublishing ? (
-                          <>
-                            <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                            Publishing...
-                          </>
-                        ) : (
-                          'Publish & Email'
-                        )}
+                        Publish & Email
                       </Button>
                     </div>
                   </DropdownMenuSubContent>
@@ -629,112 +633,71 @@ export default function ProjectDetailsSheet({ project }: Props) {
                   {/* For signed projects, show simple unpublish option */}
                   {status === 'signed' ? (
                     <>
-                      <DropdownMenuItem onClick={handleUnpublish} disabled={isUnpublishing}>
+                      <DropdownMenuItem onClick={handleUnpublish} disabled={isActionLoading}>
                         <EyeOff className="w-4 h-4 mr-2" />
-                        {isUnpublishing ? (
-                          <>
-                            <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                            Unpublishing...
-                          </>
-                        ) : (
-                          'Unpublish Project'
-                        )}
+                        Unpublish Project
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-red-600">
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete Project
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      {/* {getAvailableActions(state, status, project.type || '').includes('mark_completed') && (
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger disabled={completeMutation.isPending}>
-                            <Check className="w-4 h-4 mr-2" />
-                            {completeMutation.isPending ? (
-                              <>
-                                <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                                Marking as completed...
-                              </>
-                            ) : (
-                              'Mark as completed'
-                            )}
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent className="p-0 h-[350px] w-auto">
-                            <CalendarComponent
-                              mode="single"
-                              selected={new Date()}
-                              onSelect={(date) => { 
-                                if (date && !completeMutation.isPending) completeMutation.mutate({ projectId: project.id, completedDate: date }) 
-                              }}
-                              initialFocus
-                              className="h-full"
-                              disabled={completeMutation.isPending}
-                            />
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                      )} */}
                     </>
                   ) : (
                     /* For non-signed projects, show unpublish options with customer management */
                     <DropdownMenuSub>
-                      <DropdownMenuSubTrigger disabled={isUnpublishing || isUnpublishingAndUnassigning}>
-                        <EyeOff className="w-4 h-4 mr-2" />
-                        {isUnpublishing || isUnpublishingAndUnassigning ? (
-                          <>
-                            <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                            Unpublishing...
-                          </>
-                        ) : (
-                          'Unpublish'
-                        )}
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        <DropdownMenuItem 
-                          onClick={handleUnpublish}
-                          disabled={isUnpublishing || isUnpublishingAndUnassigning}
+                  {/* <DropdownMenuSubTrigger disabled={isActionLoading}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    {isAssigned ? 'Update assigned customer' : 'Assign to customer'}
+                  </DropdownMenuSubTrigger> */}
+                  <DropdownMenuSubContent className="w-64 h-[350px] p-0">
+                    <div className="flex flex-col h-full">
+                      <Command className="flex-1">
+                        <CommandInput placeholder="Search customers..." autoFocus disabled={isActionLoading} />
+                        <CommandList className="h-full max-h-none">
+                          <CommandEmpty>No customers found.</CommandEmpty>
+                          <CommandGroup>
+                          {customers.map((customer) => (
+                              <CommandItem
+                                key={customer.id}
+                                value={customer.name}
+                                onSelect={() => !isActionLoading && setSelectedAssignCustomerId(customer.id)}
+                                disabled={isActionLoading}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${
+                                    (selectedAssignCustomerId ?? project.customerId) === customer.id ? "opacity-100" : "opacity-0"
+                                  }`}
+                                />
+                                {customer.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                      <div className="p-2 pt-1 flex gap-2 border-t">
+                        <Button
+                          className="flex-1"
+                          disabled={!selectedAssignCustomerId || isActionLoading}
+                          onClick={() => selectedAssignCustomerId && (isAssigned ? handleUpdateAssignedCustomer(selectedAssignCustomerId, false) : handleAssignToCustomer(selectedAssignCustomerId, false))}
                         >
-                          Unpublish only
-                        </DropdownMenuItem>
-                        {isAssigned && (
-                          <DropdownMenuItem 
-                            onClick={handleUnpublishAndUnassign}
-                            disabled={isUnpublishing || isUnpublishingAndUnassigning}
-                          >
-                            Unpublish & Unassign
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
+                          {isAssigned ? 'Update only' : 'Assign only'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          disabled={!selectedAssignCustomerId || isActionLoading}
+                          onClick={() => selectedAssignCustomerId && (isAssigned ? handleUpdateAssignedCustomer(selectedAssignCustomerId, true) : handleAssignToCustomer(selectedAssignCustomerId, true))}
+                        >
+                          {isAssigned ? 'Update & Email' : 'Assign & Email'}
+                        </Button>
+                        </div>
+                    </div>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
                   )}
                 </>
               )}
-
-              {/* {getAvailableActions(state, status, project.type || '').includes('mark_completed') && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={completeMutation.isPending}>
-                    <Check className="w-4 h-4 mr-2" />
-                    {completeMutation.isPending ? (
-                      <>
-                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                        Marking as completed...
-                      </>
-                    ) : (
-                      'Mark as completed'
-                    )}
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="p-0 h-[350px] w-auto">
-                    <CalendarComponent
-                      mode="single"
-                      selected={new Date()}
-                      onSelect={(date) => { 
-                        if (date && !completeMutation.isPending) completeMutation.mutate({ projectId: project.id, completedDate: date }) 
-                      }}
-                      initialFocus
-                      className="h-full"
-                      disabled={completeMutation.isPending}
-                    />
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              )} */}
 
               {/* Assign to customer or update assigned customer (not for signed projects) */}
               {(getAvailableActions(state, status, project.type || '').includes('assign_customer') || 
@@ -818,34 +781,27 @@ export default function ProjectDetailsSheet({ project }: Props) {
               {/* Unassign customer (not for signed projects) */}
               {getAvailableActions(state, status, project.type || '').includes('unassign_customer') && 
                 status !== 'signed' && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={isUnassigning || isUnassigningAndUnpublishing}>
+                  <DropdownMenuSub>
+                  <DropdownMenuSubTrigger disabled={isActionLoading}>
                     <X className="w-4 h-4 mr-2" />
-                    {isUnassigning || isUnassigningAndUnpublishing ? (
-                      <>
-                        <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                        Unassigning...
-                      </>
-                    ) : (
-                      'Unassign Customer'
-                    )}
+                    Unassign Customer
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem 
                       onClick={() => handleUnassign({})} 
-                      disabled={isUnassigning || isUnassigningAndUnpublishing}
+                      disabled={isActionLoading}
                     >
                       Unassign only
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => handleUnassign({ makePersonal: true })} 
-                      disabled={isUnassigning || isUnassigningAndUnpublishing}
+                      disabled={isActionLoading}
                     >
                       Unassign & Make Personal
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => handleUnassign({ makeDraft: true })} 
-                      disabled={isUnassigning || isUnassigningAndUnpublishing}
+                      disabled={isActionLoading}
                     >
                       Unassign & Make Draft
                     </DropdownMenuItem>
@@ -856,62 +812,41 @@ export default function ProjectDetailsSheet({ project }: Props) {
               {/* Cancel project (not for signed projects) */}
               {getAvailableActions(state, status, project.type || '').includes('cancel') && 
                 status !== 'signed' && (
-                <DropdownMenuItem 
+                  <DropdownMenuItem 
                   onClick={handleCancel}
-                  disabled={isCancelling}
+                  disabled={isActionLoading}
                 >
                   <Ban className="w-4 h-4 mr-2" />
-                  {isCancelling ? (
-                    <>
-                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                      Cancelling...
-                    </>
-                  ) : (
-                    'Cancel'
-                  )}
-                </DropdownMenuItem>
+                  Cancel
+                </DropdownMenuItem> 
               )}
 
               {/* Unassign from cancelled state */}
-              {getAvailableActions(state, status, project.type || '').includes('unassign_from_cancelled') && (
-                <DropdownMenuItem 
-                  onClick={handleUnassignFromCancelled}
-                  disabled={isUnassigningFromCancelled}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  {isUnassigningFromCancelled ? (
-                    <>
-                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                      Unassigning...
-                    </>
-                  ) : (
-                    'Unassign Customer'
-                  )}
-                </DropdownMenuItem>
-              )}
+              {/* {getAvailableActions(state, status, project.type || '').includes('unassign_from_cancelled') && (
+                 <DropdownMenuItem 
+                 onClick={handleUnassignFromCancelled}
+                 disabled={isActionLoading}
+               >
+                 <X className="w-4 h-4 mr-2" />
+                 Unassign Customer
+               </DropdownMenuItem>
+              )} */}
 
               {/* Restart cancelled project */}
               {getAvailableActions(state, status, project.type || '').includes('restart') && (
-                <DropdownMenuItem 
+                  <DropdownMenuItem 
                   onClick={handleRestart}
-                  disabled={isRestarting}
+                  disabled={isActionLoading}
                 >
                   <Check className="w-4 h-4 mr-2" />
-                  {isRestarting ? (
-                    <>
-                      <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                      Restarting...
-                    </>
-                  ) : (
-                    'Restart Project'
-                  )}
+                  Restart Project
                 </DropdownMenuItem>
               )}
 
               {/* Delete project (not for signed projects) */}
               {getAvailableActions(state, status, project.type || '').includes('delete') && 
                 status !== 'signed' && (
-                <>
+                  <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)} className="text-red-600">
                     <Trash2 className="w-4 h-4 mr-2 " />

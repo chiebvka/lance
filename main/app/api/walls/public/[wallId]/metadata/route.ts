@@ -6,21 +6,33 @@ export async function GET(
   { params }: { params: Promise<{ wallId: string }> }
 ) {
   const { wallId } = await params;
+  const { searchParams } = new URL(request.url);
+  const token = searchParams.get('token');
   
   try {
     const supabase = await createClient();
 
-    const { data: wall, error: wallError } = await supabase
+    let query = supabase
       .from('walls')
       .select(`
         name,
         description,
         organizationName,
-        organization:organizationId (name)
+        organization:organizationId (name),
+        private,
+        token
       `)
-      .eq('id', wallId)
-      .eq('state', 'published')
-      .single();
+      .eq('id', wallId);
+
+    // If token is provided, allow access to private walls regardless of state
+    if (token) {
+      query = query.eq('token', token);
+    } else {
+      // If no token, only allow public walls
+      query = query.eq('private', false);
+    }
+
+    const { data: wall, error: wallError } = await query.single();
 
     if (wallError || !wall) {
       return NextResponse.json({ error: 'Wall not found' }, { status: 404 });

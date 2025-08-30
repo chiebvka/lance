@@ -244,91 +244,97 @@ export default function CreateSearchFilter({
             </SearchFilter>
           </div>
           
-          {/* Just plus icon on mobile */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button size="icon" className="flex-shrink-0"> 
-                <Plus className="h-4 w-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent 
-              side="right" 
-              bounce="right" 
-              withGap={false} 
-              className={cn("flex flex-col p-0", sheetContentClassName)}
-            >
-              {sheetHeader ? (
-                sheetHeader
-              ) : (
-                <SheetHeader className="p-4 border-b flex items-center justify-between">
-                  <SheetTitle>{sheetTitle}</SheetTitle>
-                  {sheetHeaderIcon && sheetHeaderDropdownOptions && (
-                    <DropdownMenu open={mobileDropdownOpen} onOpenChange={setMobileDropdownOpen}>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          {sheetHeaderIcon}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        {sheetHeaderDropdownOptions.map((option) => (
-                          <React.Fragment key={option.key}>
-                            {option.type === 'checkbox' && (
-                                                              <DropdownMenuCheckboxItem
-                                checked={option.checked}
-                                onCheckedChange={(checked) => {
-                                  onDropdownOptionChange?.(option.key, checked);
-                                  onLayoutOptionChange?.(option.key, checked);
-                                }}
-                              >
-                                {option.label}
-                              </DropdownMenuCheckboxItem>
-                            )}
-                            {option.type === 'submenu' && option.subItems && (
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>
+          {/* Mobile plus button - same logic as desktop */}
+          {onCreateClick ? (
+            <Button size="icon" className="flex-shrink-0" onClick={onCreateClick}> 
+              <Plus className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button size="icon" className="flex-shrink-0"> 
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent 
+                side="right" 
+                bounce="right" 
+                withGap={false} 
+                className={cn("flex flex-col p-0", sheetContentClassName)}
+              >
+                {sheetHeader ? (
+                  sheetHeader
+                ) : (
+                  <SheetHeader className="p-4 border-b flex items-center justify-between">
+                    <SheetTitle>{sheetTitle}</SheetTitle>
+                    {sheetHeaderIcon && sheetHeaderDropdownOptions && (
+                      <DropdownMenu open={mobileDropdownOpen} onOpenChange={setMobileDropdownOpen}>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            {sheetHeaderIcon}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          {sheetHeaderDropdownOptions.map((option) => (
+                            <React.Fragment key={option.key}>
+                              {option.type === 'checkbox' && (
+                                <DropdownMenuCheckboxItem
+                                  checked={option.checked}
+                                  onCheckedChange={(checked) => {
+                                    onDropdownOptionChange?.(option.key, checked);
+                                    onLayoutOptionChange?.(option.key, checked);
+                                  }}
+                                >
                                   {option.label}
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent>
-                                  {option.subItems.map((subItem) => (
-                                    <DropdownMenuCheckboxItem
-                                      key={subItem.key}
-                                      checked={subItem.checked}
-                                      onCheckedChange={(checked) => {
-                                        onDropdownOptionChange?.(subItem.key, checked);
-                                        onLayoutOptionChange?.(subItem.key, checked);
-                                      }}
-                                    >
-                                      {subItem.label}
-                                    </DropdownMenuCheckboxItem>
-                                  ))}
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
-                            )}
-                            {option.type === 'item' && (
-                              <DropdownMenuItem onClick={option.action}>
-                                {option.label}
-                              </DropdownMenuItem>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </SheetHeader>
-              )}
-              <ScrollArea className="flex-grow">
-                <div className="p-4">
-                  {sheetContent}
-                </div>
-              </ScrollArea>
-              {footer && (
-                <SheetFooter className="p-4 border-t">
-                  {footer}
-                </SheetFooter>
-              )}
-              <SheetClose ref={closeRef as React.RefObject<HTMLButtonElement>} className="hidden" />
-            </SheetContent>
-          </Sheet>
+                                </DropdownMenuCheckboxItem>
+                              )}
+                              {option.type === 'submenu' && option.subItems && (
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
+                                    {option.label}
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {option.subItems.map((subItem) => (
+                                      <DropdownMenuCheckboxItem
+                                        key={subItem.key}
+                                        checked={subItem.checked}
+                                        onCheckedChange={(checked) => {
+                                          onDropdownOptionChange?.(subItem.key, checked);
+                                          onLayoutOptionChange?.(subItem.key, checked);
+                                        }}
+                                      >
+                                        {subItem.label}
+                                      </DropdownMenuCheckboxItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              )}
+                              {option.type === 'item' && (
+                                <DropdownMenuItem onClick={option.action}>
+                                  {option.label}
+                                </DropdownMenuItem>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </SheetHeader>
+                )}
+                <ScrollArea className="flex-grow">
+                  <div className="p-4">
+                    {sheetContent}
+                  </div>
+                </ScrollArea>
+                {footer && (
+                  <SheetFooter className="p-4 border-t">
+                    {footer}
+                  </SheetFooter>
+                )}
+                <SheetClose ref={closeRef as React.RefObject<HTMLButtonElement>} className="hidden" />
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
     </div>

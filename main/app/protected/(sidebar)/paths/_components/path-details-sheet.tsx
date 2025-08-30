@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, Copy, Edit, ExternalLink, FileText, Mail, MessageSquareShare, User, Grip, Trash2, UserPlus, X, Check, Ban, Globe, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Copy, Edit, ExternalLink, FileText, Mail, MessageSquareShare, User, Grip, Trash2, UserPlus, X, Check, Ban, Globe, Lock, Eye, EyeOff, Loader2, Bubbles } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -68,6 +68,10 @@ export default function PathDetailsSheet({path}: Props) {
     // State for UI interactions
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedAssignCustomerId, setSelectedAssignCustomerId] = useState<string | null>(null);
+
+    const [isActionLoading, setIsActionLoading] = useState(false);
+    const [currentAction, setCurrentAction] = useState<string>('');
+      
       
   // Safety check for undefined wall
   if (!path) {
@@ -100,15 +104,21 @@ export default function PathDetailsSheet({path}: Props) {
     try {
       await deletePathMutation.mutateAsync(path.id);
       toast.success("Path deleted successfully!");
-      router.refresh();
       setIsDeleteModalOpen(false);
+      // Close the sheet by navigating back
+      router.refresh();
     } catch (error) {
       console.error("Delete path error:", error);
       toast.error("Failed to delete path");
+      // Don't close the modal on error, let user try again
     }
   };
 
   const handleUnassign = async ({ makePublic = false, unpublish = false }: { makePublic?: boolean; unpublish?: boolean }) => {
+
+    setIsActionLoading(true);
+    setCurrentAction(unpublish ? 'Unpublishing and unassigning...' : makePublic ? 'Unassigning and making public...' : 'Unassigning...');
+
     try {
       const updateData: any = {
         action: unpublish ? "unpublish" : "save_draft",
@@ -130,10 +140,16 @@ export default function PathDetailsSheet({path}: Props) {
     } catch (error) {
       console.error('Error unassigning path:', error);
       toast.error("Failed to unassign path");
+    } finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handlePublish = async (isPrivate: boolean, customerId?: string | null, emailToCustomer: boolean = false) => {
+    setIsActionLoading(true);
+    setCurrentAction(emailToCustomer ? 'Publishing and emailing...' : 'Publishing...');
+
     try {
       const updateData: any = {
         action: "publish",
@@ -159,10 +175,15 @@ export default function PathDetailsSheet({path}: Props) {
     } catch (error) {
       console.error('Error publishing path:', error);
       toast.error("Failed to publish path");
+    }  finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handleUnpublish = async () => {
+    setIsActionLoading(true);
+    setCurrentAction('Unpublishing...');
     try {
       const updateData: any = {
         action: "unpublish",
@@ -184,10 +205,15 @@ export default function PathDetailsSheet({path}: Props) {
     } catch (error) {
       console.error('Error unpublishing path:', error);
       toast.error("Failed to unpublish path");
+    }  finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handleTogglePrivacy = async (newPrivacy: boolean) => {
+    setIsActionLoading(true);
+    setCurrentAction(`Making ${newPrivacy ? 'private' : 'public'}...`);
     try {
       const updateData: any = {
         action: "save_draft",
@@ -212,6 +238,9 @@ export default function PathDetailsSheet({path}: Props) {
     } catch (error) {
       console.error('Error toggling path privacy:', error);
       toast.error("Failed to toggle path privacy");
+    }   finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
@@ -221,6 +250,9 @@ export default function PathDetailsSheet({path}: Props) {
       toast.error("Selected customer not found");
       return;
     }
+
+    setIsActionLoading(true);
+    setCurrentAction(emailToCustomer ? 'Assigning and emailing...' : 'Assigning...');
 
     try {
       const updateData: any = {
@@ -243,6 +275,9 @@ export default function PathDetailsSheet({path}: Props) {
     } catch (error) {
       console.error('Error assigning path to customer:', error);
       toast.error(emailToCustomer ? "Failed to assign and email customer" : "Failed to assign path to customer");
+    } finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
@@ -273,21 +308,34 @@ export default function PathDetailsSheet({path}: Props) {
         <span className="text-sm text-muted-foreground">Path-{path.id.slice(0, 4)}</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0 border rounded-none">
-              {updatePathMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Grip size={12} />}
+          <Button variant="outline" size="sm" className="h-8 w-8 p-0 border rounded-none">
+              {isActionLoading ? (
+                <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+              ) : (
+                <Grip size={12} />
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
+
+            {/* Show loading state at the top when any action is loading */}
+                  {isActionLoading && (
+              <div className="px-2 py-1.5 text-sm text-muted-foreground border-b">
+                {currentAction}
+              </div>
+            )}
+
+
             {/* Publish options for draft paths */}
             {availableActions.includes('publish_public') && (
-              <DropdownMenuItem onClick={() => handlePublish(false)} disabled={updatePathMutation.isPending}>
+              <DropdownMenuItem onClick={() => handlePublish(false)} disabled={isActionLoading}>
                 <Globe className="w-4 h-4 mr-2" />
                 Publish as Public
               </DropdownMenuItem>
             )}
             
             {availableActions.includes('publish_private') && (
-              <DropdownMenuItem onClick={() => handlePublish(true)} disabled={updatePathMutation.isPending}>
+              <DropdownMenuItem onClick={() => handlePublish(true)} disabled={isActionLoading}>
                 <Lock className="w-4 h-4 mr-2" />
                 Publish as Private
               </DropdownMenuItem>
@@ -295,7 +343,7 @@ export default function PathDetailsSheet({path}: Props) {
             
             {/* Unpublish for published paths */}
             {availableActions.includes('unpublish') && (
-              <DropdownMenuItem onClick={handleUnpublish} disabled={updatePathMutation.isPending}>
+              <DropdownMenuItem onClick={handleUnpublish} disabled={isActionLoading}>
                 <EyeOff className="w-4 h-4 mr-2" />
                 Unpublish
               </DropdownMenuItem>
@@ -303,7 +351,7 @@ export default function PathDetailsSheet({path}: Props) {
             
             {/* Privacy toggle for published paths */}
             {availableActions.includes('toggle_privacy') && (
-              <DropdownMenuItem onClick={() => handleTogglePrivacy(!path.private)} disabled={updatePathMutation.isPending}>
+              <DropdownMenuItem onClick={() => handleTogglePrivacy(!path.private)} disabled={isActionLoading}>
                 {path.private ? (
                   <>
                     <Globe className="w-4 h-4 mr-2" />
@@ -323,13 +371,13 @@ export default function PathDetailsSheet({path}: Props) {
             {isAssigned ? (
               <>
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={updatePathMutation.isPending}>
+                  <DropdownMenuSubTrigger disabled={isActionLoading}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Update assigned customer
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-72 p-0">
-                    <Command>
-                        <CommandInput placeholder="Search customers..." autoFocus />
+                  <Command>
+                        <CommandInput placeholder="Search customers..." autoFocus disabled={isActionLoading} />
                         <CommandList>
                         <CommandEmpty>No customers found.</CommandEmpty>
                         <CommandGroup>
@@ -340,8 +388,9 @@ export default function PathDetailsSheet({path}: Props) {
                                 onSelect={() => {
                                 setSelectedAssignCustomerId(customer.id)
                                 }}
+                                disabled={isActionLoading}
                             >
-                                <Check
+                                           <Check
                                 className={cn(
                                     "mr-2 h-4 w-4",
                                     (selectedAssignCustomerId ?? path.customerId) === customer.id ? "opacity-100" : "opacity-0"
@@ -354,37 +403,37 @@ export default function PathDetailsSheet({path}: Props) {
                         </CommandList>
                     </Command>
                     <div className="p-2 pt-1 flex gap-2 border-t">
-                        <Button 
+                      <Button 
                           className="flex-1"
-                          disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
+                          disabled={!selectedAssignCustomerId || isActionLoading}
                           onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
                         >
                             {path.customerId ? 'Update only' : 'Assign only'}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            className="flex-1"
-                            disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
-                            onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
-                        >
-                            {path.customerId ? 'Update & Email' : 'Assign & Email'}
-                        </Button>
+                      </Button>
+                      <Button
+                          variant="outline"
+                          className="flex-1"
+                          disabled={!selectedAssignCustomerId || isActionLoading}
+                          onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
+                      >
+                          {path.customerId ? 'Update & Email' : 'Assign & Email'}
+                      </Button>
                     </div>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
                 <DropdownMenuSub>
-                    <DropdownMenuSubTrigger disabled={updatePathMutation.isPending}>
+                   <DropdownMenuSubTrigger disabled={isActionLoading}>
                         <X className="w-4 h-4 mr-2" />
                         Unassign Customer
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
-                        <DropdownMenuItem onClick={() => handleUnassign({})} disabled={updatePathMutation.isPending}>
+                        <DropdownMenuItem onClick={() => handleUnassign({})} disabled={isActionLoading}>
                             Unassign (keep private)
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleUnassign({ makePublic: true })} disabled={updatePathMutation.isPending}>
+                        <DropdownMenuItem onClick={() => handleUnassign({ makePublic: true })} disabled={isActionLoading}>
                             Unassign & Make Public
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleUnassign({ unpublish: true })} disabled={updatePathMutation.isPending}>
+                        <DropdownMenuItem onClick={() => handleUnassign({ unpublish: true })} disabled={isActionLoading}>
                             Unassign & Unpublish
                         </DropdownMenuItem>
                     </DropdownMenuSubContent>
@@ -392,53 +441,54 @@ export default function PathDetailsSheet({path}: Props) {
               </>
             ) : (
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger disabled={updatePathMutation.isPending}>
+                <DropdownMenuSubTrigger disabled={isActionLoading}>
                   <UserPlus className="w-4 h-4 mr-2" />
                   Assign to customer
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="w-72 p-0">
-                    <Command>
-                        <CommandInput placeholder="Search customers..." autoFocus />
-                        <CommandList>
-                        <CommandEmpty>No customers found.</CommandEmpty>
-                        <CommandGroup>
-                            {customers.map((customer) => (
-                            <CommandItem
-                                key={customer.id}
-                                value={customer.name}
-                                onSelect={() => {
-                                setSelectedAssignCustomerId(customer.id)
-                                }}
-                            >
-                                <Check
-                                className={cn(
-                                    "mr-2 h-4 w-4",
-                                    (selectedAssignCustomerId ?? path.customerId) === customer.id ? "opacity-100" : "opacity-0"
-                                )}
-                                />
-                                {customer.name}
-                            </CommandItem>
-                            ))}
-                        </CommandGroup>
-                        </CommandList>
-                    </Command>
-                    <div className="p-2 pt-1 flex gap-2 border-t">
-                        <Button
+                  <Command>
+                          <CommandInput placeholder="Search customers..." autoFocus disabled={isActionLoading} />
+                          <CommandList>
+                          <CommandEmpty>No customers found.</CommandEmpty>
+                          <CommandGroup>
+                              {customers.map((customer) => (
+                              <CommandItem
+                                  key={customer.id}
+                                  value={customer.name}
+                                  onSelect={() => {
+                                  setSelectedAssignCustomerId(customer.id)
+                                  }}
+                                  disabled={isActionLoading}
+                              >
+                                                <Check
+                                  className={cn(
+                                      "mr-2 h-4 w-4",
+                                      (selectedAssignCustomerId ?? path.customerId) === customer.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                  />
+                                  {customer.name}
+                              </CommandItem>
+                              ))}
+                          </CommandGroup>
+                          </CommandList>
+                  </Command>
+                  <div className="p-2 pt-1 flex gap-2 border-t">
+                    <Button
                             className="flex-1"
-                            disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
+                            disabled={!selectedAssignCustomerId || isActionLoading}
                             onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
                         >
                             {path.customerId ? 'Update only' : 'Assign only'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          disabled={!selectedAssignCustomerId || updatePathMutation.isPending}
-                          onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
-                        >
-                            {path.customerId ? 'Update & Email' : 'Assign & Email'}
-                        </Button>
-                    </div>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      disabled={!selectedAssignCustomerId || isActionLoading}
+                      onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
+                    >
+                        {path.customerId ? 'Update & Email' : 'Assign & Email'}
+                    </Button>
+                  </div>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             )}
@@ -447,14 +497,18 @@ export default function PathDetailsSheet({path}: Props) {
             {availableActions.includes('delete') && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => setIsDeleteModalOpen(true)}
-                  className="text-red-600"
-                  disabled={updatePathMutation.isPending}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="text-red-600"
+                    disabled={isActionLoading || deletePathMutation.isPending}
+                  >
+                    {deletePathMutation.isPending ? (
+                      <Bubbles className="w-4 h-4 mr-2 animate-spin [animation-duration:0.5s]" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
+                    Delete
+                  </DropdownMenuItem>
               </>
             )}
           </DropdownMenuContent>
@@ -579,7 +633,7 @@ export default function PathDetailsSheet({path}: Props) {
     {/* Delete Confirmation Modal */}
     <ConfirmModal
       isOpen={isDeleteModalOpen}
-      onClose={() => setIsDeleteModalOpen(false)}
+      onClose={() => !deletePathMutation.isPending && setIsDeleteModalOpen(false)}
       onConfirm={handleDeletePath}
       title="Delete Path"
       itemName={path.name || path.id.slice(0, 8)}

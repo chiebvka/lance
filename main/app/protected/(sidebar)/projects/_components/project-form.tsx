@@ -161,6 +161,7 @@ interface ProjectFormProps {
 
 export interface ProjectFormRef {
   handleSubmit: (emailToCustomer: boolean) => Promise<void>
+  handleSaveDraft: () => Promise<void>
 }
 
 const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({ 
@@ -183,6 +184,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
   const handleCustomerCreated = () => {
     setCreateCustomerSheetOpen(false)
     toast.success("Customer created and list updated!")
+    // Don't close the project sheet or trigger project submission
   }
   const agreementTemplates = {
     standard: "<h2>Standard Service Agreement</h2><p>This document outlines the standard terms and conditions for our services, including scope, payment, and confidentiality.</p>",
@@ -572,6 +574,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
 
   const handleSaveDraft = async () => {
     try {
+      onSavingChange?.(true, 'draft')
       const values = form.getValues()
 
       const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => {
@@ -616,10 +619,12 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
         customFields: customFieldsData,
         isPublished: false,
         state: "draft" as const,
+        emailToCustomer: false, // Never send email for draft
       }
 
       await createProjectMutation.mutateAsync(projectData)
       toast.success("Draft saved successfully!")
+      onSuccess?.()
     } catch (error) {
       console.error("Error saving draft:", error)
       const errorDescription =
@@ -630,11 +635,14 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
         description: errorDescription,
       })
       throw error; // Re-throw to be handled by the parent
+    } finally {
+      onSavingChange?.(false, 'draft')
     }
   }
 
   const handlePublishProject = async (emailToCustomer = false) => {
     try {
+      onSavingChange?.(true, 'project')
       const values = form.getValues()
 
       const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => {
@@ -680,7 +688,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
         customFields: customFieldsData,
         isPublished: true,
         state: "published" as const,
-        emailToCustomer,
+        emailToCustomer, // Only send email if explicitly requested
       }
 
       await createProjectMutation.mutateAsync(projectData)
@@ -695,6 +703,8 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
         description: errorDescription,
       })
       throw error; // Re-throw to be handled by the parent
+    } finally {
+      onSavingChange?.(false, 'project')
     }
   }
 
@@ -826,95 +836,36 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
     }
 
     try {
-      onSavingChange?.(true, emailToCustomer ? 'project' : 'draft')
+      // Always use 'project' loading state since we're either publishing or publishing with email
+      onSavingChange?.(true, 'project')
       
       if (emailToCustomer) {
         await handlePublishProject(true)
       } else {
-        await handleSaveDraft()
+        // This is "Publish Project" button - always publish, never save as draft
+        await handlePublishProject(false)
       }
       
-      toast.success(emailToCustomer ? "Project published and sent to customer!" : "Draft saved successfully!")
+      toast.success(emailToCustomer ? "Project published and sent to customer!" : "Project published successfully!")
       onSuccess?.()
     } catch (error: any) {
       console.error("Project submission error:", error)
       toast.error(error.response?.data?.error || "Failed to save project")
     } finally {
-      onSavingChange?.(false, emailToCustomer ? 'project' : 'draft')
+      onSavingChange?.(false, 'project')
     }
   }
 
   // Expose handleSubmit method through ref
   useImperativeHandle(ref, () => ({
     handleSubmit: (emailToCustomer: boolean) => handleSubmitAction(emailToCustomer),
+    handleSaveDraft: () => handleSaveDraft(),
   }));
 
   const handleFormSubmit = async (data: ProjectFormValues) => {
-    try {
-      onLoadingChange?.(true);
-      const values = form.getValues()
-
-      const deliverablesData = (values.deliverablesEnabled ? getSortedDeliverables() : []).map(d => ({
-        ...d,
-        id: d.id || "",
-        name: d.name,
-        description: d.description,
-        dueDate: d.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 
-        position: d.position || 0,
-        isPublished: d.isPublished || false,
-      }));
-      
-      const milestonesData = (values.paymentStructure !== "noPayment" && values.paymentMilestones) 
-        ? values.paymentMilestones.map(m => ({
-            ...m,
-            id: m.id,
-            name: m.name,
-            percentage: m.percentage,
-            amount: m.amount,
-            dueDate: m.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          }))
-        : [];
-
-      const customFieldsData = (values.customFields?.name && values.customFields?.value) 
-        ? values.customFields 
-        : undefined;
-
-      const projectData = {
-        ...values,
-        startDate: values.startDate,
-        endDate: values.endDate,
-        deliverables: deliverablesData,
-        paymentMilestones: milestonesData,
-        customFields: customFieldsData,
-        isPublished: false,
-        state: "draft",
-      }
-
-      const response = await axios.post("/api/projects/create", projectData)
-
-      if (response.data.success) {
-        toast.success("Draft saved successfully!")
-        // Redirecting to the project's edit page to avoid duplicate key issues.
-        const projectId = response.data.data.id;
-        router.push(`/protected/projects/${projectId}`);
-      } else {
-        toast.error("Failed to save draft.", {
-          description: response.data.error || "An unknown error occurred.",
-        })
-      }
-      onSuccess?.(); // Call this on successful submission
-    } catch (error) {
-      console.error("Error saving draft:", error)
-      const errorDescription =
-        axios.isAxiosError(error) && error.response?.data?.error
-          ? error.response.data.error
-          : "An unexpected error occurred. Please try again."
-      toast.error("Error saving draft.", {
-        description: errorDescription,
-      })
-    } finally {
-      onLoadingChange?.(false);
-    }
+    // This function is no longer used - we use handleSubmitAction instead
+    // Keep it for backward compatibility but it shouldn't be called
+    console.warn("handleFormSubmit should not be called directly")
   };
 
   // Add effect to notify parent of form validity
@@ -1045,7 +996,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
 
 
           <Form {...form}>
-            <form id="project-form" onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+            <div className="space-y-6">
               {/* Accordion Sections */}
               <div className="space-y-4" >
                 {/* Customer Selection */}
@@ -2677,7 +2628,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
                   </Collapsible>
                 </Card>
               </div>
-            </form>
+            </div>
           </Form>
       </div>
     </div>

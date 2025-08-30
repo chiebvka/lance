@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import { toast } from 'sonner'
 
 export interface Invoice {
   id: string
@@ -160,7 +161,7 @@ export function useUpdateInvoice() {
   })
 }
 
-export function useDeleteInvoice() {
+export function useDeleteInvoice(onSuccess?: () => void) {
   const queryClient = useQueryClient()
   
   return useMutation({
@@ -171,6 +172,11 @@ export function useDeleteInvoice() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      if (onSuccess) onSuccess()
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to delete invoice')
+      if (onSuccess) onSuccess()
     },
   })
 }

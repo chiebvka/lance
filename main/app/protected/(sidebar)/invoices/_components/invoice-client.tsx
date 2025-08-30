@@ -23,7 +23,7 @@ import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { columns } from "./columns"
 import InvoiceForm from './invoice-form';
-import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload } from "lucide-react"
+import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload, Scroll } from "lucide-react"
 import { FilterTag } from '@/components/filtering/search-filter'
 import { 
   DropdownMenu,
@@ -67,6 +67,8 @@ interface Props {
 
 export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const closeRef = useRef<HTMLButtonElement>(null);
   const editCloseRef = useRef<HTMLButtonElement>(null);
   const [filterTags, setFilterTags] = useState<FilterTag[]>([]);
@@ -84,8 +86,8 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
   // Layout options state
   const [layoutOptions, setLayoutOptions] = useState({
     hasTax: true,
-    hasVat: true,
-    hasDiscount: true,
+    hasVat: false,
+    hasDiscount: false,
   });
 
   // Currency state
@@ -165,6 +167,20 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
     isError, 
     error 
   } = useInvoices(initialInvoices);
+
+  // Check if we have any active search or filters
+  const hasActiveSearchOrFilters = useMemo(() => {
+    return params.query || 
+           activeFilters.state.length > 0 || 
+           activeFilters.issueDate ||
+           activeFilters.paidOn ||
+           activeFilters.dueDate;
+  }, [params.query, activeFilters]);
+
+  // Check if we should show empty state vs no results
+  const shouldShowEmptyState = useMemo(() => {
+    return invoices.length === 0 && !hasActiveSearchOrFilters;
+  }, [invoices.length, hasActiveSearchOrFilters]);
 
   // --- Table State ---
   const [rowSelection, setRowSelection] = useState({})
@@ -283,12 +299,6 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
     onSuccess: () => {
       toast.success("Invoice deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      setParams({ invoiceId: null });
-    },
-    onError: (error: any) => {
-      console.error("Delete invoice error:", error.response?.data);
-      const errorMessage = error.response?.data?.error || "Failed to delete invoice";
-      toast.error(errorMessage);
     },
   });
 
@@ -718,9 +728,20 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
 
   const handleConfirmDelete = () => {
     if (params.invoiceId) {
-      deleteInvoiceMutation.mutate(params.invoiceId)
+      deleteInvoiceMutation.mutate(params.invoiceId, {
+        onSuccess: () => {
+          setDeleteModalOpen(false);
+          // Close the sheet by navigating back
+          setParams({ invoiceId: null });
+        },
+        onError: (error: any) => {
+          console.error("Delete invoice error:", error.response?.data);
+          const errorMessage = error.response?.data?.error || "Failed to delete invoice";
+          toast.error(errorMessage);
+          // Don't close the modal on error, let user try again
+        }
+      });
     }
-    setDeleteModalOpen(false)
   }
 
   const handleCustomerChange = (customer: any) => {
@@ -850,6 +871,7 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
             <DropdownMenuItem
               onClick={() => handleCreateInvoiceClick(true)}
               disabled={!selectedCustomer}
+              className={!selectedCustomer ? "opacity-50 cursor-not-allowed" : ""}
             >
               Create & Email to Customer
             </DropdownMenuItem>
@@ -902,6 +924,7 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
             <DropdownMenuItem
               onClick={() => handleEditInvoiceClick(true)}
               disabled={!invoiceBeingEdited?.customerId}
+              className={!invoiceBeingEdited?.customerId ? "opacity-50 cursor-not-allowed" : ""}
             >
               Update & Email to Customer
             </DropdownMenuItem>
@@ -1113,7 +1136,7 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
 
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
+        onClose={() => !deleteInvoiceMutation.isPending && setDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
         itemName={invoiceBeingEdited?.invoiceNumber || "this invoice"}
         itemType="Invoice"
@@ -1121,7 +1144,7 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
       />
 
       {/* Invoice Sheets */}
-      <Sheet open={!!params.invoiceId} onOpenChange={open => { if (!open) handleCloseSheet(); }}>
+      <Sheet open={!!params.invoiceId} onOpenChange={open => { if (!open && !deleteInvoiceMutation.isPending) handleCloseSheet(); }}>
         <SheetContent 
           side="right" 
           bounce="right" 
@@ -1230,7 +1253,11 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
                     onClick={handleDeleteFromSheet}
                     disabled={deleteInvoiceMutation.isPending}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleteInvoiceMutation.isPending ? (
+                      <Bubbles className="h-4 w-4 mr-2 animate-spin [animation-duration:0.5s]" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
                     Delete Invoice
                   </Button>
                 )}
@@ -1265,25 +1292,59 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
         </div>
         {isHydrated ? (
           <>
-           <ScrollArea className='w-full'>
-            <div className="min-w-[1100px]">
-              <DataTable 
-                table={table} 
-                onInvoiceSelect={handleInvoiceSelect} 
-                searchQuery={searchQuery}
-              />
-            </div>
-            <ScrollBar orientation="horizontal" />
-           </ScrollArea>
-           <Pagination
-              currentPage={table.getState().pagination.pageIndex + 1}
-              totalPages={table.getPageCount()}
-              pageSize={table.getState().pagination.pageSize}
-              totalItems={table.getFilteredRowModel().rows.length}
-              onPageChange={page => table.setPageIndex(page - 1)}
-              onPageSizeChange={size => table.setPageSize(size)}
-              itemName="invoices"
-            />
+            {shouldShowEmptyState ? (
+              // Empty state - no invoices exist
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Scroll className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No invoices yet</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  Get started by creating your first invoice. You can manage payment terms, 
+                  track due dates, and send professional invoices to your customers.
+                </p>
+                <Button onClick={() => closeRef.current?.click()}>
+                  Create your first invoice
+                </Button>
+              </div>
+            ) : filteredInvoices.length === 0 ? (
+              // No results from search/filters
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Scroll className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No results found</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  No results for '{params.query || 'your search'}'. Try searching for invoices by number, customer name, or amount.
+                </p>
+                <Button variant="outline" onClick={handleClearAllFilters}>
+                  Clear all filters
+                </Button>
+              </div>
+            ) : (
+              // Show invoice table
+              <>
+                <ScrollArea className='w-full'>
+                  <div className="min-w-[1100px]">
+                    <DataTable 
+                      table={table} 
+                      onInvoiceSelect={handleInvoiceSelect} 
+                      searchQuery={searchQuery}
+                    />
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+                <Pagination
+                  currentPage={table.getState().pagination.pageIndex + 1}
+                  totalPages={table.getPageCount()}
+                  pageSize={table.getState().pagination.pageSize}
+                  totalItems={table.getFilteredRowModel().rows.length}
+                  onPageChange={page => table.setPageIndex(page - 1)}
+                  onPageSizeChange={size => table.setPageSize(size)}
+                  itemName="invoices"
+                />
+              </>
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center h-full">

@@ -18,6 +18,16 @@ export interface Organization {
   feedbackNotifications: boolean | null
 }
 
+export interface OrganizationCounts {
+  customerCount: number
+  projectCount: number
+  invoiceCount: number
+  receiptCount: number
+  feedbackCount: number
+  wallCount: number
+  pathCount: number
+}
+
 export async function fetchOrganization(): Promise<Organization> {
   const { data } = await axios.get<{ success: boolean; organization: Organization }>('/api/organization')
   if (!data.success) throw new Error('Error fetching organization')
@@ -179,6 +189,20 @@ export function useDeleteOrganization() {
       const { data } = await axios.delete(`/api/organization/${org.id}`)
       return data
     },
+  })
+}
+
+export async function fetchOrganizationCounts(organizationId: string): Promise<OrganizationCounts> {
+  const { data } = await axios.get<{ success: boolean; counts: OrganizationCounts }>(`/api/organization/${organizationId}/counts`)
+  if (!data.success) throw new Error('Error fetching organization counts')
+  return data.counts
+}
+
+export function useOrganizationCounts(organizationId: string) {
+  return useQuery<OrganizationCounts>({
+    queryKey: ['organization', organizationId, 'counts'],
+    queryFn: () => fetchOrganizationCounts(organizationId),
+    enabled: !!organizationId,
   })
 }
 

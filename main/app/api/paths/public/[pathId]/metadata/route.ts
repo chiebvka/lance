@@ -6,15 +6,24 @@ export async function GET(
   { params }: { params: { pathId: string } }
 ) {
   const { pathId } = params
+  const token = req.nextUrl.searchParams.get('token')
   const supabase = await createClient()
 
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('paths')
-      .select('name, description, organizationName')
+      .select('name, description, organizationName, private, token')
       .eq('id', pathId)
-      .eq('state', 'published')
-      .single()
+
+    // If token is provided, allow access to private paths regardless of state
+    if (token) {
+      query = query.eq('token', token)
+    } else {
+      // If no token, only allow public paths
+      query = query.eq('private', false)
+    }
+
+    const { data, error } = await query.single()
 
     if (error || !data) {
       return NextResponse.json({ success: false, error: 'Metadata not found' }, { status: 404 })

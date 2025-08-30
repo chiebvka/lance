@@ -149,7 +149,7 @@ export function useUpdateWall() {
     })
 }
 
-export function useDeleteWall() {
+export function useDeleteWall(onSuccess?: () => void) {
     const queryClient = useQueryClient()
     
     return useMutation({
@@ -161,6 +161,11 @@ export function useDeleteWall() {
 
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['walls'] })
+            if (onSuccess) onSuccess()
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.error || 'Failed to delete wall')
+            if (onSuccess) onSuccess()
         },
     })
 }

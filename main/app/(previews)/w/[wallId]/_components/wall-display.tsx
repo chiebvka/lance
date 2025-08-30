@@ -38,6 +38,7 @@ interface Wall {
 }
 
 interface Props {
+  state: string
   wall: Wall
     /** set true to hide section headers entirely */
     hideSectionHeaders?: boolean
@@ -62,7 +63,7 @@ const SECTION_TITLES: Partial<Record<BlockType, string>> = {
 
 
 
-export default function WallDisplay({ wall, hideSectionHeaders = false }: Props) {
+export default function WallDisplay({ wall, hideSectionHeaders = false, state }: Props) {
   const renderBlock = (block: Block) => {
     if (!block.visible && block.visible !== undefined) return null
 
@@ -462,8 +463,8 @@ export default function WallDisplay({ wall, hideSectionHeaders = false }: Props)
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge className= 'bg-green-500 text-green-100 border-green-300 text-xs md:text-sm'>
-                  Active
+                <Badge className= {`${state === 'draft' ? 'bg-yellow-500 text-yellow-100 border-yellow-300' : 'bg-green-500 text-green-100 border-green-300'} text-xs md:text-sm`}>
+                  {state === 'draft' ? 'Draft' : 'Published'}
                 </Badge>
                 <Badge variant="secondary" className={`bg-white/20 text-white border-white/30 text-xs md:text-sm`}>
                   Updated: {wall?.updatedAt ? 

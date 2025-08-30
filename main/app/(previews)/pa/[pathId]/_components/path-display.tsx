@@ -19,9 +19,10 @@ interface PathEntryDisplay {
 
 interface PathDisplayProps {
   path: Path
+  state: string
 }
 
-export default function PathDisplay({ path }: PathDisplayProps) {
+export default function PathDisplay({ path, state }: PathDisplayProps) {
   const organizationLogoUrl = path.organizationLogoUrl || path.organizationLogo || "/placeholder.svg"
   const organizationName = path.organizationNameFromOrg || path.organizationName || "Organization"
   const entries = path.content?.entries || []
@@ -70,8 +71,12 @@ export default function PathDisplay({ path }: PathDisplayProps) {
                     </div>
               </div>
               <div className="flex items-center gap-2">
-                  <Badge className= 'bg-green-500 text-green-100 border-green-300 text-xs md:text-sm'>
-                    Active
+                  <Badge className={`text-xs md:text-sm ${
+                    state === 'draft' 
+                      ? 'bg-yellow-500 text-yellow-100 border-yellow-300' 
+                      : 'bg-green-500 text-green-100 border-green-300'
+                  }`}>
+                    {state === 'draft' ? 'Draft' : 'Published'}
                   </Badge>
                   <Badge variant="secondary" className={`bg-white/20 text-white border-white/30 text-xs md:text-sm`}>
                     Updated: {path?.updatedAt ? new Date(path?.updatedAt).toLocaleDateString() : new Date(path?.created_at).toLocaleDateString()}

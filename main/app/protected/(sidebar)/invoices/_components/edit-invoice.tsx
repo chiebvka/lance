@@ -105,7 +105,11 @@ const EditInvoice = forwardRef<EditInvoiceRef, Props>(({
       if (invoice.dueDate) setDueDate(new Date(invoice.dueDate))
       
       // Set customer
-      setSelectedCustomer(invoice.customerId)
+      // Handle both possible formats: string ID or object with id property
+      const customerId = typeof invoice.customerId === 'string' 
+        ? invoice.customerId 
+        : invoice.customerId?.id || null
+      setSelectedCustomer(customerId)
       
       // Set organization email
       setFromEmail(invoice.organizationEmail || userEmail || organization?.email || '')
@@ -211,6 +215,8 @@ const EditInvoice = forwardRef<EditInvoiceRef, Props>(({
 
   // Get selected customer data
   const selectedCustomerData = customers.find(c => c.id === selectedCustomer)
+  
+
 
   // Handle form submission
   const handleSubmit = async (emailToCustomer = false) => {
@@ -614,7 +620,7 @@ const EditInvoice = forwardRef<EditInvoiceRef, Props>(({
                               : invoice
                           ))}
                           placeholder="Enter description..."
-                          className='w-full px-2 py-1 border text-sm'
+                          className='w-full px-2 py-1 border md:text-sm text-xs'
                         />
                       </div>
                       
@@ -635,7 +641,7 @@ const EditInvoice = forwardRef<EditInvoiceRef, Props>(({
                             type="number"
                             value={item.quantity || ''}
                             onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 0)}
-                            className="w-12 text-center "
+                            className="w-12 text-center md:text-sm text-xs"
                             min="0"
                           />
                           <Button
@@ -657,15 +663,18 @@ const EditInvoice = forwardRef<EditInvoiceRef, Props>(({
                           value={item.price || ''}
                           onChange={(e) => handlePriceChange(item.id, parseFloat(e.target.value) || 0)}
                           placeholder="0.00"
-                          className='w-24 px-2 py-1 border text-sm'
+                          className='w-24 px-2 py-1 border md:text-sm text-xs'
                           min="0"
                           step="0.01"
                         />
                       </div>
                       
                       {/* Total */}
-                      <div className='col-span-2 text-sm font-medium'>
+                      <div className='col-span-2 md:text-sm hidden md:block font-medium'>
                         {selectedCurrency.symbol}{item.total.toFixed(2)}
+                      </div>
+                      <div className='md:hidden col-span-2 md:text-sm text-xs font-medium'>
+                        {item.total.toFixed(2)}
                       </div>
                       
                       {/* Delete Button */}

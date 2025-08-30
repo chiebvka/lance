@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createClient } from "@/utils/supabase/server";
+import { ratelimit } from "@/utils/rateLimit";
 
 const s3Client = new S3Client({
   region: "auto",
@@ -21,6 +22,23 @@ export async function POST(req: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    // Rate limiting by IP
+    const ip = req.headers.get('x-forwarded-for') ?? 
+      req.headers.get('x-real-ip') ?? 
+      '127.0.0.1';
+    const { success, limit, reset, remaining } = await ratelimit.limit(ip);
+
+    if (!success) {
+      return NextResponse.json(
+        { 
+          error: 'Too many requests. Please try again later.',
+          limit,
+          reset,
+          remaining
+        }, 
+        { status: 429 }
+      );
     }
     
     try {

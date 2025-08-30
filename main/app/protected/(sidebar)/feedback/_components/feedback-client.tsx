@@ -20,7 +20,7 @@ import CreateSearchFilter from "@/components/general/create-search-filter"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet"
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Bubbles, Trash2, Save, ChevronDown } from "lucide-react";
+import { Bubbles, Trash2, Save, ChevronDown, Scroll } from "lucide-react";
 import { 
     DropdownMenu,
     DropdownMenuContent,
@@ -155,6 +155,20 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
     error 
   } = useFeedbacks(initialFeedbacks);
 
+  // Check if we have any active search or filters
+  const hasActiveSearchOrFilters = useMemo(() => {
+    return params.query || 
+           activeFilters.state.length > 0 || 
+           activeFilters.sentAt ||
+           activeFilters.filledOn ||
+           activeFilters.dueDate;
+  }, [params.query, activeFilters]);
+
+  // Check if we should show empty state vs no results
+  const shouldShowEmptyState = useMemo(() => {
+    return feedbacks.length === 0 && !hasActiveSearchOrFilters;
+  }, [feedbacks.length, hasActiveSearchOrFilters]);
+
   // --- Table State ---
   const [rowSelection, setRowSelection] = useState({})
 
@@ -277,19 +291,6 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
     onSuccess: () => {
       toast.success("Feedback deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ['feedbacks'] });
-
-      const currentParams = new URLSearchParams(searchParams.toString());
-      currentParams.delete('feedbackId');
-      const newUrl = currentParams.toString() ? `${pathname}?${currentParams.toString()}` : pathname;
-      router.replace(newUrl);
-      setSelectedFeedbackId(null);
-
-      router.refresh && router.refresh();
-    },
-    onError: (error: any) => {
-      console.error("Delete feedback error:", error.response?.data);
-      const errorMessage = error.response?.data?.error || "Failed to delete feedback";
-      toast.error(errorMessage);
     },
   });
 
@@ -450,9 +451,28 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
 
   const handleConfirmDelete = () => {
     if (params.feedbackId) {
-      deleteFeedbackMutation.mutate(params.feedbackId)
+      deleteFeedbackMutation.mutate(params.feedbackId, {
+        onSuccess: () => {
+          setDeleteModalOpen(false);
+          // Invalidate queries to refresh the data
+          queryClient.invalidateQueries({ queryKey: ['feedbacks'] });
+          // Close the sheet by navigating back
+          const currentParams = new URLSearchParams(searchParams.toString());
+          currentParams.delete('feedbackId');
+          currentParams.delete('type');
+          const newUrl = currentParams.toString() ? `${pathname}?${currentParams.toString()}` : pathname;
+          router.replace(newUrl);
+          setSelectedFeedbackId(null);
+          router.refresh && router.refresh();
+        },
+        onError: (error: any) => {
+          console.error("Delete feedback error:", error.response?.data);
+          const errorMessage = error.response?.data?.error || "Failed to delete feedback";
+          toast.error(errorMessage);
+          // Don't close the modal on error, let user try again
+        }
+      });
     }
-    setDeleteModalOpen(false)
   }
 
   const filterContent = (
@@ -793,7 +813,7 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
 
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
+        onClose={() => !deleteFeedbackMutation.isPending && setDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
         itemName={feedbackBeingEdited?.name || "This Feedback"}
         itemType="Feedback"
@@ -803,7 +823,7 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
       <Sheet
         key={params.feedbackId}
         open={!!params.feedbackId}
-        onOpenChange={open => { if (!open) handleCloseSheet(); }}
+        onOpenChange={open => { if (!open && !deleteFeedbackMutation.isPending) handleCloseSheet(); }}
       >
         <SheetContent 
           side="right" 
@@ -828,7 +848,11 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
                   onClick={handleDeleteFromSheet}
                   disabled={deleteFeedbackMutation.isPending}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleteFeedbackMutation.isPending ? (
+                    <Bubbles className="h-4 w-4 mr-2 animate-spin [animation-duration:0.5s]" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
                   Delete Feedback
                 </Button>
               )}
@@ -840,7 +864,11 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
                     onClick={handleDeleteFromSheet}
                     disabled={deleteFeedbackMutation.isPending}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleteFeedbackMutation.isPending ? (
+                      <Bubbles className="h-4 w-4 mr-2 animate-spin [animation-duration:0.5s]" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
                     Delete Feedback
                   </Button>
                 )}
@@ -868,25 +896,59 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
         </div>
         {isHydrated ? (
           <>
-          <ScrollArea className='w-full'>
-            <div className="min-w-[1100px]">
-              <DataTable 
-                table={table} 
-                onFeedbackSelect={handleFeedbackSelect} 
-                searchQuery={searchQuery}
-              />
-            </div>
-            <ScrollBar orientation="horizontal" />
-           </ScrollArea>
-           <Pagination
-              currentPage={table.getState().pagination.pageIndex + 1}
-              totalPages={table.getPageCount()}
-              pageSize={table.getState().pagination.pageSize}
-              totalItems={table.getFilteredRowModel().rows.length}
-              onPageChange={page => table.setPageIndex(page - 1)}
-              onPageSizeChange={size => table.setPageSize(size)}
-              itemName="feedbacks"
-            />
+            {shouldShowEmptyState ? (
+              // Empty state - no feedbacks exist
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Scroll className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No feedback forms yet</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  Get started by creating your first feedback form. You can collect customer insights, 
+                  gather project feedback, and improve your services based on responses.
+                </p>
+                <Button onClick={() => router.push('/protected/feedback/create')}>
+                  Create your first feedback form
+                </Button>
+              </div>
+            ) : filteredFeedbacks.length === 0 ? (
+              // No results from search/filters
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Scroll className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No results found</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  No results for '{params.query || 'your search'}'. Try searching for feedback forms by name, recipient, or status.
+                </p>
+                <Button variant="outline" onClick={handleClearAllFilters}>
+                  Clear all filters
+                </Button>
+              </div>
+            ) : (
+              // Show feedback table
+              <>
+                <ScrollArea className='w-full'>
+                  <div className="min-w-[1100px]">
+                    <DataTable 
+                      table={table} 
+                      onFeedbackSelect={handleFeedbackSelect} 
+                      searchQuery={searchQuery}
+                    />
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+                <Pagination
+                  currentPage={table.getState().pagination.pageIndex + 1}
+                  totalPages={table.getPageCount()}
+                  pageSize={table.getState().pagination.pageSize}
+                  totalItems={table.getFilteredRowModel().rows.length}
+                  onPageChange={page => table.setPageIndex(page - 1)}
+                  onPageSizeChange={size => table.setPageSize(size)}
+                  itemName="feedbacks"
+                />
+              </>
+            )}
           </>
         ) : (
           <ProjectClientSkeleton />

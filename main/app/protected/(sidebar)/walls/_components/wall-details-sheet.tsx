@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Clock, Copy, Edit, ExternalLink, FileText, Mail, MessageSquareShare, User, Grip, Trash2, UserPlus, X, Check, Ban, Globe, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Copy, Edit, ExternalLink, FileText, Mail, MessageSquareShare, User, Grip, Trash2, UserPlus, X, Check, Ban, Globe, Lock, Eye, EyeOff, Loader2, Bubbles } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -67,6 +67,10 @@ export default function WallDetailsSheet({ wall  }: Props) {
   // State for UI interactions
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedAssignCustomerId, setSelectedAssignCustomerId] = useState<string | null>(null);
+
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const [currentAction, setCurrentAction] = useState<string>('');
+  
   
   // Safety check for undefined wall
   if (!wall) {
@@ -101,15 +105,19 @@ export default function WallDetailsSheet({ wall  }: Props) {
     try {
       await deleteWallMutation.mutateAsync(wall.id);
       toast.success("Wall deleted successfully!");
-      router.refresh();
       setIsDeleteModalOpen(false);
+      // Close the sheet by navigating back
+      router.refresh();
     } catch (error) {
       console.error("Delete wall error:", error);
       toast.error("Failed to delete wall");
+      // Don't close the modal on error, let user try again
     }
   };
 
   const handleUnassign = async ({ makePublic = false, unpublish = false }: { makePublic?: boolean; unpublish?: boolean }) => {
+    setIsActionLoading(true);
+    setCurrentAction(unpublish ? 'Unpublishing and unassigning...' : makePublic ? 'Unassigning and making public...' : 'Unassigning...');
     try {
       const updateData: any = {
         action: unpublish ? "unpublish" : "save_draft",
@@ -132,10 +140,15 @@ export default function WallDetailsSheet({ wall  }: Props) {
     } catch (error) {
       console.error('Error unassigning wall:', error);
       toast.error("Failed to unassign wall");
+    } finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handlePublish = async (isPrivate: boolean, customerId?: string | null, emailToCustomer: boolean = false) => {
+    setIsActionLoading(true);
+    setCurrentAction(emailToCustomer ? 'Publishing and emailing...' : 'Publishing...');
     try {
       const updateData: any = {
         action: "publish",
@@ -162,10 +175,15 @@ export default function WallDetailsSheet({ wall  }: Props) {
     } catch (error) {
       console.error('Error publishing wall:', error);
       toast.error("Failed to publish wall");
+    }  finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handleUnpublish = async () => {
+    setIsActionLoading(true);
+    setCurrentAction('Unpublishing...');
     try {
       const updateData: any = {
         action: "unpublish",
@@ -185,10 +203,15 @@ export default function WallDetailsSheet({ wall  }: Props) {
     } catch (error) {
       console.error('Error unpublishing wall:', error);
       toast.error("Failed to unpublish wall");
+    }  finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
   const handleTogglePrivacy = async (newPrivacy: boolean) => {
+    setIsActionLoading(true);
+    setCurrentAction(`Making ${newPrivacy ? 'private' : 'public'}...`);
     try {
       const updateData: any = {
         action: "save_draft",
@@ -214,6 +237,9 @@ export default function WallDetailsSheet({ wall  }: Props) {
     } catch (error) {
       console.error('Error toggling wall privacy:', error);
       toast.error("Failed to toggle wall privacy");
+    } finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
@@ -224,6 +250,9 @@ export default function WallDetailsSheet({ wall  }: Props) {
       return;
     }
 
+
+    setIsActionLoading(true);
+    setCurrentAction(emailToCustomer ? 'Assigning and emailing...' : 'Assigning...');
     try {
       const updateData: any = {
         action: emailToCustomer ? "send_wall" : "save_draft",
@@ -246,6 +275,9 @@ export default function WallDetailsSheet({ wall  }: Props) {
     } catch (error) {
       console.error('Error assigning wall to customer:', error);
       toast.error(emailToCustomer ? "Failed to assign and email customer" : "Failed to assign wall to customer");
+    }  finally {
+      setIsActionLoading(false);
+      setCurrentAction('');
     }
   };
 
@@ -277,20 +309,30 @@ export default function WallDetailsSheet({ wall  }: Props) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 w-8 p-0 border rounded-none">
-                {updateWallMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Grip size={12} />}
+                {isActionLoading ? (
+                  <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+                ) : (
+                  <Grip size={12} />
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+            {/* Show loading state at the top when any action is loading */}
+              {isActionLoading && (
+                <div className="px-2 py-1.5 text-sm text-muted-foreground border-b">
+                  {currentAction}
+                </div>
+              )}
               {/* Publish options for draft walls */}
               {availableActions.includes('publish_public') && (
-                <DropdownMenuItem onClick={() => handlePublish(false)} disabled={updateWallMutation.isPending}>
+                <DropdownMenuItem onClick={() => handlePublish(false)} disabled={isActionLoading}>
                   <Globe className="w-4 h-4 mr-2" />
                   Publish as Public
                 </DropdownMenuItem>
               )}
               
               {availableActions.includes('publish_private') && (
-                <DropdownMenuItem onClick={() => handlePublish(true)} disabled={updateWallMutation.isPending}>
+                <DropdownMenuItem onClick={() => handlePublish(true)} disabled={isActionLoading}>
                   <Lock className="w-4 h-4 mr-2" />
                   Publish as Private
                 </DropdownMenuItem>
@@ -298,15 +340,16 @@ export default function WallDetailsSheet({ wall  }: Props) {
               
               {/* Unpublish for published walls */}
               {availableActions.includes('unpublish') && (
-                <DropdownMenuItem onClick={handleUnpublish} disabled={updateWallMutation.isPending}>
+                <DropdownMenuItem onClick={handleUnpublish} disabled={isActionLoading}>
                   <EyeOff className="w-4 h-4 mr-2" />
                   Unpublish
                 </DropdownMenuItem>
               )}
               
+              
               {/* Privacy toggle for published walls */}
               {availableActions.includes('toggle_privacy') && (
-                <DropdownMenuItem onClick={() => handleTogglePrivacy(!wall.private)} disabled={updateWallMutation.isPending}>
+                <DropdownMenuItem onClick={() => handleTogglePrivacy(!wall.private)} disabled={isActionLoading}>
                   {wall.private ? (
                     <>
                       <Globe className="w-4 h-4 mr-2" />
@@ -320,19 +363,19 @@ export default function WallDetailsSheet({ wall  }: Props) {
                   )}
                 </DropdownMenuItem>
               )}
-              
+
               <DropdownMenuSeparator />
 
               {isAssigned ? (
                 <>
                   <DropdownMenuSub>
-                    <DropdownMenuSubTrigger disabled={updateWallMutation.isPending}>
+                    <DropdownMenuSubTrigger disabled={isActionLoading}>
                       <UserPlus className="w-4 h-4 mr-2" />
                       Update assigned customer
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent className="w-72 p-0">
-                      <Command>
-                        <CommandInput placeholder="Search customers..." autoFocus />
+                    <Command>
+                        <CommandInput placeholder="Search customers..." autoFocus disabled={isActionLoading} />
                         <CommandList>
                           <CommandEmpty>No customers found.</CommandEmpty>
                           <CommandGroup>
@@ -343,8 +386,9 @@ export default function WallDetailsSheet({ wall  }: Props) {
                                 onSelect={() => {
                                   setSelectedAssignCustomerId(customer.id)
                                 }}
+                                disabled={isActionLoading}
                               >
-                                <Check
+                                       <Check
                                   className={cn(
                                     "mr-2 h-4 w-4",
                                     (selectedAssignCustomerId ?? wall.customerId) === customer.id ? "opacity-100" : "opacity-0"
@@ -357,19 +401,17 @@ export default function WallDetailsSheet({ wall  }: Props) {
                         </CommandList>
                       </Command>
                       <div className="p-2 pt-1 flex gap-2 border-t">
-                        <Button
-                          
+                      <Button
                           className="flex-1"
-                          disabled={!selectedAssignCustomerId || updateWallMutation.isPending}
+                          disabled={!selectedAssignCustomerId || isActionLoading}
                           onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
                         >
                           {wall.customerId ? 'Update only' : 'Assign only'}
                         </Button>
                         <Button
-                        
                           variant="outline"
                           className="flex-1"
-                          disabled={!selectedAssignCustomerId || updateWallMutation.isPending}
+                          disabled={!selectedAssignCustomerId || isActionLoading}
                           onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
                         >
                           {wall.customerId ? 'Update & Email' : 'Assign & Email'}
@@ -378,18 +420,18 @@ export default function WallDetailsSheet({ wall  }: Props) {
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                   <DropdownMenuSub>
-                    <DropdownMenuSubTrigger disabled={updateWallMutation.isPending}>
-                        <X className="w-4 h-4 mr-2" />
-                        Unassign Customer
+                    <DropdownMenuSubTrigger disabled={isActionLoading}>
+                          <X className="w-4 h-4 mr-2" />
+                          Unassign Customer
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
-                        <DropdownMenuItem onClick={() => handleUnassign({})} disabled={updateWallMutation.isPending}>
+                        <DropdownMenuItem onClick={() => handleUnassign({})} disabled={isActionLoading}>
                             Unassign (keep private)
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleUnassign({ makePublic: true })} disabled={updateWallMutation.isPending}>
+                        <DropdownMenuItem onClick={() => handleUnassign({ makePublic: true })} disabled={isActionLoading}>
                             Unassign & Make Public
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleUnassign({ unpublish: true })} disabled={updateWallMutation.isPending}>
+                        <DropdownMenuItem onClick={() => handleUnassign({ unpublish: true })} disabled={isActionLoading}>
                             Unassign & Unpublish
                         </DropdownMenuItem>
                     </DropdownMenuSubContent>
@@ -397,13 +439,13 @@ export default function WallDetailsSheet({ wall  }: Props) {
                 </>
               ) : (
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger disabled={updateWallMutation.isPending}>
+                  <DropdownMenuSubTrigger disabled={isActionLoading}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Assign to customer
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-72 p-0">
-                    <Command>
-                      <CommandInput placeholder="Search customers..." autoFocus />
+                  <Command>
+                      <CommandInput placeholder="Search customers..." autoFocus disabled={isActionLoading} />
                       <CommandList>
                         <CommandEmpty>No customers found.</CommandEmpty>
                         <CommandGroup>
@@ -414,8 +456,9 @@ export default function WallDetailsSheet({ wall  }: Props) {
                               onSelect={() => {
                                 setSelectedAssignCustomerId(customer.id)
                               }}
+                              disabled={isActionLoading}
                             >
-                              <Check
+                                          <Check
                                 className={cn(
                                   "mr-2 h-4 w-4",
                                   (selectedAssignCustomerId ?? wall.customerId) === customer.id ? "opacity-100" : "opacity-0"
@@ -428,19 +471,17 @@ export default function WallDetailsSheet({ wall  }: Props) {
                       </CommandList>
                     </Command>
                     <div className="p-2 pt-1 flex gap-2 border-t">
-                      <Button
-                  
+                    <Button
                         className="flex-1"
-                        disabled={!selectedAssignCustomerId || updateWallMutation.isPending}
+                        disabled={!selectedAssignCustomerId || isActionLoading}
                         onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, false)}
                       >
                         {wall.customerId ? 'Update only' : 'Assign only'}
                       </Button>
                       <Button
-                
                         variant="outline"
                         className="flex-1"
-                        disabled={!selectedAssignCustomerId || updateWallMutation.isPending}
+                        disabled={!selectedAssignCustomerId || isActionLoading}
                         onClick={() => selectedAssignCustomerId && handleAssignToCustomer(selectedAssignCustomerId, true)}
                       >
                         {wall.customerId ? 'Update & Email' : 'Assign & Email'}
@@ -457,9 +498,13 @@ export default function WallDetailsSheet({ wall  }: Props) {
                   <DropdownMenuItem 
                     onClick={() => setIsDeleteModalOpen(true)}
                     className="text-red-600"
-                    disabled={updateWallMutation.isPending}
+                    disabled={isActionLoading || deleteWallMutation.isPending}
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
+                    {deleteWallMutation.isPending ? (
+                      <Bubbles className="w-4 h-4 mr-2 animate-spin [animation-duration:0.5s]" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
                     Delete
                   </DropdownMenuItem>
                 </>
@@ -586,7 +631,7 @@ export default function WallDetailsSheet({ wall  }: Props) {
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
+        onClose={() => !deleteWallMutation.isPending && setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteWall}
         title="Delete Wall"
         itemName={wall.name || wall.id.slice(0, 8)}

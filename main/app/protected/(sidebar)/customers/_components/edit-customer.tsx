@@ -496,13 +496,13 @@ export default function EditCustomer({ customer, onSuccess, onLoadingChange, onD
           itemName={customer.name}
           itemType="Customer"
           isLoading={isDeletingCustomer}
-          hasConnectedItems={customer.projectCount > 0}
-          connectedItemsCount={customer.projectCount}
-          connectedItemsType="projects"
+          hasConnectedItems={customer.projectCount > 0 || customer.invoiceCount > 0 || customer.receiptCount > 0 || customer.feedbackCount > 0}
+          connectedItemsCount={customer.projectCount + customer.invoiceCount + customer.receiptCount + customer.feedbackCount}
+          connectedItemsType="items"
           warningMessage={
-            customer.projectCount > 0 
-              ? `This customer has ${customer.projectCount} active project${customer.projectCount !== 1 ? 's' : ''}. You must complete or delete all projects before removing this customer.`
-              : undefined
+            customer.projectCount > 0 || customer.invoiceCount > 0 || customer.receiptCount > 0 || customer.feedbackCount > 0
+              ? `This customer has ${customer.projectCount} project${customer.projectCount !== 1 ? 's' : ''}, ${customer.invoiceCount} invoice${customer.invoiceCount !== 1 ? 's' : ''}, ${customer.receiptCount} receipt${customer.receiptCount !== 1 ? 's' : ''}, and ${customer.feedbackCount} feedback item${customer.feedbackCount !== 1 ? 's' : ''}. Deleting this customer will permanently remove all associated projects, invoices, receipts, feedback, walls, and paths. This action cannot be undone.`
+              : "This action will permanently delete the customer and cannot be undone."
           }
         />
       </form>

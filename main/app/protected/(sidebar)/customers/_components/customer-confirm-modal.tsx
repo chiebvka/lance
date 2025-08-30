@@ -1,41 +1,51 @@
 "use client"
-
 import React from 'react'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { AlertTriangle, Trash2, Loader2, Bubbles } from 'lucide-react'
+import { AlertTriangle, Trash2, Bubbles } from 'lucide-react'
 
 type Props = {
   isOpen: boolean
   onClose: () => void
   onConfirm: () => void
-  title?: string
-  itemName: string
-  itemType: string
-  description?: string
+  customerName: string
+  invoiceCount: number
+  projectCount: number
+  receiptCount: number
+  feedbackCount: number
   isLoading?: boolean
-  hasConnectedItems?: boolean
-  connectedItemsCount?: number
-  connectedItemsType?: string
-  warningMessage?: string
 }
 
-export default function ConfirmModal({
+export default function CustomerConfirmModal({
   isOpen,
   onClose,
   onConfirm,
-  title,
-  itemName,
-  itemType,
-  description,
-  isLoading = false,
-  hasConnectedItems = false,
-  connectedItemsCount = 0,
-  connectedItemsType = "items",
-  warningMessage
+  customerName,
+  invoiceCount,
+  projectCount,
+  receiptCount,
+  feedbackCount,
+  isLoading = false
 }: Props) {
+  const hasConnectedItems = projectCount > 0 || invoiceCount > 0 || receiptCount > 0 || feedbackCount > 0
+
+  const getWarningMessage = () => {
+    if (!hasConnectedItems) {
+      return "This action will permanently delete the customer and cannot be undone."
+    }
+
+    const items = []
+    if (projectCount > 0) items.push(`${projectCount} project${projectCount !== 1 ? 's' : ''}`)
+    if (invoiceCount > 0) items.push(`${invoiceCount} invoice${invoiceCount !== 1 ? 's' : ''}`)
+    if (receiptCount > 0) items.push(`${receiptCount} receipt${receiptCount !== 1 ? 's' : ''}`)
+    if (feedbackCount > 0) items.push(`${feedbackCount} feedback item${feedbackCount !== 1 ? 's' : ''}`)
+
+    const itemsText = items.join(', ')
+    return `This customer has ${itemsText}. Deleting this customer will permanently remove all associated projects, invoices, receipts, feedback, walls, and paths. This action cannot be undone.`
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={isLoading ? undefined : onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -43,9 +53,7 @@ export default function ConfirmModal({
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
             <div>
-              <DialogTitle className="text-left">
-                {title || `Delete ${itemType}`}
-              </DialogTitle>
+              <DialogTitle className="text-left">Delete Customer</DialogTitle>
               <DialogDescription className="text-left mt-1">
                 This action cannot be undone.
               </DialogDescription>
@@ -55,12 +63,8 @@ export default function ConfirmModal({
         
         <div className="py-4 space-y-4">
           <p className="text-sm text-muted-foreground">
-            {description || (
-              <>
-                Are you sure you want to permanently delete the {itemType.toLowerCase()}{" "}
-                <span className="font-semibold text-foreground">"{itemName}"</span>?
-              </>
-            )}
+            Are you sure you want to permanently delete the customer{" "}
+            <span className="font-semibold text-foreground">"{customerName}"</span>?
           </p>
           
           {hasConnectedItems && (
@@ -72,12 +76,7 @@ export default function ConfirmModal({
                     Warning: Connected items found
                   </p>
                   <p className="text-xs text-destructive/80">
-                    {warningMessage || (
-                      <>
-                        This {itemType.toLowerCase()} has {connectedItemsCount} connected {connectedItemsType}.
-                        You must delete all connected {connectedItemsType} before deleting this {itemType.toLowerCase()}.
-                      </>
-                    )}
+                    {getWarningMessage()}
                   </p>
                 </div>
               </div>
@@ -91,23 +90,23 @@ export default function ConfirmModal({
             onClick={onClose}
             disabled={isLoading}
           >
-            {isLoading ? "Please wait..." : "Cancel"}
+            Cancel
           </Button>
           <Button
             variant="destructive"
             onClick={onConfirm}
-            disabled={isLoading || hasConnectedItems}
+            disabled={isLoading}
             className="gap-2"
           >
             {isLoading ? (
               <>
-                <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s] mr-2" />
-                Deleting...
+                <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.5s]" />
+                Deleting customer...
               </>
             ) : (
               <>
                 <Trash2 className="h-4 w-4" />
-                Delete {itemType}
+                Delete Customer
               </>
             )}
           </Button>
@@ -116,3 +115,5 @@ export default function ConfirmModal({
     </Dialog>
   )
 }
+
+ 

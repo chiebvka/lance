@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import customerSchema from "@/validation/customer";
 import { createClient } from "@/utils/supabase/server";
+import { ratelimit } from '@/utils/rateLimit';
 
 export async function PUT(
   request: Request,
@@ -14,6 +15,35 @@ export async function PUT(
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for') ?? 
+      request.headers.get('x-real-ip') ?? 
+      '127.0.0.1';
+    const { success, limit, reset, remaining } = await ratelimit.limit(ip);
+
+    if (!success) {
+      return NextResponse.json(
+        { 
+          error: 'Too many requests. Please try again later.',
+          limit,
+          reset,
+          remaining
+        }, 
+        { status: 429 }
+      );
+    }
+
+    // Get user's profile to find their organization
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organizationId')
+      .eq('profile_id', user.id)
+      .single();
+
+    if (profileError || !profile?.organizationId) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
     const { customerId } = await context.params;
     const body = await request.json();
     const validatedFields = customerSchema.safeParse(body);
@@ -25,12 +55,12 @@ export async function PUT(
       );
     }
 
-    // Check if customer exists and belongs to user
+    // Check if customer exists and belongs to user's organization
     const { data: existingCustomer, error: checkError } = await supabase
       .from("customers")
-      .select("id, createdBy")
+      .select("id, organizationId")
       .eq("id", customerId)
-      .eq("createdBy", user.id)
+      .eq("organizationId", profile.organizationId)
       .single();
 
     if (checkError || !existingCustomer) {
@@ -49,7 +79,7 @@ export async function PUT(
       .from("customers")
       .update(customerData)
       .eq("id", customerId)
-      .eq("createdBy", user.id)
+      .eq("organizationId", profile.organizationId)
       .select()
       .single();
 
@@ -84,13 +114,24 @@ export async function GET(
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get user's profile to find their organization
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organizationId')
+      .eq('profile_id', user.id)
+      .single();
+
+    if (profileError || !profile?.organizationId) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
     const { customerId } = await context.params;
 
     const { data: customer, error } = await supabase
       .from("customers")
       .select("*")
       .eq("id", customerId)
-      .eq("createdBy", user.id)
+      .eq("organizationId", profile.organizationId)
       .single();
 
     if (error || !customer) {
@@ -123,14 +164,43 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for') ?? 
+      request.headers.get('x-real-ip') ?? 
+      '127.0.0.1';
+    const { success, limit, reset, remaining } = await ratelimit.limit(ip);
+
+    if (!success) {
+      return NextResponse.json(
+        { 
+          error: 'Too many requests. Please try again later.',
+          limit,
+          reset,
+          remaining
+        }, 
+        { status: 429 }
+      );
+    }
+
+    // Get user's profile to find their organization
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organizationId')
+      .eq('profile_id', user.id)
+      .single();
+
+    if (profileError || !profile?.organizationId) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
     const { customerId } = await context.params;
 
-    // Check if customer exists and belongs to user
+    // Check if customer exists and belongs to user's organization
     const { data: existingCustomer, error: checkError } = await supabase
       .from("customers")
-      .select("id, createdBy")
+      .select("id, organizationId")
       .eq("id", customerId)
-      .eq("createdBy", user.id)
+      .eq("organizationId", profile.organizationId)
       .single();
 
     if (checkError || !existingCustomer) {
@@ -140,34 +210,12 @@ export async function DELETE(
       );
     }
 
-    // Check for dependencies (projects, invoices, etc.)
-    const { data: dependencies, error: depError } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("customerId", customerId)
-      .limit(1);
-
-    if (depError) {
-      console.error("Error checking dependencies:", depError);
-      return NextResponse.json(
-        { error: "Error checking customer dependencies." },
-        { status: 500 }
-      );
-    }
-
-    if (dependencies && dependencies.length > 0) {
-      return NextResponse.json(
-        { error: "Cannot delete customer with existing projects. Please delete all associated projects first." },
-        { status: 400 }
-      );
-    }
-
-    // Delete the customer
+    // Delete the customer - database will handle cascading deletes for related items
     const { error: deleteError } = await supabase
       .from("customers")
       .delete()
       .eq("id", customerId)
-      .eq("createdBy", user.id);
+      .eq("organizationId", profile.organizationId);
 
     if (deleteError) {
       console.error("Supabase Delete Error:", deleteError.message);

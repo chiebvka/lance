@@ -15,7 +15,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Copy, Loader2, HardDriveDownload } from "lucide-react"
+import { MoreHorizontal, Copy, Loader2, HardDriveDownload, Bubbles } from "lucide-react"
 import ConfirmModal from "@/components/modal/confirm-modal"
 import Feedback from "@/validation/forms/feedback"
 import { downloadFeedbackAsCSV } from '@/utils/exportCsv';
@@ -86,38 +86,56 @@ interface DataTableRowActionsProps<TData> {
     // Duplicate feedback mutation
     const duplicateFeedbackMutation = useMutation({
       mutationFn: async (originalFeedback: Feedback) => {
-        // Get the full feedback details
-        const { data: fullFeedbackResponse } = await axios.get(`/api/feedback/${originalFeedback.id}`)
-        const fullFeedback = fullFeedbackResponse.project
 
-        // Prepare the duplicated feedback
-        const isCompleted = fullFeedback.state === "completed"
-        const isSent = fullFeedback.state === "sent"
-        const hasRecipient = !!fullFeedback.recepientName && !!fullFeedback.recepientEmail
+                // Show loading toast with bubbles icon
+      const loadingToastId = toast.loading(
+        <div className="flex items-center gap-3">
+          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+          <span>Duplicating Feedback...</span>
+        </div>,
+        { duration: Infinity }
+      );
 
-        // Generate a new token if duplicating a sent feedback with recipient info
-        const newToken = (isSent && hasRecipient) ? (window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2)) : undefined
-
-        const duplicatedFeedback = {
-          name: getDuplicateName(fullFeedback.name),
-          customerId: fullFeedback.customerId || null,
-          dueDate: fullFeedback.dueDate || null,
-          recepientName: fullFeedback.recepientName || null,
-          recepientEmail: fullFeedback.recepientEmail || null,
-          state: "draft", // Always duplicate as draft
-          projectId: fullFeedback.projectId || null,
-          templateId: fullFeedback.templateId || null,
-          organizationName: fullFeedback.organizationName || null,
-          organizationLogoUrl: fullFeedback.organizationLogoUrl || null,
-          organizationEmail: fullFeedback.organizationEmail || null,
-          questions: fullFeedback.questions,
-          // Only include answers if not completed
-          answers: isCompleted ? [] : fullFeedback.answers || [],
-          token: newToken,
-          action: "save_draft"
+        try {
+          // Get the full feedback details
+          const { data: fullFeedbackResponse } = await axios.get(`/api/feedback/${originalFeedback.id}`)
+          const fullFeedback = fullFeedbackResponse.project
+  
+          // Prepare the duplicated feedback
+          const isCompleted = fullFeedback.state === "completed"
+          const isSent = fullFeedback.state === "sent"
+          const hasRecipient = !!fullFeedback.recepientName && !!fullFeedback.recepientEmail
+  
+          // Generate a new token if duplicating a sent feedback with recipient info
+          const newToken = (isSent && hasRecipient) ? (window.crypto?.randomUUID?.() || Math.random().toString(36).slice(2)) : undefined
+  
+          const duplicatedFeedback = {
+            name: getDuplicateName(fullFeedback.name),
+            customerId: fullFeedback.customerId || null,
+            dueDate: fullFeedback.dueDate || null,
+            recepientName: fullFeedback.recepientName || null,
+            recepientEmail: fullFeedback.recepientEmail || null,
+            state: "draft", // Always duplicate as draft
+            projectId: fullFeedback.projectId || null,
+            templateId: fullFeedback.templateId || null,
+            organizationName: fullFeedback.organizationName || null,
+            organizationLogoUrl: fullFeedback.organizationLogoUrl || null,
+            organizationEmail: fullFeedback.organizationEmail || null,
+            questions: fullFeedback.questions,
+            // Only include answers if not completed
+            answers: isCompleted ? [] : fullFeedback.answers || [],
+            token: newToken,
+            action: "save_draft"
+          }
+  
+          const result = await axios.post('/api/feedback/create', duplicatedFeedback)
+          toast.dismiss(loadingToastId);
+          return result
+        } catch (error) {
+              // Dismiss loading toast on error
+         toast.dismiss(loadingToastId);
+         throw error;
         }
-
-        return axios.post('/api/feedback/create', duplicatedFeedback)
       },
       onSuccess: () => {
         toast.success("Feedback duplicated successfully!")

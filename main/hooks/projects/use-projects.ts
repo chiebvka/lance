@@ -196,7 +196,7 @@ export function useUnpublishProject() {
   })
 }
 
-export function useDeleteProject() {
+export function useDeleteProject(onSuccess?: () => void) {
   const queryClient = useQueryClient()
   
   return useMutation({
@@ -208,9 +208,13 @@ export function useDeleteProject() {
     onSuccess: () => {
       toast.success('Project deleted successfully!')
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+      // Call the onSuccess callback if provided (e.g., to close modal)
+      if (onSuccess) onSuccess()
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.error || 'Failed to delete project')
+      // Call the onSuccess callback even on error to close modal
+      if (onSuccess) onSuccess()
     },
   })
 }

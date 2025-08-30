@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/utils/supabase/server"
 import { uploadFileToR2 } from "@/lib/r2"
+import { ratelimit } from "@/utils/rateLimit"
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +16,24 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("Upload API - User authenticated:", user.id)
+
+    // Rate limiting by IP (same style as walls/invoices create)
+    const ip = request.headers.get('x-forwarded-for') ?? 
+      request.headers.get('x-real-ip') ?? 
+      '127.0.0.1'
+    const { success, limit, reset, remaining } = await ratelimit.limit(ip)
+
+    if (!success) {
+      return NextResponse.json(
+        { 
+          error: 'Too many requests. Please try again later.',
+          limit,
+          reset,
+          remaining
+        }, 
+        { status: 429 }
+      )
+    }
 
     const formData = await request.formData()
     const file = formData.get("file") as File | null

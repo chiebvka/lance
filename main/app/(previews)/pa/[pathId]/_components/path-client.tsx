@@ -4,13 +4,15 @@ import React from 'react'
 import { usePublicPath } from '@/hooks/paths/use-public-path'
 import PathDisplay from './path-display'
 import { Bubbles } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 interface Props {
   pathId: string
   token?: string
+  state: string
 }
 
-export default function PathClient({ pathId, token }: Props) {
+export default function PathClient({ pathId, token, state }: Props) {
   const { data: path, isLoading, isError, error } = usePublicPath(pathId, token)
 
   if (isLoading) {
@@ -26,19 +28,35 @@ export default function PathClient({ pathId, token }: Props) {
 
   if (isError || !path) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Path Not Found</h1>
+      <div className="min-h-screen flex items-center justify-center ">
+        <div className="text-center p-8 bg-lightCard dark:bg-darkCard rounded-none shadow-lg max-w-md">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Unable to Load Path</h1>
           <p className="text-gray-600 mb-4">
-            {error?.message || 'The requested path could not be found or may be private.'}
+            {error?.message || 'There was an error loading the path content.'}
           </p>
           <p className="text-sm text-gray-500">
-            This path is a private and requires a special token to be viewed. Please contact the sender to get access.
+            Please try again later or contact the path owner if the problem persists.
           </p>
         </div>
       </div>
     )
   }
 
-  return <PathDisplay path={path} />
+  return (
+    <div className="h-full w-full">
+      {state === 'draft' && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800 p-4">
+          <div className="flex items-center justify-center space-x-2">
+            <Badge variant="secondary" className="bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200">
+              Preview Mode
+            </Badge>
+            <span className="text-sm text-yellow-700 dark:text-yellow-300">
+              This path is still in draft mode and may contain incomplete information.
+            </span>
+          </div>
+        </div>
+      )}
+      <PathDisplay path={path} state={state} />
+    </div>
+  )
 }

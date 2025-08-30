@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent,SheetClose, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { columns } from "./columns";
-import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload } from "lucide-react";
+import { Bubbles, Trash2, Save, ChevronDown, LayoutTemplate, HardDriveDownload, Scroll } from "lucide-react";
 import { FilterTag } from '@/components/filtering/search-filter';
 import { 
     DropdownMenu,
@@ -44,7 +44,7 @@ import { parseAsArrayOf, parseAsIsoDateTime, parseAsString, useQueryStates } fro
 import Pagination from '@/components/pagination';
 import {usePaths, Path } from "@/hooks/paths/use-paths"
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import PathDetailsSheet from './path-details-sheet';
 import { DataTable } from './data-table';
 import ProjectClientSkeleton from '../../projects/_components/project-client-skeleton';
@@ -60,6 +60,8 @@ export default function PathClient({ initialPaths, userEmail }: Props) {
 
     const queryClient = useQueryClient();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
     const closeRef = useRef<HTMLButtonElement>(null);
     const editCloseRef = useRef<HTMLButtonElement>(null);
     const [filterTags, setFilterTags] = useState<FilterTag[]>([]);
@@ -139,6 +141,20 @@ export default function PathClient({ initialPaths, userEmail }: Props) {
         isError, 
         error 
     } = usePaths(initialPaths);
+
+    // Check if we have any active search or filters
+    const hasActiveSearchOrFilters = useMemo(() => {
+      return params.query || 
+             activeFilters.state.length > 0 || 
+             activeFilters.type.length > 0 ||
+             activeFilters.created_at ||
+             activeFilters.updatedAt;
+    }, [params.query, activeFilters]);
+
+    // Check if we should show empty state vs no results
+    const shouldShowEmptyState = useMemo(() => {
+      return paths.length === 0 && !hasActiveSearchOrFilters;
+    }, [paths.length, hasActiveSearchOrFilters]);
 
     // --- Table State ---
     const [rowSelection, setRowSelection] = useState({})
@@ -248,12 +264,6 @@ export default function PathClient({ initialPaths, userEmail }: Props) {
     onSuccess: () => {
       toast.success("Path deleted successfully!");
       queryClient.invalidateQueries({ queryKey: ['paths'] });
-      setParams({ pathId: null });
-    },
-    onError: (error: any) => {
-      console.error("Delete path error:", error.response?.data);
-      const errorMessage = error.response?.data?.error || "Failed to delete path";
-      toast.error(errorMessage);
     },
   });
 
@@ -421,9 +431,20 @@ export default function PathClient({ initialPaths, userEmail }: Props) {
 
   const handleConfirmDelete = () => {
     if (params.pathId) {
-      deletePathMutation.mutate(params.pathId)
+      deletePathMutation.mutate(params.pathId, {
+        onSuccess: () => {
+          setDeleteModalOpen(false);
+          // Close the sheet by navigating back
+          setParams({ pathId: null });
+        },
+        onError: (error: any) => {
+          console.error("Delete path error:", error.response?.data);
+          const errorMessage = error.response?.data?.error || "Failed to delete path";
+          toast.error(errorMessage);
+          // Don't close the modal on error, let user try again
+        }
+      });
     }
-    setDeleteModalOpen(false)
   }
 
   const handleSavingChange = (saving: boolean, action: 'draft' | 'receipt' = 'draft') => {
@@ -541,15 +562,15 @@ export default function PathClient({ initialPaths, userEmail }: Props) {
       filterTags={filterTagsMemo}
       onRemoveFilter={handleRemoveFilter}
       onClearAllFilters={handleClearAllFilters}
-      sheetTriggerText="Create Wall"
-      onCreateClick={() => router.push('/protected/walls/create')}
+      sheetTriggerText="Create Path"
+      onCreateClick={() => router.push('/protected/paths/create')}
     />
 
     {/* <CardAnalytics /> */}
 
     <ConfirmModal
       isOpen={isDeleteModalOpen}
-      onClose={() => setDeleteModalOpen(false)}
+      onClose={() => !deletePathMutation.isPending && setDeleteModalOpen(false)}
       onConfirm={handleConfirmDelete}
       itemName={pathBeingEdited?.name || "This Path"}
       itemType="Path"
@@ -558,7 +579,7 @@ export default function PathClient({ initialPaths, userEmail }: Props) {
 
     <Sheet 
       open={!!params.pathId} 
-      onOpenChange={open => { if (!open) handleCloseSheet(); }}
+              onOpenChange={open => { if (!open && !deletePathMutation.isPending) handleCloseSheet(); }}
     >
       <SheetContent
         side="right" 
@@ -577,7 +598,11 @@ export default function PathClient({ initialPaths, userEmail }: Props) {
                 onClick={handleDeleteFromSheet}
                 disabled={deletePathMutation.isPending}
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                {deletePathMutation.isPending ? (
+                  <Bubbles className="h-4 w-4 mr-2 animate-spin [animation-duration:0.5s]" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
                 Delete Path
               </Button>
              
@@ -600,23 +625,55 @@ export default function PathClient({ initialPaths, userEmail }: Props) {
     <div className="flex items-center justify-between">
         <DataTableViewOptions table={table} />
       </div>
-      <Suspense fallback={<ProjectClientSkeleton />}>
-        <DataTable 
-          table={table}
-          onPathSelect={handlePathSelect}
-          searchQuery={params.query}
-        />
+      {shouldShowEmptyState ? (
+        // Empty state - no paths exist
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <Scroll className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">No paths yet</h3>
+          <p className="text-muted-foreground text-center max-w-md mb-6">
+            Get started by creating your first path. You can organize workflows, 
+            create step-by-step processes, and guide users through complex tasks.
+          </p>
+          <Button onClick={() => router.push('/protected/paths/create')}>
+            Create your first path
+          </Button>
+        </div>
+      ) : filteredPaths.length === 0 ? (
+        // No results from search/filters
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <Scroll className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">No results found</h3>
+          <p className="text-muted-foreground text-center max-w-md mb-6">
+            No results for '{params.query || 'your search'}'. Try searching for paths by name, description, or recipient.
+          </p>
+          <Button variant="outline" onClick={handleClearAllFilters}>
+            Clear all filters
+          </Button>
+        </div>
+      ) : (
+        // Show path table
+        <>
+          <DataTable 
+            table={table}
+            onPathSelect={handlePathSelect}
+            searchQuery={params.query}
+          />
 
-        <Pagination
-          currentPage={table.getState().pagination.pageIndex + 1}
-          totalPages={table.getPageCount()}
-          pageSize={table.getState().pagination.pageSize}
-          totalItems={table.getFilteredRowModel().rows.length}
-          onPageChange={page => table.setPageIndex(page - 1)}
-          onPageSizeChange={size => table.setPageSize(size)}
-          itemName="walls"
-        />
-      </Suspense>
+          <Pagination
+            currentPage={table.getState().pagination.pageIndex + 1}
+            totalPages={table.getPageCount()}
+            pageSize={table.getState().pagination.pageSize}
+            totalItems={table.getFilteredRowModel().rows.length}
+            onPageChange={page => table.setPageIndex(page - 1)}
+            onPageSizeChange={size => table.setPageSize(size)}
+            itemName="paths"
+          />
+        </>
+      )}
     </div>
   </div>
   )

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
+import { toast } from 'sonner'
 
 export interface Receipt {
     id: string
@@ -153,7 +154,7 @@ export function useUpdateReceipt() {
     })
 }
 
-export function useDeleteReceipt() {
+export function useDeleteReceipt(onSuccess?: () => void) {
     const queryClient = useQueryClient()
     
     return useMutation({
@@ -164,6 +165,11 @@ export function useDeleteReceipt() {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['receipts'] })
+        if (onSuccess) onSuccess()
+      },
+      onError: (error: any) => {
+        toast.error(error?.response?.data?.error || 'Failed to delete receipt')
+        if (onSuccess) onSuccess()
       },
     })
 }

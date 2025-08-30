@@ -151,6 +151,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
     } catch (error) {
       console.error('Error deleting invoice:', error);
       toast.error("Failed to delete invoice");
+      // Don't close the modal on error, let user try again
     }
   };
 
@@ -805,8 +806,13 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
                   <DropdownMenuItem 
                     onClick={() => setIsDeleteModalOpen(true)}
                     className="text-red-600"
+                    disabled={deleteInvoiceMutation.isPending}
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
+                    {deleteInvoiceMutation.isPending ? (
+                      <Bubbles className="w-4 h-4 mr-2 animate-spin [animation-duration:0.5s]" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
                     Delete
                   </DropdownMenuItem>
                 </>
@@ -1000,7 +1006,7 @@ export default function InvoiceDetailsSheet({ invoice }: Props) {
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
+        onClose={() => !deleteInvoiceMutation.isPending && setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteInvoice}
         title="Delete Invoice"
         itemName={invoice.invoiceNumber || invoice.id.slice(0, 8)}

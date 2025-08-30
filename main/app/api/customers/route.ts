@@ -11,11 +11,22 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // First, get all customers for this user
+    // Get user's profile to find their organization
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organizationId')
+      .eq('profile_id', user.id)
+      .single();
+
+    if (profileError || !profile?.organizationId) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
+    // First, get all customers for this organization
     const { data: customers, error: customersError } = await supabase
       .from("customers")
       .select("*")
-      .eq("createdBy", user.id)
+      .eq("organizationId", profile.organizationId)
       .order("created_at", { ascending: false });
 
     if (customersError) {

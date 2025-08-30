@@ -138,7 +138,7 @@ interface EditProjectFormProps {
   onFormValidChange?: (valid: boolean) => void
   onCustomerChange?: (customer: any) => void
   onProjectTypeChange?: (type: string) => void
-  onSavingChange?: (saving: boolean) => void
+  onSavingChange?: (saving: boolean, action?: 'draft' | 'project') => void
 }
 
 // fetchProject is now handled by the useProject hook
@@ -228,7 +228,9 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
   const queryClient = useQueryClient();
   const [isCreateCustomerSheetOpen, setCreateCustomerSheetOpen] = useState(false)
   const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false)
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // Keep for backward compatibility
 
   const { data: project, isLoading: isLoadingProject, isError } = useProject(projectId);
 
@@ -240,6 +242,7 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
   const handleCustomerCreated = () => {
     setCreateCustomerSheetOpen(false);
     toast.success("Customer created and list updated!");
+    // Don't close the project sheet or trigger project submission
   };
 
   const form = useForm<ProjectFormValues>({
@@ -676,7 +679,8 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
 
   // Add the missing functions
   const handleSaveDraft = async () => {
-    setIsSaving(true)
+    setIsSavingDraft(true)
+    onSavingChange?.(true, 'draft')
     try {
       const values = form.getValues()
 
@@ -731,12 +735,14 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
         description: errorDescription,
       })
     } finally {
-      setIsSaving(false)
+      setIsSavingDraft(false)
+      onSavingChange?.(false, 'draft')
     }
   }
 
   const handlePublishProject = async (emailToCustomer = false) => {
-    setIsSaving(true)
+    setIsCreatingProject(true)
+    onSavingChange?.(true, 'project')
 
     try {
       const values = form.getValues()
@@ -778,7 +784,7 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
         customFields: customFieldsData,
         isPublished: true,
         state: "published" as const,
-        emailToCustomer,
+        emailToCustomer, // Only send email if explicitly requested
       }
 
       await updateProjectMutation.mutateAsync({ projectId, projectData })
@@ -794,7 +800,8 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
         description: errorDescription,
       })
     } finally {
-      setIsSaving(false)
+      setIsCreatingProject(false)
+      onSavingChange?.(false, 'project')
     }
   }
 
@@ -820,12 +827,7 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
     }
   }, [project?.type, onProjectTypeChange]);
 
-  // Add effect to notify parent of saving state changes
-  useEffect(() => {
-    if (onSavingChange) {
-      onSavingChange(isSaving);
-    }
-  }, [isSaving, onSavingChange]);
+
 
   // Initialize standard agreement template when form loads or template changes
   useEffect(() => {
@@ -925,48 +927,15 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
   }, [agreementTemplate, organization, form, selectedCustomer]);
 
   // Add custom event listeners for form submission
-  useEffect(() => {
-    const formElement = document.getElementById('edit-project-form');
-    if (!formElement) return;
-
-    const handleSubmitDraft = (e: Event) => {
-      e.preventDefault();
-      handleSaveDraft();
-    };
-
-    const handleSubmitPublish = (e: Event) => {
-      e.preventDefault();
-      handlePublishProject(false);
-    };
-
-    const handleSubmitPublishEmail = (e: Event) => {
-      e.preventDefault();
-      handlePublishProject(true);
-    };
-
-    formElement.addEventListener('submit-draft', handleSubmitDraft);
-    formElement.addEventListener('submit-publish', handleSubmitPublish);
-    formElement.addEventListener('submit-publish-email', handleSubmitPublishEmail);
-
-    return () => {
-      formElement.removeEventListener('submit-draft', handleSubmitDraft);
-      formElement.removeEventListener('submit-publish', handleSubmitPublish);
-      formElement.removeEventListener('submit-publish-email', handleSubmitPublishEmail);
-    };
-  }, [handleSaveDraft, handlePublishProject]); // Add dependencies
-
   // Expose imperative methods for parent controls (Update/Save Draft)
   useImperativeHandle(ref, () => ({
     handleSubmit: async (emailToCustomer: boolean) => {
-      const formElement = document.getElementById('edit-project-form')
-      if (!formElement) return
-      const eventName = emailToCustomer ? 'submit-publish-email' : 'submit-publish'
-      formElement.dispatchEvent(new Event(eventName))
+      // Direct call to handlePublishProject instead of event dispatching
+      await handlePublishProject(emailToCustomer);
     },
     handleSaveDraft: async () => {
-      const formElement = document.getElementById('edit-project-form')
-      if (!formElement) return
-      formElement.dispatchEvent(new Event('submit-draft'))
+      // Direct call to handleSaveDraft instead of event dispatching
+      await handleSaveDraft();
     }
   }))
 
@@ -1106,7 +1075,7 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
 
 
           <Form {...form}>
-              <form id="edit-project-form" onSubmit={form.handleSubmit(handleUpdate)} className="space-y-6">
+              <div className="space-y-6">
                 {/* Accordion Sections go here... */}
                 {/* Customer Selection */}
                 <Card>
@@ -2749,7 +2718,7 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
                   </Collapsible>
                 </Card>
          
-              </form>
+              </div>
             </Form>
     </div>
   )

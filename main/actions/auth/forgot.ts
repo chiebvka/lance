@@ -4,17 +4,32 @@ import { createClient } from "@/utils/supabase/server";
 import { headers } from "next/headers";
 import { baseUrl } from "@/utils/universal";
 import { Message } from "@/components/form-message";
-// import { encodedRedirect } from "@/utils/utils";
-// import { redirect } from "next/navigation";
+import { authRateLimit } from "@/utils/rateLimit";
 
 export const forgotPasswordAction = async (prevState: Message | undefined, formData: FormData): Promise<Message> => {
+    // Get client IP for rate limiting
+    const headersList = await headers();
+    const ip = headersList.get('x-forwarded-for') ?? 
+      headersList.get('x-real-ip') ?? 
+      '127.0.0.1';
+    
+    // Apply rate limiting for forgot password (both hourly and daily limits)
+    const hourlyLimit = await authRateLimit.forgotPassword.limit(ip);
+    const dailyLimit = await authRateLimit.forgotPasswordDaily.limit(ip);
+    
+    if (!hourlyLimit.success) {
+      return { error: "Too many password reset attempts. Please try again later." };
+    }
+    
+    if (!dailyLimit.success) {
+      return { error: "Daily password reset limit reached. Please try again tomorrow." };
+    }
+    
     const email = formData.get("email")?.toString();
     const supabase = await createClient();
     const origin = (await headers()).get("origin");
-    // const callbackUrl = formData.get("callbackUrl")?.toString(); // We might not need this if we're not redirecting immediately
   
     if (!email) {
-      // return encodedRedirect("error", "/forgot", "Email is required");
       return { error: "Email is required" };
     }
   
@@ -24,22 +39,8 @@ export const forgotPasswordAction = async (prevState: Message | undefined, formD
   
     if (error) {
       console.error(error.message);
-      // return encodedRedirect(
-      //   "error",
-      //   "/forgot",
-      //   "Could not reset password",
-      // );
       return { error: "Could not reset password. " + error.message };
     }
   
-    // if (callbackUrl) {
-    //   return redirect(callbackUrl);
-    // }
-  
-    // return encodedRedirect(
-    //   "success",
-    //   "/forgot",
-    //   "Check your email for a link to reset your password.",
-    // );
     return { success: "Check your email for a link to reset your password." };
   };

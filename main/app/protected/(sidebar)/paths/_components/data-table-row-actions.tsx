@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { MoreHorizontal, Loader2, Edit, Copy, ExternalLink, Trash } from "lucide-react"
+import { MoreHorizontal, Loader2, Edit, Copy, ExternalLink, Trash, Bubbles } from "lucide-react"
 import ConfirmModal from "@/components/modal/confirm-modal"
 import { Path } from "@/hooks/paths/use-paths"
 
@@ -73,11 +73,27 @@ export function DataTableRowActions<TData>({
   // Duplicate path mutation
   const duplicatePathMutation = useMutation({
     mutationFn: async (pathData: any) => {
-      const { data } = await axios.post('/api/paths/create', {
-        ...pathData,
-        name: `${pathData.name} (Copy)`,
-      })
-      return data
+      // Show loading toast with bubbles icon
+      const loadingToastId = toast.loading(
+        <div className="flex items-center gap-3">
+          <Bubbles className="h-4 w-4 animate-spin [animation-duration:0.5s]" />
+          <span>Duplicating Path...</span>
+        </div>,
+        { duration: Infinity }
+      );
+
+      try {
+        const { data } = await axios.post('/api/paths/create', {
+          ...pathData,
+          name: `${pathData.name} (Copy)`,
+        })
+        toast.dismiss(loadingToastId);
+        return data
+        
+      } catch (error) {
+        toast.dismiss(loadingToastId);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast.success("Path duplicated successfully!");
