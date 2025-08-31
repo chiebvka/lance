@@ -95,7 +95,7 @@ const data = {
       icon: BrickWall ,
     },
     {
-      title: "Path",
+      title: "Paths",
       url: "/protected/paths",
       icon: Split ,
     },

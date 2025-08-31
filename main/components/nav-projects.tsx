@@ -44,13 +44,13 @@ export function NavProjects({
     let isMailto = false;
 
     if (userEmail) {
-      if (item.name === "Error Message?") {
+      if (item.name === "Bexforte Error Message?") {
         const to = "support@bexoni.com";
         const subject = "Error Report";
         const body = `Hi,\n\nThis is a notification for an error message.\n\nUser: ${userEmail}\nError Code/Message: \n\n[Please describe the error or paste the code here]`;
         href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         isMailto = true;
-      } else if (item.name === "Need Support?") {
+      } else if (item.name === "Bexforte Need Support?") {
         const to = "hello@bexoni.com";
         const subject = "Support Request";
         const body = `Hi,\n\nI'm requesting assistance with the following:\n\nUser: ${userEmail}\n\n[Please describe your support need here]`;

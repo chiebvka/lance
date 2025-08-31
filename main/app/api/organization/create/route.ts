@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/utils/supabase/server";
 import Stripe from "stripe";
+import { telegramService } from "@/utils/telegram";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-06-30.basil",
@@ -167,7 +168,7 @@ export async function POST(request: NextRequest) {
         organizationId: organization.id,
         stripeSubscriptionId: stripeSubscription.id,
         stripeCustomerId: stripeCustomer.id,
-        subscriptionstatus: mapStripeStatusToDbStatus(stripeSubscription.status, false), // No payment method for initial trial
+        subscriptionStatus: mapStripeStatusToDbStatus(stripeSubscription.status, false), // No payment method for initial trial
         planType: "starter",
         billingCycle: "monthly",
         amount: (stripeSubscription.items.data[0]?.price.unit_amount || 0) / 100,
@@ -225,6 +226,20 @@ export async function POST(request: NextRequest) {
         { error: "Failed to update user profile", details: profileError.message },
         { status: 500 }
       );
+    }
+
+    // Send Telegram notification for new trial
+    try {
+      await telegramService.notifyTrialStarted({
+        organizationName: organization.name,
+        userEmail: customerEmail,
+        country: organization.country,
+        baseCurrency: organization.baseCurrency,
+        trialEndDate: organization.trialEndsAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+    } catch (telegramError) {
+      console.error("Failed to send Telegram notification:", telegramError);
+      // Don't fail the request if Telegram notification fails
     }
 
     return NextResponse.json({

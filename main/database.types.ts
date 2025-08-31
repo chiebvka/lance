@@ -313,6 +313,47 @@ export type Database = {
           },
         ]
       }
+      cancellations: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          notes: string | null
+          organizationId: string | null
+          reason: string | null
+          stripeData: Json | null
+          stripeId: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          notes?: string | null
+          organizationId?: string | null
+          reason?: string | null
+          stripeData?: Json | null
+          stripeId?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          notes?: string | null
+          organizationId?: string | null
+          reason?: string | null
+          stripeData?: Json | null
+          stripeId?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cancellations_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_activities: {
         Row: {
           amount: number | null
@@ -845,7 +886,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "invoices_projectid_fkey"
+            foreignKeyName: "invoices_projectId_fkey"
             columns: ["projectId"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2121,27 +2162,36 @@ export type Database = {
         | "invoice_paid"
         | "invoice_viewed"
         | "invoice_overdue"
+        | "invoice_reminder"
+        | "invoice_updated"
         | "invoice_link_clicked"
         | "receipt_sent"
         | "receipt_link_clicked"
         | "receipt_viewed"
+        | "receipt_reminder"
+        | "receipt_updated"
         | "project_started"
+        | "project_overdue"
         | "project_completed"
+        | "project_updated"
+        | "project_reminder"
+        | "project_signed"
+        | "project_sent"
+        | "project_viewed"
         | "project_link_clicked"
         | "agreement_sent"
         | "agreement_signed"
         | "agreement_viewed"
         | "agreement_link_clicked"
-        | "feedback_requested"
+        | "feedback_sent"
+        | "feedback_updated"
+        | "feedback_reminder"
         | "feedback_received"
+        | "feedback_submitted"
+        | "feedback_overdue"
         | "feedback_viewed"
         | "feedback_link_clicked"
         | "email_opened"
-        | "project_sent"
-        | "project_viewed"
-        | "feedback_sent"
-        | "feedback_reminder"
-        | "feedback_overdue"
       event_entity_enum: "wall" | "links_page" | "link_item" | "file"
       event_type_enum: "page_view" | "click" | "download" | "share"
       plan_type_enum: "starter" | "pro" | "corporate"
@@ -2295,27 +2345,36 @@ export const Constants = {
         "invoice_paid",
         "invoice_viewed",
         "invoice_overdue",
+        "invoice_reminder",
+        "invoice_updated",
         "invoice_link_clicked",
         "receipt_sent",
         "receipt_link_clicked",
         "receipt_viewed",
+        "receipt_reminder",
+        "receipt_updated",
         "project_started",
+        "project_overdue",
         "project_completed",
+        "project_updated",
+        "project_reminder",
+        "project_signed",
+        "project_sent",
+        "project_viewed",
         "project_link_clicked",
         "agreement_sent",
         "agreement_signed",
         "agreement_viewed",
         "agreement_link_clicked",
-        "feedback_requested",
+        "feedback_sent",
+        "feedback_updated",
+        "feedback_reminder",
         "feedback_received",
+        "feedback_submitted",
+        "feedback_overdue",
         "feedback_viewed",
         "feedback_link_clicked",
         "email_opened",
-        "project_sent",
-        "project_viewed",
-        "feedback_sent",
-        "feedback_reminder",
-        "feedback_overdue",
       ],
       event_entity_enum: ["wall", "links_page", "link_item", "file"],
       event_type_enum: ["page_view", "click", "download", "share"],

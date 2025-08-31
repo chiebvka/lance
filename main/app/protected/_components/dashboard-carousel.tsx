@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { useDashboardRecent } from "@/hooks/dashboard/use-dashboard"
+import { useInvoices } from "@/hooks/invoices/use-invoices"
+import { useFeedbacks } from "@/hooks/feedbacks/use-feedbacks"
 
 export default function DashboardCarousel() {
   const plugin = React.useRef(
@@ -32,8 +34,12 @@ export default function DashboardCarousel() {
   const [canScrollPrev, setCanScrollPrev] = React.useState(false)
   const [canScrollNext, setCanScrollNext] = React.useState(false)
   
-  // Fetch real data
+  // Fetch real data for display
   const { data: recentData, isLoading: isLoadingRecent } = useDashboardRecent()
+  
+  // Fetch full data for accurate rating calculations
+  const { data: allInvoices = [] } = useInvoices()
+  const { data: allFeedbacks = [] } = useFeedbacks()
   
   // Use real data or fallback to empty arrays
   const recentInvoices = recentData?.invoices || []
@@ -42,21 +48,82 @@ export default function DashboardCarousel() {
   const recentReceipts = recentData?.receipts || []
 
   // --------------------
-  // Ratings (calculated from real data)
+  // Ratings (calculated exactly like in card-analytics components)
   // --------------------
   const now = new Date()
-  const totalInvoices = recentInvoices.length
-  const paidInvoices = recentInvoices.filter(inv => inv.state === 'settled').length
-  const overdueInvoices = recentInvoices.filter(inv => inv.state === 'overdue').length
-  const paidPercentage = totalInvoices > 0 ? (paidInvoices / totalInvoices) * 60 : 0
-  const overduePenalty = totalInvoices > 0 ? Math.min(10, (overdueInvoices / totalInvoices) * 10) : 0
-  const invoiceRating = Math.round(Math.max(0, Math.min(100, paidPercentage - overduePenalty + 40))) // Base 40 for other factors
+  
+  // Invoice rating calculation (matches invoice card-analytics.tsx exactly)
+  const totalInvoices = allInvoices.length
+  const paidInvoices = allInvoices.filter(inv => inv.state === 'settled').length
+  const overdueInvoices = allInvoices.filter(inv => {
+    if (inv.state === "settled") return false; // Paid invoices are not overdue
+    if (!inv.dueDate) return false;
+    return new Date(inv.dueDate) < now;
+  }).length
+  
+  // Calculate various metrics for rating (same logic as invoice card-analytics)
+  let invoiceRating = 0
+  let invoiceCalculationExplanation = ""
+  
+  if (totalInvoices > 0) {
+    // Base score: percentage of paid invoices (60% weight)
+    const paidPercentage = (paidInvoices / totalInvoices) * 60
+    
+    // On-time payment score (20% weight)
+    let onTimePaymentScore = 0
+    const paidInvoicesWithDates = allInvoices.filter(inv => 
+      inv.state === "settled" && inv.paidOn && inv.dueDate
+    )
+    
+    if (paidInvoicesWithDates.length > 0) {
+      const onTimePayments = paidInvoicesWithDates.filter(inv => 
+        new Date(inv.paidOn!) <= new Date(inv.dueDate!)
+      ).length
+      onTimePaymentScore = (onTimePayments / paidInvoicesWithDates.length) * 20
+    }
+    
+    // Overdue penalty (10% weight) - deduct points for overdue invoices
+    const overduePenalty = Math.min(10, (overdueInvoices / totalInvoices) * 10)
+    
+    // Collection efficiency (10% weight) - based on how quickly invoices are paid
+    let collectionEfficiency = 0
+    if (paidInvoices > 0) {
+      const avgPaymentDays = paidInvoicesWithDates.reduce((total, inv) => {
+        const paymentDate = new Date(inv.paidOn!)
+        const dueDate = new Date(inv.dueDate!)
+        const daysDiff = Math.max(0, (paymentDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
+        return total + daysDiff
+      }, 0) / paidInvoicesWithDates.length
+      
+      // Score based on average payment days (lower is better)
+      collectionEfficiency = Math.max(0, 10 - (avgPaymentDays / 30) * 10)
+    }
+    
+    invoiceRating = Math.max(0, Math.min(100, paidPercentage + onTimePaymentScore - overduePenalty + collectionEfficiency))
+    
+    invoiceCalculationExplanation = `Based on ${totalInvoices} total invoices. ${paidInvoices} paid (${Math.round(paidPercentage)}% base score). ${onTimePaymentScore > 0 ? `On-time payments: ${Math.round(onTimePaymentScore)}%. ` : ''}${overduePenalty > 0 ? `Overdue penalty: -${Math.round(overduePenalty)}%. ` : ''}Collection efficiency: ${Math.round(collectionEfficiency)}%.`
+  } else {
+    invoiceCalculationExplanation = "No invoices yet."
+  }
 
-  const totalNonDraftFeedbacks = recentFeedbacks.filter(f => f.state !== 'draft').length
-  const completedFeedbacks = recentFeedbacks.filter(f => f.state === 'completed').length
-  const overdueFeedbacks = recentFeedbacks.filter(f => f.state === 'overdue').length
-  const feedbackBase = totalNonDraftFeedbacks > 0 ? (completedFeedbacks / totalNonDraftFeedbacks) * 100 : 0
-  const feedbackRating = Math.max(0, Math.round(feedbackBase - overdueFeedbacks * 10))
+  // Feedback rating calculation (matches feedback card-analytics.tsx exactly)
+  const totalNonDraftFeedbacks = allFeedbacks.filter(f => f.state !== 'draft').length
+  const completedFeedbacks = allFeedbacks.filter(f => f.state === 'completed').length
+  const overdueFeedbacks = allFeedbacks.filter(f => {
+    if (["completed", "draft"].includes(f.state ?? "")) return false
+    if (!f.dueDate) return false
+    return new Date(f.dueDate) < now
+  }).length
+  
+  // Performance rating calculation (same logic as feedback card-analytics)
+  let feedbackRating = totalNonDraftFeedbacks > 0 ? (completedFeedbacks / totalNonDraftFeedbacks) * 100 : 0
+  // Deduct 10 points per overdue, but don't go below 0
+  feedbackRating = Math.max(0, feedbackRating - overdueFeedbacks * 10)
+  
+  // Create calculation explanation (same as feedback card-analytics)
+  const feedbackCalculationExplanation = totalNonDraftFeedbacks > 0 
+    ? `Based on ${completedFeedbacks} completed out of ${totalNonDraftFeedbacks} sent feedbacks. ${overdueFeedbacks > 0 ? `Deducted ${overdueFeedbacks * 10} points for ${overdueFeedbacks} overdue form${overdueFeedbacks > 1 ? 's' : ''}.` : 'No overdue forms.'}`
+    : 'No feedbacks sent yet.'
 
   // Tag color helpers (mirrors table column styles)
   const getInvoiceStateColor = (state: string) => {
@@ -147,7 +214,12 @@ export default function DashboardCarousel() {
       content: (
         <div className="flex flex-col h-full px-6 min-w-0">
           <div className="flex-shrink-0">
-            <SegmentedBar score={invoiceRating} title="" subtitle="" />
+            <SegmentedBar 
+              score={Math.round(invoiceRating)} 
+              title="" 
+              subtitle="" 
+              calculationExplanation={invoiceCalculationExplanation}
+            />
           </div>
 
           {/* Header row */}
@@ -192,7 +264,12 @@ export default function DashboardCarousel() {
       content: (
         <div className="flex flex-col h-full px-6 min-w-0">
           <div className="flex-shrink-0">
-            <SegmentedBar score={feedbackRating} title="" subtitle="" />
+            <SegmentedBar 
+              score={Math.round(feedbackRating)} 
+              title="" 
+              subtitle="" 
+              calculationExplanation={feedbackCalculationExplanation}
+            />
           </div>
           
           <div className="flex justify-between text-sm text-primary font-bold my-3 flex-shrink-0">

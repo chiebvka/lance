@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createServiceRoleClient } from "@/utils/supabase/server";
+import { telegramService } from "@/utils/telegram";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-06-30.basil",
@@ -195,6 +196,21 @@ export async function POST(request: NextRequest) {
               console.error("❌ Error updating subscription record:", subUpdateError);
             } else {
               console.log("✅ Existing subscription record updated successfully");
+              
+              // Send Telegram notification for subscription update
+              try {
+                await telegramService.notifySubscription({
+                  organizationName: session.metadata?.organizationName || 'Unknown',
+                  userEmail: session.metadata?.userEmail || 'Unknown',
+                  planType: planType,
+                  billingCycle: billingCycle,
+                  amount: amount / 100,
+                  currency: currency,
+                  action: 'updated'
+                });
+              } catch (telegramError) {
+                console.error("Failed to send Telegram notification:", telegramError);
+              }
             }
           } else {
             // Create new subscription record
@@ -227,6 +243,21 @@ export async function POST(request: NextRequest) {
               console.error("❌ Error creating subscription record:", subInsertError);
             } else {
               console.log("✅ New subscription record created successfully");
+              
+              // Send Telegram notification for new subscription
+              try {
+                await telegramService.notifySubscription({
+                  organizationName: session.metadata?.organizationName || 'Unknown',
+                  userEmail: session.metadata?.userEmail || 'Unknown',
+                  planType: planType,
+                  billingCycle: billingCycle,
+                  amount: amount / 100,
+                  currency: currency,
+                  action: 'started'
+                });
+              } catch (telegramError) {
+                console.error("Failed to send Telegram notification:", telegramError);
+              }
             }
           }
         }
@@ -338,6 +369,21 @@ export async function POST(request: NextRequest) {
             console.error("❌ Error updating organization subscription:", orgUpdateError);
           } else {
             console.log("✅ Organization subscription updated successfully");
+            
+            // Send Telegram notification for subscription update
+            try {
+              await telegramService.notifySubscription({
+                organizationName: organizationMetadata?.organizationName || 'Unknown',
+                userEmail: organizationMetadata?.userEmail || 'Unknown',
+                planType: updatedPlanType,
+                billingCycle: updatedBillingCycle,
+                amount: updatedAmount / 100,
+                currency: updatedCurrency,
+                action: 'updated'
+              });
+            } catch (telegramError) {
+              console.error("Failed to send Telegram notification:", telegramError);
+            }
           }
         }
         break;
@@ -399,6 +445,51 @@ export async function POST(request: NextRequest) {
             console.error("❌ Error updating organization on subscription delete:", orgDeleteError);
           } else {
             console.log("✅ Organization updated on subscription delete");
+          }
+          
+          // Insert cancellation record into cancellations table
+          try {
+            const { error: cancellationError } = await supabase
+              .from("cancellations")
+              .insert({
+                organizationId: deletedOrgMetadata.organizationId,
+                email: deletedOrgMetadata.userEmail || 'Unknown',
+                reason: cancellationReason || 'No reason provided',
+                notes: cancellationComment || null,
+                stripeId: deletedSubscription.id,
+                stripeData: {
+                  subscriptionId: deletedSubscription.id,
+                  customerId: deletedSubscription.customer,
+                  cancellationDetails: cancellationDetails,
+                  eventId: event.id,
+                  eventType: event.type,
+                  cancelledAt: new Date().toISOString(),
+                },
+              });
+
+            if (cancellationError) {
+              console.error("❌ Error inserting cancellation record:", cancellationError);
+            } else {
+              console.log("✅ Cancellation record inserted successfully");
+            }
+          } catch (insertError) {
+            console.error("❌ Error inserting cancellation record:", insertError);
+          }
+          
+          // Send Telegram notification for subscription cancellation
+          try {
+            await telegramService.notifyCancellation({
+              organizationName: deletedOrgMetadata.organizationName || 'Unknown',
+              userEmail: deletedOrgMetadata.userEmail || 'Unknown',
+              planType: deletedOrgMetadata.planType || 'Unknown',
+              reason: cancellationReason,
+              comment: cancellationComment,
+              endDate: deletedSubscription.current_period_end 
+                ? new Date(deletedSubscription.current_period_end * 1000).toISOString()
+                : new Date().toISOString(),
+            });
+          } catch (telegramError) {
+            console.error("Failed to send Telegram notification:", telegramError);
           }
         }
         break;
