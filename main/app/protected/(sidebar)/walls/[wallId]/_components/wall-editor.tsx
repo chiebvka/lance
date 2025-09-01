@@ -1326,7 +1326,8 @@ export default function WallEditor({ initialWall }: Props) {
                       <div className="text-sm">
                         <p className="font-medium text-green-800">Private Wall</p>
                         <p className="text-green-700 mt-1">
-                          This wall will be private and only accessible via a secure token link.
+                        This wall will be private and only accessible via the created secure link.
+                        Recipients will need the secure link to view it.
                         </p>
                       </div>
                     </div>

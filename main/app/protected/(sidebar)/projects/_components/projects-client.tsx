@@ -409,6 +409,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
           customerName: fullProject.customerName,
           budget: fullProject.budget,
           currency: fullProject.currency,
+          startDate: (fullProject as any).startDate,
           endDate: fullProject.endDate,
           deliverables: (fullProject as any).deliverables?.map((d: any) => ({
             name: d.name ?? null,
@@ -416,6 +417,9 @@ export default function ProjectsClient({ initialProjects }: Props) {
             dueDate: d.dueDate ?? null,
           })) || [],
           serviceAgreement: (fullProject as any).serviceAgreement ?? null,
+          // Pass the relationship data with fallbacks
+          customer: (fullProject as any).customer,
+          organization: (fullProject as any).organization || organization,
         }
 
         const filename = project.name ? `${sanitizeFilename(project.name)}.pdf` : `project-${project.id}.pdf`
@@ -499,6 +503,7 @@ export default function ProjectsClient({ initialProjects }: Props) {
             customerName: fullProject.customerName,
             budget: fullProject.budget,
             currency: fullProject.currency,
+            startDate: (fullProject as any).startDate,
             endDate: fullProject.endDate,
             deliverables: (fullProject as any).deliverables?.map((d: any) => ({
               name: d.name ?? null,
@@ -506,6 +511,9 @@ export default function ProjectsClient({ initialProjects }: Props) {
               dueDate: d.dueDate ?? null,
             })) || [],
             serviceAgreement: (fullProject as any).serviceAgreement ?? null,
+            // Pass the relationship data with fallbacks
+            customer: (fullProject as any).customer,
+            organization: (fullProject as any).organization || organization,
           }
 
           let baseName = project.name || `project-${project.id}`

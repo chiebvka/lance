@@ -468,7 +468,7 @@ export default function EditCustomer({ customer, onSuccess, onLoadingChange, onD
                       />
                     </div>
                     <div>
-                      <Label htmlFor="country">Country</Label>
+                      {/* <Label htmlFor="country">Country</Label>
                       <Select>
                         <SelectTrigger>
                           <SelectValue placeholder="Select country" />
@@ -479,7 +479,7 @@ export default function EditCustomer({ customer, onSuccess, onLoadingChange, onD
                           <SelectItem value="United Kingdom">United Kingdom</SelectItem>
                           <SelectItem value="Australia">Australia</SelectItem>
                         </SelectContent>
-                      </Select>
+                      </Select> */}
                     </div>
                   </div>
                 </div>

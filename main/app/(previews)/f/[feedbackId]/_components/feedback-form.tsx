@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Star, Calendar, Building2, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import SubscriptionNotice from "@/app/(previews)/_components/SubscriptionNotice";
+import ConfirmModal from "./confirm-modal";
 
 interface Question {
   id: string
@@ -42,6 +43,8 @@ interface FeedbackData {
   organizationLogoUrl: string | null
   organizationNameFromOrg: string | null
   organizationEmailFromOrg: string | null
+  recepientEmail: string | null
+  recepientName: string | null
   message: string | null
   created_at: string
   organization?: {
@@ -71,6 +74,7 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [blockedReason, setBlockedReason] = useState<string | null>(null)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
 
   useEffect(() => {
     fetchFeedbackData()
@@ -141,6 +145,13 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
       return
     }
 
+    // Show confirm modal instead of submitting directly
+    setShowConfirmModal(true)
+  }
+
+  const handleConfirmSubmit = async () => {
+    if (!feedbackData) return
+
     try {
       setSubmitting(true)
       const response = await axios.patch('/api/feedback/submit-feedback', {
@@ -150,7 +161,7 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
       })
 
       if (response.data.success) {
-        toast.success("Thank you! Your feedback has been submitted successfully.")
+        toast.success("Thank you! Your feedback has been submitted successfully. Notification emails have been sent to both parties.")
         // Refresh the data to show completed state
         await fetchFeedbackData()
       }
@@ -388,7 +399,7 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
           <CardContent className="md:p-8 p-4 space-y-8">
             {feedbackData.questions.map(renderQuestion)}
 
-            <div className="pt-6 border-t">
+                        <div className="pt-6 border-t">
               <Button
                 onClick={handleSubmit}
                 disabled={submitting}
@@ -400,6 +411,15 @@ export default function FeedbackForm({ feedbackId, token }: FeedbackFormProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmSubmit}
+        organizationName={organizationName || "Company"}
+        feedbackName={feedbackData?.name || "Feedback Form"}
+      />
     </div>
   )
 }

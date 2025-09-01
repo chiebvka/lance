@@ -650,6 +650,11 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
             questions: feedback.questions || [],
             answers: feedback.answers || [],
           };
+          
+          // Debug logging to ensure data is being passed correctly
+          // console.log('Mapped feedback for CSV export:', mappedFeedback);
+          // console.log('Questions type:', typeof mappedFeedback.questions);
+          // console.log('Answers type:', typeof mappedFeedback.answers);
 
           let baseName = feedback.name || `feedback-${feedback.id}`;
           let fileName = `${sanitizeFilename(baseName)}.csv`;
@@ -753,6 +758,11 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
           questions: feedback.questions || [],
           answers: feedback.answers || [],
         };
+        
+        // Debug logging to ensure data is being passed correctly
+        // console.log('Single feedback mapped for CSV export:', mappedFeedback);
+        // console.log('Questions type:', typeof mappedFeedback.questions);
+        // console.log('Answers type:', typeof mappedFeedback.answers);
 
         downloadFeedbackAsCSV(mappedFeedback, `${sanitizeFilename(feedback.name || `feedback-${feedback.id}`)}.csv`);
         toast.success("Feedback exported successfully!");
@@ -762,7 +772,7 @@ export default function FeedbackClient({ initialFeedbacks }: Props) {
 
   // Define ExportBar component
   const ExportBar = () => {
-    console.log('ExportBar rendered with', selectedFeedbacks.length, 'selected feedbacks');
+    // console.log('ExportBar rendered with', selectedFeedbacks.length, 'selected feedbacks');
     
     const handleExportClick = () => {
       handleExport();

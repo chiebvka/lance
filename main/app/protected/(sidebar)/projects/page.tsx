@@ -9,7 +9,6 @@ export default async function ProjectsPage() {
   const supabase = await createClient();
   const user = await getAuthenticatedUser(supabase);
 
-
   let initialProjects = []
   try {
     initialProjects = await getProjectsWithDetails(supabase, user.id)
@@ -18,7 +17,7 @@ export default async function ProjectsPage() {
   }
 
   return (
-    <div className='w-full py-4 px-6 border border-bexoni'>
+    <div className='w-full py-4 px-6'>
       <ProjectsClient initialProjects={initialProjects} />
     </div>
   )

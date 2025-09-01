@@ -5,7 +5,6 @@ import { Trash, Upload, Plus, Minus, GripVertical } from 'lucide-react'
 import Image from 'next/image'
 import { useInvoices, useCreateInvoice } from '@/hooks/invoices/use-invoices'
 import { useCustomers } from '@/hooks/customers/use-customers'
-import { useOrganization } from '@/hooks/organizations/use-organization'
 import { useBanks } from '@/hooks/banks/use-banks';
 import { Reorder, useDragControls } from "framer-motion";
 import { generateNextInvoiceNumber } from '@/utils/invoice-helpers'
@@ -30,6 +29,12 @@ import { toast } from 'sonner'
 
 type Props = {
   userEmail?: string | null
+  organization?: {
+    email: string | null
+    baseCurrency: string | null
+    name: string | null
+    logoUrl: string | null
+  } | null
   layoutOptions?: {
     hasTax: boolean
     hasVat: boolean
@@ -52,6 +57,7 @@ export interface InvoiceFormRef {
 
 const InvoiceForm = forwardRef<InvoiceFormRef, Props>(({ 
   userEmail, 
+  organization,
   layoutOptions, 
   onLayoutOptionChange, 
   selectedCurrency: propSelectedCurrency, 
@@ -65,7 +71,6 @@ const InvoiceForm = forwardRef<InvoiceFormRef, Props>(({
 }, ref) => {
   const { data: invoices = [], isLoading } = useInvoices()
   const { data: customers = [], isLoading: customersLoading } = useCustomers()
-  const { data: organization } = useOrganization()
   const { data: banks = [], isLoading: banksLoading } = useBanks()
   const createInvoiceMutation = useCreateInvoice()
   const queryClient = useQueryClient()

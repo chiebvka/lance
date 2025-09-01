@@ -94,16 +94,9 @@ export async function GET(request: NextRequest) {
             continue;
           }
 
-          // Send email reminder - use customer email if available, otherwise use recipient email
-          const recipientEmail = invoice.customers?.email || invoice.recepientEmail;
-          const recipientName = invoice.customers?.name || invoice.recepientName;
-          
-          if (recipientEmail) {
-            await sendInvoiceReminderEmail(supabase, invoice, organization, recipientEmail, recipientName);
-            console.log(`Invoice reminder email sent for invoice ${invoice.id} to ${recipientEmail}`);
-          } else {
-            console.log(`Skipping email for invoice ${invoice.id} - no recipient email available`);
-          }
+          // Send email reminders to both customer and organization
+          await sendInvoiceReminderEmails(supabase, invoice, organization);
+          console.log(`Invoice reminder emails sent for invoice ${invoice.id}`);
         } else {
           console.log(`Skipping email and notification for invoice ${invoice.id} - organization has invoiceNotifications explicitly disabled (value: ${organization?.invoiceNotifications})`);
         }
@@ -124,45 +117,98 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function sendInvoiceReminderEmail(supabase: any, invoice: any, organization: any, recipientEmail: string, recipientName: string) {
+async function sendInvoiceReminderEmails(supabase: any, invoice: any, organization: any) {
   try {
-    const fromEmail = 'no_reply@bexforte.com';
-    const fromName = organization?.name || 'Bexforte';
+    // Get organization details with fallbacks
+    let organizationName = 'Bexforte';
+    let organizationEmail = null;
+    let logoUrl = "https://www.bexforte.com/favicon.ico";
     
-    // Use organization logo if available, otherwise fallback
-    const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
+    if (organization) {
+      organizationName = organization.name || invoice.organizationName || 'Bexforte';
+      organizationEmail = organization.email || invoice.organizationEmail;
+      logoUrl = organization.logoUrl || invoice.organizationLogo || "https://www.bexforte.com/favicon.ico";
+    }
+
+    // If no organization email, try to get from profiles table via createdBy
+    if (!organizationEmail && invoice.createdBy) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('profile_id', invoice.createdBy)
+        .single();
+      
+      if (profile?.email) {
+        organizationEmail = profile.email;
+      }
+    }
+
+    // Prepare email targets
+    const sendTargets: Array<{ to: string; name?: string; type: 'customer' | 'organization' }> = [];
     
-    // Final recipient name fallback
-    const finalRecipientName = recipientName || recipientEmail.split('@')[0];
+    // Add customer email if available
+    const customerEmail = invoice.customers?.email || invoice.recepientEmail;
+    const customerName = invoice.customers?.name || invoice.recepientName;
+    if (customerEmail) {
+      sendTargets.push({ 
+        to: customerEmail, 
+        name: customerName || customerEmail.split('@')[0], 
+        type: 'customer' 
+      });
+    }
     
-    const invoiceLink = `${baseUrl}/i/${invoice.id}`;
+    // Add organization email if available
+    if (organizationEmail) {
+      sendTargets.push({ 
+        to: organizationEmail, 
+        name: organizationName, 
+        type: 'organization' 
+      });
+    }
 
-    const emailHtml = await render(InvoiceReminder({
-      invoiceId: invoice.id,
-      clientName: finalRecipientName,
-      invoiceName: invoice.invoiceNumber || `INV-${invoice.id.slice(-6)}`,
-      logoUrl: logoUrl,
-      invoiceLink: invoiceLink,
-      senderName: organization?.name || 'Bexforte'
-    }));
+    // Send emails to all targets
+    for (const target of sendTargets) {
+      try {
+        const emailHtml = await render(InvoiceReminder({
+          invoiceId: invoice.id,
+          clientName: target.name || 'Customer',
+          invoiceName: invoice.invoiceNumber || `INV-${invoice.id.slice(-6)}`,
+          logoUrl: logoUrl,
+          invoiceLink: `${baseUrl}/i/${invoice.id}`,
+          senderName: organizationName
+        }));
 
-    await sendgrid.send({
-      to: recipientEmail,
-      from: `${fromName} <${fromEmail}>`,
-      subject: `Reminder: Overdue Invoice - ${invoice.invoiceNumber || `INV-${invoice.id.slice(-6)}`}`,
-      html: emailHtml,
-      customArgs: {
-        invoiceId: invoice.id,
-        invoiceName: invoice.invoiceNumber || "",
-        customerId: invoice.customerId || "",
-        customerName: invoice.customers?.name || "",
-        organizationId: invoice.organizationId || "",
-        userId: invoice.createdBy || "",
-        type: "invoice_overdue",
-      },
-    });
+        const fromEmail = 'no_reply@bexforte.com';
+        const fromName = organizationName;
 
-    console.log("Invoice reminder email sent to:", recipientEmail);
+        await sendgrid.send({
+          to: target.to,
+          from: `${fromName} <${fromEmail}>`,
+          subject: `Reminder: Overdue Invoice - ${invoice.invoiceNumber || `INV-${invoice.id.slice(-6)}`}`,
+          html: emailHtml,
+          customArgs: {
+            invoiceId: invoice.id,
+            invoiceName: invoice.invoiceNumber || "",
+            customerId: invoice.customerId || "",
+            customerName: invoice.customers?.name || "",
+            organizationId: invoice.organizationId || "",
+            userId: invoice.createdBy || "",
+            type: "invoice_overdue",
+            recipientType: target.type,
+          },
+        });
+        
+        console.log(`Invoice reminder email sent to ${target.type}: ${target.to}`);
+      } catch (emailError: any) {
+        console.error(`Failed to send email to ${target.type} (${target.to}):`, emailError);
+        // Continue with other emails even if one fails
+      }
+    }
+    
+    if (sendTargets.length === 0) {
+      console.warn(`No valid email addresses found for invoice ${invoice.id}`);
+    }
+    
   } catch (emailError: any) {
     console.error("SendGrid Invoice Reminder Error:", emailError);
   }

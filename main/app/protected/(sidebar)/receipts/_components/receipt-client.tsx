@@ -45,6 +45,7 @@ import ConfirmModal from '@/components/modal/confirm-modal'
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { fetchReceipt, Receipt, useReceipts } from '@/hooks/receipts/use-receipts';
+import { useOrganization } from '@/hooks/organizations/use-organization'
 import Pagination from '@/components/pagination';
 // import { createClient } from '@/utils/supabase/client'
 import { currencies, type Currency } from '@/data/currency'
@@ -165,6 +166,8 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
     isError, 
     error 
   } = useReceipts(initialReceipts);
+
+  const { data: organization } = useOrganization();
 
   // Check if we have any active search or filters
   const hasActiveSearchOrFilters = useMemo(() => {
@@ -1066,6 +1069,16 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
     return <div className="p-8">Error fetching receipts: {(error as Error).message}</div>;
   }
 
+  // Update selected currency when organization data is loaded
+  useEffect(() => {
+    if (organization?.baseCurrency) {
+      const orgCurrency = currencies.find(c => c.code === organization.baseCurrency)
+      if (orgCurrency) {
+        setSelectedCurrency(orgCurrency)
+      }
+    }
+  }, [organization?.baseCurrency])
+
 
   // Update layout options when editing a rceipt to reflect database values
     
@@ -1095,6 +1108,7 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
         sheetContent={
           <ReceiptForm 
             userEmail={userEmail} 
+            organization={organization}
             layoutOptions={layoutOptions}
             onLayoutOptionChange={handleLayoutOptionChange}
             selectedCurrency={selectedCurrency}
@@ -1252,6 +1266,7 @@ export default function ReceiptClient({ initialReceipts, userEmail }: Props) {
                   ref={editFormRef}
                   receiptId={receiptBeingEdited.id}
                   userEmail={userEmail}
+                  organization={organization}
                   onSuccess={handleEditSuccess}
                   onCancel={handleCloseSheet}
                 />

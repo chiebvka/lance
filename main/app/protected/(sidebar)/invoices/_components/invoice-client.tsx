@@ -47,6 +47,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { fetchInvoice, Invoice, useInvoices } from '@/hooks/invoices/use-invoices'
+import { useOrganization } from '@/hooks/organizations/use-organization'
 import Pagination from '@/components/pagination'
 import { createClient } from '@/utils/supabase/client'
 import { currencies, type Currency } from '@/data/currency'
@@ -167,6 +168,8 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
     isError, 
     error 
   } = useInvoices(initialInvoices);
+
+  const { data: organization } = useOrganization();
 
   // Check if we have any active search or filters
   const hasActiveSearchOrFilters = useMemo(() => {
@@ -1084,6 +1087,16 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
     return <div className="p-8">Error fetching invoices: {(error as Error).message}</div>;
   }
 
+  // Update selected currency when organization data is loaded
+  useEffect(() => {
+    if (organization?.baseCurrency) {
+      const orgCurrency = currencies.find(c => c.code === organization.baseCurrency)
+      if (orgCurrency) {
+        setSelectedCurrency(orgCurrency)
+      }
+    }
+  }, [organization?.baseCurrency])
+
   // Update layout options when editing an invoice to reflect database values
     
   useEffect(() => {
@@ -1112,6 +1125,7 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
         sheetContent={
           <InvoiceForm 
             userEmail={userEmail} 
+            organization={organization}
             layoutOptions={layoutOptions}
             onLayoutOptionChange={handleLayoutOptionChange}
             selectedCurrency={selectedCurrency}
@@ -1272,6 +1286,7 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
                   ref={editFormRef}
                   invoiceId={invoiceBeingEdited.id}
                   userEmail={userEmail}
+                  organization={organization}
                   onSuccess={handleEditSuccess}
                   onCancel={handleCloseSheet}
                 />

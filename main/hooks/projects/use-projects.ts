@@ -31,7 +31,7 @@ export interface ProjectWithRelations extends Project {
     hasPaymentTerms?: boolean
     deliverableId?: string | null
   }>
-  organizationId?: {
+  organization?: {
     id: string
     name: string
     email: string

@@ -26,12 +26,17 @@ import ComboTextarea from '@/components/combotextarea'
 import { Label } from '@/components/ui/label'
 import { currencies, type Currency } from '@/data/currency'
 import { toast } from 'sonner'
-import { useOrganization } from '@/hooks/organizations/use-organization';
 
 
 type Props = {
     receiptId: string
     userEmail?: string | null
+    organization?: {
+      email: string | null
+      baseCurrency: string | null
+      name: string | null
+      logoUrl: string | null
+    } | null
     onSuccess?: () => void
     onCancel?: () => void
 }
@@ -45,6 +50,7 @@ export interface EditReceiptRef {
 const EditReceipt = forwardRef<EditReceiptRef, Props>(({ 
     receiptId,
     userEmail,
+    organization,
     onSuccess,
     onCancel,
   }, ref) => {
@@ -52,7 +58,6 @@ const EditReceipt = forwardRef<EditReceiptRef, Props>(({
 
     const { data: receipt, isLoading: receiptLoading, error: receiptError } = useReceipt(receiptId)
     const { data: customers = [], isLoading: customersLoading } = useCustomers()
-    const { data: organization } = useOrganization()
     const { data: banks = [], isLoading: banksLoading } = useBanks()
     const updateReceiptMutation = useUpdateReceipt()
     const queryClient = useQueryClient()

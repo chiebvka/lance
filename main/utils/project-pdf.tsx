@@ -41,6 +41,18 @@ export interface ProjectPDFData {
   endDate?: string | null
   serviceAgreement?: string | null
   deliverables?: Array<{ name?: string | null; description?: string | null; dueDate?: string | null }>
+  // New fields for proper data fetching
+  customer?: {
+    id: string
+    name: string
+    email: string | null
+  } | null
+  organization?: {
+    id: string
+    name: string
+    email: string
+    logoUrl: string
+  } | null
 }
 
 const fmtDate = (d?: string | null) => (d ? format(new Date(d), 'dd/MM/yyyy') : 'N/A')
@@ -171,9 +183,17 @@ function stripHtml(input: string) {
 }
 
 export function generateProjectPDF(project: ProjectPDFData) {
-  const orgName = project.organizationName || 'Company'
-  const customer = project.type === 'customer' ? (project.customerName || 'Client') : undefined
+  // Determine organization name with fallbacks
+  const orgName = project.organization?.name || project.organizationName || 'Company'
+  
+  // Determine customer name with fallbacks
+  let customerName: string | undefined
+  if (project.type === 'customer') {
+    customerName = project.customer?.name || project.customerName || 'Client'
+  }
+  
   const currency = project.currency || 'USD'
+  const isPersonal = project.type === 'personal'
 
   return (
     <Document>
@@ -182,12 +202,12 @@ export function generateProjectPDF(project: ProjectPDFData) {
         <View style={styles.header}>
           <Text style={styles.title}>{project.name || 'Project'}</Text>
           <Text style={styles.metaRow}>Type: {project.type || 'N/A'}</Text>
-          <Text style={styles.metaRow}>Organization: {orgName}</Text>
-          {customer && <Text style={styles.metaRow}>Customer: {customer}</Text>}
+          {!isPersonal && <Text style={styles.metaRow}>Organization: {orgName}</Text>}
+          {customerName && <Text style={styles.metaRow}>Customer: {customerName}</Text>}
         </View>
 
-        {project.organizationLogoUrl && (
-          <Image src={project.organizationLogoUrl} style={styles.logo} />
+        {(project.organization?.logoUrl || project.organizationLogoUrl) && (
+          <Image src={project.organization?.logoUrl || project.organizationLogoUrl || ''} style={styles.logo} />
         )}
 
         {/* Overview */}
@@ -195,7 +215,7 @@ export function generateProjectPDF(project: ProjectPDFData) {
         <View style={styles.row}>
           <Text style={styles.cell}>Start: {fmtDate(project.startDate)}</Text>
           <Text style={styles.cell}>End: {fmtDate(project.endDate)}</Text>
-          <Text style={styles.cell}>Budget: {fmtMoney(project.budget, currency)}</Text>
+          {!isPersonal && <Text style={styles.cell}>Budget: {fmtMoney(project.budget, currency)}</Text>}
         </View>
         {project.description && (
           <Text style={[styles.paragraph, { marginTop: 8 }]}>{project.description}</Text>

@@ -28,7 +28,7 @@ export async function getProjectsWithDetails(
           email
         ),
         token,
-        organizationId (
+        organization:organizationId (
           id,
           name,
           email,
@@ -49,6 +49,7 @@ export async function getProjectsWithDetails(
 
   const projectsWithDetails = projects.map((project) => {
     const customer = (project as any).customer as { id: string; name: string; email: string } | null | undefined
+    const organization = (project as any).organization as { id: string; name: string; email: string; logoUrl: string } | null | undefined
     return {
       id: project.id,
       name: project.name || 'Untitled Project',
@@ -67,13 +68,16 @@ export async function getProjectsWithDetails(
       endDate: project.endDate,
       created_at: project.created_at,
       token: project.token ?? null,
+      // Include relationship data
+      customer,
+      organization,
       // Format dates for display
       startDateFormatted: project.startDate 
         ? new Date(project.startDate).toLocaleDateString()
         : 'Not set',
       endDateFormatted: project.endDate 
         ? new Date(project.endDate).toLocaleDateString()
-        : 'Not set',
+        : 'Unknown',
       createdAtFormatted: project.created_at 
         ? new Date(project.created_at).toLocaleDateString()
         : 'Unknown',

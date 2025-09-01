@@ -780,7 +780,8 @@ export default function PathBuilder() {
                       <div className="text-sm">
                         <p className="font-medium text-green-800">Private Path</p>
                         <p className="text-green-700 mt-1">
-                          This path will be private and only accessible via a secure token link.
+                          This path will be private and only accessible via the created secure link.
+                          Recipients will need the secure link to view it.
                         </p>
                       </div>
                     </div>

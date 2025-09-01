@@ -1,26 +1,24 @@
 'use client'
 
-"use client"
-
 import React, { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Bubbles, Loader2, Mail, FileText } from 'lucide-react'
-import { toast } from 'sonner'
-
+import { Bubbles, FileText } from 'lucide-react'
 
 type Props = {
   isOpen: boolean
   onClose: () => void
   onConfirm: () => void
   organizationName: string
+  feedbackName: string
 }
 
 export default function ConfirmModal({ 
     isOpen, 
     onClose, 
     onConfirm,
-    organizationName
+    organizationName,
+    feedbackName
 }: Props) {
   const [isLoading, setIsLoading] = useState(false)
 
@@ -30,7 +28,7 @@ export default function ConfirmModal({
       await onConfirm()
       onClose()
     } catch (err) {
-      toast.error("Failed to sign project")
+      // Error handling is done in the parent component
     } finally {
       setIsLoading(false)
     }
@@ -46,10 +44,10 @@ export default function ConfirmModal({
             </div>
             <div>
               <DialogTitle className="text-left">
-                Confirm Project Signature
+                Confirm Feedback Submission
               </DialogTitle>
               <DialogDescription className="text-left mt-1">
-                Once you sign this project, you won't be able to edit the agreement. Notification emails will be sent to both parties. If you need to make changes later, you'll need to contact <span className="font-semibold">{organizationName}</span> to unlock it for editing.
+                Once you submit this feedback form "{feedbackName}", you won't be able to edit your answers. Notification emails will be sent to both parties. If you need to make changes later, you'll need to contact <span className="font-semibold">{organizationName}</span>.
               </DialogDescription>
             </div>
           </div>
@@ -67,12 +65,12 @@ export default function ConfirmModal({
             {isLoading ? (
               <>
                 <Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.5s]" />
-                Signing...
+                Submitting...
               </>
             ) : (
               <>
                 <FileText className="h-4 w-4" />
-                Sign Project
+                Submit Feedback
               </>
             )}
           </Button>

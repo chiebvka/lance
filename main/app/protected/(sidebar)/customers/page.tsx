@@ -17,7 +17,7 @@ export default async function CustomersPage() {
 
 
   return (
-    <div className='w-full py-4 px-6 border border-bexoni'>
+    <div className='w-full py-4 px-6'>
       <CustomersClient />
       {/* <RecentActivityWrapper /> */}
     </div>

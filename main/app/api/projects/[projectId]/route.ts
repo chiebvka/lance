@@ -63,6 +63,8 @@ async function handleProjectAction(supabase: any, user: any, projectId: string, 
         return await handleUnpublishProject(supabase, user, projectId, existingProject, profile);
       case 'assign_customer':
         return await handleAssignCustomer(supabase, user, projectId, existingProject, body, profile);
+      case 'update_customer':
+        return await handleUpdateCustomer(supabase, user, projectId, existingProject, body, profile);
       case 'unassign_customer':
         return await handleUnassignCustomer(supabase, user, projectId, existingProject, body, profile);
       case 'cancel':
@@ -203,6 +205,48 @@ async function handleAssignCustomer(supabase: any, user: any, projectId: string,
   return NextResponse.json({
     success: true,
     message: 'Project assigned to customer successfully',
+    data: updatedProject
+  });
+}
+
+async function handleUpdateCustomer(supabase: any, user: any, projectId: string, existingProject: any, body: any, profile: any) {
+  const { customerId, emailToCustomer = false } = body;
+  
+  // Fetch customer details
+  const { email, name } = await getCustomerDetails(supabase, customerId);
+  
+  if (!email) {
+    return NextResponse.json({ error: 'Customer email not found' }, { status: 400 });
+  }
+
+  // Update customer assignment without changing project state
+  // Preserve existing token and state
+  const { error: updateError, data: updatedProject } = await supabase
+    .from('projects')
+    .update({
+      customerId: customerId,
+      recepientEmail: email,
+      recepientName: name,
+      updatedOn: new Date().toISOString(),
+    })
+    .eq('id', projectId)
+    .eq('createdBy', user.id)
+    .eq('organizationId', profile.organizationId)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  // Send email if requested
+  if (emailToCustomer && updatedProject) {
+    // Use existing token if available, otherwise generate a new one for email
+    const tokenForEmail = updatedProject.token || crypto.randomUUID();
+    await sendProjectEmail(supabase, user, updatedProject, customerId, tokenForEmail, profile.organizationId);
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: 'Project customer updated successfully',
     data: updatedProject
   });
 }
@@ -428,6 +472,18 @@ export async function GET(
       customer = customerData
     }
 
+    // Fetch organization details
+    let organization = null
+    if (project.organizationId) {
+      const { data: orgData, error: orgError } = await supabase
+        .from("organization")
+        .select("id, name, email, logoUrl")
+        .eq("id", project.organizationId)
+        .single()
+      if (orgError) throw orgError
+      organization = orgData
+    }
+
     // Fetch deliverables
     const { data: deliverables, error: deliverablesError } = await supabase
       .from("deliverables")
@@ -450,6 +506,7 @@ export async function GET(
     const projectResponse = {
       ...project,
       customer,
+      organization,
       deliverables,
       paymentMilestones: paymentTerms,
     }
@@ -670,11 +727,12 @@ export async function PUT(
     }
 
     // --- Email to customer if required ---
+    // Only send email when explicitly requested via emailToCustomer
     if (
+      emailToCustomer &&
       updatedProject?.state === 'published' &&
       updatedProject?.customerId &&
-      !cancelling &&
-      (emailToCustomer || firstPublishWithCustomer || customerChanged)
+      !cancelling
     ) {
       const { data: customer } = await supabase
         .from("customers")

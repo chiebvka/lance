@@ -93,9 +93,9 @@ export async function GET(request: NextRequest) {
             continue;
           }
 
-          // Send reminder email
-          await sendReminderEmail(supabase, feedback, "feedback");
-          console.log(`Feedback reminder email sent for feedback ${feedback.id}`);
+          // Send reminder emails to both customer and organization
+          await sendReminderEmails(supabase, feedback, "feedback");
+          console.log(`Feedback reminder emails sent for feedback ${feedback.id}`);
         } else {
           console.log(`Skipping email and notification for feedback ${feedback.id} - organization has feedbackNotifications explicitly disabled (value: ${organization?.feedbackNotifications})`);
         }
@@ -116,70 +116,113 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function sendReminderEmail(supabase: any, feedback: any, type: string) {
+async function sendReminderEmails(supabase: any, feedback: any, type: string) {
   try {
-    const fromEmail = 'no_reply@feedback.bexforte.com';
-    const fromName = 'Bexbot';
-    let finalRecipientName = feedback.recipientName || feedback.recepientEmail.split('@')[0];
+    // Get organization details with fallbacks
+    let organizationName = 'Bexforte';
+    let organizationEmail = null;
+    let logoUrl = "https://www.bexforte.com/favicon.ico";
+    
+    if (feedback.organizationId) {
+      const { data: organization } = await supabase
+        .from('organization')
+        .select('name, email, logoUrl')
+        .eq('id', feedback.organizationId)
+        .single();
+
+      if (organization) {
+        organizationName = organization.name || feedback.organizationName || 'Bexforte';
+        organizationEmail = organization.email || feedback.organizationEmail;
+        logoUrl = organization.logoUrl || feedback.organizationLogo || "https://www.bexforte.com/favicon.ico";
+      }
+    }
+
+    // If no organization email, try to get from profiles table via createdBy
+    if (!organizationEmail && feedback.createdBy) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('profile_id', feedback.createdBy)
+        .single();
+      
+      if (profile?.email) {
+        organizationEmail = profile.email;
+      }
+    }
+
+    // Ensure feedback has a token
     let token = feedback.token; 
     if (!token) {
       token = crypto.randomUUID();
       await supabase.from("feedbacks").update({ token }).eq("id", feedback.id);
     }
 
-    // Get organization logo URL
-    let logoUrl = "https://www.bexoni.com/favicon.ico"; // Default fallback
-    if (feedback.organizationId) {
-      const { data: organization } = await supabase
-        .from('organization')
-        .select('logoUrl')
-        .eq('id', feedback.organizationId)
-        .single();
-
-      if (organization?.logoUrl) {
-        logoUrl = organization.logoUrl;
-      }
-    }
-
     const feedbackLink = `${baseUrl}/f/${feedback.id}?token=${token}`;
 
-    const emailHtml = await render(FeedbackReminder({
-      feedbackId: feedback.id,
-      clientName: finalRecipientName,
-      feedbackName: feedback.name,
-      logoUrl: logoUrl,
-      feedbackLink,
-    }));
-
-    // Get customer name if customerId exists
-    let customerName = "";
-    if (feedback.customerId) {
-      const { data: customer } = await supabase
-        .from('customers')
-        .select('name')
-        .eq('id', feedback.customerId)
-        .single();
-      customerName = customer?.name || "";
+    // Prepare email targets
+    const sendTargets: Array<{ to: string; name?: string; type: 'customer' | 'organization' }> = [];
+    
+    // Add customer email if available
+    if (feedback.recepientEmail) {
+      sendTargets.push({ 
+        to: feedback.recepientEmail, 
+        name: feedback.recepientName || feedback.recepientEmail.split('@')[0], 
+        type: 'customer' 
+      });
+    }
+    
+    // Add organization email if available
+    if (organizationEmail) {
+      sendTargets.push({ 
+        to: organizationEmail, 
+        name: organizationName, 
+        type: 'organization' 
+      });
     }
 
-    await sendgrid.send({
-      to: feedback.recepientEmail,
-      from: `${fromName} <${fromEmail}>`,
-      subject: `Reminder: Overdue Feedback - ${feedback.name}`,
-      html: emailHtml,
-      customArgs: {
-        feedbackId: feedback.id,
-        feedbackName: feedback.name || '',
-        customerId: feedback.customerId || '',
-        customerName: customerName,
-        organizationId: feedback.organizationId || '',
-        userId: feedback.createdBy || '',
-        type: 'feedback_overdue',
-        token: token,
-      },
-    });
+    // Send emails to all targets
+    for (const target of sendTargets) {
+      try {
+        const emailHtml = await render(FeedbackReminder({
+          feedbackId: feedback.id,
+          clientName: target.name || 'Customer',
+          feedbackName: feedback.name,
+          logoUrl: logoUrl,
+          feedbackLink,
+        }));
 
-    console.log("Reminder email sent to:", feedback.recepientEmail);
+        const fromEmail = 'no_reply@feedback.bexforte.com';
+        const fromName = organizationName;
+
+        await sendgrid.send({
+          to: target.to,
+          from: `${fromName} <${fromEmail}>`,
+          subject: `Reminder: Overdue Feedback - ${feedback.name}`,
+          html: emailHtml,
+          customArgs: {
+            feedbackId: feedback.id,
+            feedbackName: feedback.name || '',
+            customerId: feedback.customerId || '',
+            customerName: feedback.recepientName || '',
+            organizationId: feedback.organizationId || '',
+            userId: feedback.createdBy || '',
+            type: 'feedback_overdue',
+            token: token,
+            recipientType: target.type,
+          },
+        });
+        
+        console.log(`Feedback reminder email sent to ${target.type}: ${target.to}`);
+      } catch (emailError: any) {
+        console.error(`Failed to send email to ${target.type} (${target.to}):`, emailError);
+        // Continue with other emails even if one fails
+      }
+    }
+    
+    if (sendTargets.length === 0) {
+      console.warn(`No valid email addresses found for feedback ${feedback.id}`);
+    }
+    
   } catch (emailError: any) {
     console.error("SendGrid Reminder Error:", emailError);
   }

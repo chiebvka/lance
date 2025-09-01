@@ -102,7 +102,9 @@ export async function GET(request: Request) {
           signatureType,
           signatureDetails,
           signedOn,
-          type
+          type,
+          recepientEmail,
+          recepientName
         `)
         .eq("id", projectId)
         .maybeSingle();
@@ -229,6 +231,8 @@ export async function PATCH(request: Request) {
         token,
         organizationId,
         customerId,
+        recepientEmail,
+        recepientName,
         customers:customers!projects_customerId_fkey(name,email),
         organization:organization!projects_organizationId_fkey(name,email,logoUrl,projectNotifications)
       `)
@@ -237,8 +241,13 @@ export async function PATCH(request: Request) {
 
     const customerRel: any = (signedProject as any)?.customers;
     const orgRel: any = (signedProject as any)?.organization;
-    const customerName = customerRel?.name || 'Customer';
-    const customerEmail = customerRel?.email || null;
+    
+    // Determine customer email with fallbacks
+    const customerEmail = customerRel?.email || (signedProject as any)?.recepientEmail || null;
+    const customerName = customerRel?.name || (signedProject as any)?.recepientName || 'Customer';
+    
+    // Determine organization email with fallbacks
+    const organizationEmail = orgRel?.email || null;
     const organization = orgRel || null;
     const projectName = signedProject?.name || 'Project';
 
@@ -257,6 +266,8 @@ export async function PATCH(request: Request) {
             projectName,
             customerName,
             signedOn,
+            customerEmail,
+            organizationEmail,
           },
           tableName: 'projects',
           tableId: projectId,
@@ -285,27 +296,58 @@ export async function PATCH(request: Request) {
       const fromEmail = 'no_reply@projects.bexforte.com';
       const fromName = senderName;
 
-      const sendTargets: Array<{ to: string; name?: string }> = [];
-      if (customerEmail) sendTargets.push({ to: customerEmail, name: customerName });
-      if (organization?.email) sendTargets.push({ to: organization.email, name: organization.name });
-
-      for (const target of sendTargets) {
-        await sendgrid.send({
-          to: target.to,
-          from: `${fromName} <${fromEmail}>`,
-          subject: `Signed: ${projectName}`,
-          html: emailHtml,
-          customArgs: {
-            projectId: signedProject?.id,
-            projectName: projectName || '',
-            customerId: signedProject?.customerId || "",
-            customerName: customerName || '',
-            organizationId: signedProject?.organizationId || '',
-            userId: signedProject?.customerId || "",
-            type: 'project_signed',
-          },
+      // Prepare email targets with proper fallbacks
+      const sendTargets: Array<{ to: string; name?: string; type: 'customer' | 'organization' }> = [];
+      
+      // Add customer email if available
+      if (customerEmail) {
+        sendTargets.push({ 
+          to: customerEmail, 
+          name: customerName, 
+          type: 'customer' 
         });
       }
+      
+      // Add organization email if available
+      if (organizationEmail) {
+        sendTargets.push({ 
+          to: organizationEmail, 
+          name: organization?.name || 'Organization', 
+          type: 'organization' 
+        });
+      }
+
+      // Send emails to all targets
+      for (const target of sendTargets) {
+        try {
+          await sendgrid.send({
+            to: target.to,
+            from: `${fromName} <${fromEmail}>`,
+            subject: `Project Signed Off: ${projectName}`,
+            html: emailHtml,
+            customArgs: {
+              projectId: signedProject?.id,
+              projectName: projectName || '',
+              customerId: signedProject?.customerId || "",
+              customerName: customerName || '',
+              organizationId: signedProject?.organizationId || '',
+              userId: signedProject?.customerId || "",
+              type: 'project_signed',
+              recipientType: target.type,
+            },
+          });
+          
+          console.log(`[submit-project] Email sent successfully to ${target.type}: ${target.to}`);
+        } catch (emailError: any) {
+          console.error(`[submit-project] Failed to send email to ${target.type} (${target.to}):`, emailError);
+          // Continue with other emails even if one fails
+        }
+      }
+      
+      if (sendTargets.length === 0) {
+        console.warn('[submit-project] No valid email addresses found for customer or organization');
+      }
+      
     } catch (emailErr: any) {
       console.error('Project signoff email error:', emailErr);
     }

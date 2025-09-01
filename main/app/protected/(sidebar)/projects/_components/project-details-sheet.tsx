@@ -177,20 +177,30 @@ export default function ProjectDetailsSheet({ project }: Props) {
       return
     }
 
-    // setIsUpdating(true)
     setIsActionLoading(true)
     setCurrentAction(emailToCustomer ? 'Updating and emailing...' : 'Updating...')
     try {
-      await updateMutation.mutateAsync({
-        projectId: project.id,
-        projectData: {
+      // Use the action-based approach instead of the general update
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'update_customer',
           customerId: customerId,
-          recepientName: selectedCustomer.name,
-          recepientEmail: selectedCustomer.email,
-          emailToCustomer,
-        }
-      })
+          emailToCustomer: emailToCustomer,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update customer assignment');
+      }
+
       toast.success(emailToCustomer ? "Project updated and email sent!" : "Project updated successfully!")
+      // Refresh the project data
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     } catch (error) {
       console.error('Error updating assigned customer:', error)
       toast.error(emailToCustomer ? "Failed to update and email customer" : "Failed to update project")

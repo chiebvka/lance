@@ -50,7 +50,7 @@ export default function OrganizationConfirmModal({
     if (pathCount > 0) items.push(`${pathCount} path${pathCount !== 1 ? 's' : ''}`)
 
     const itemsText = items.join(', ')
-    return `This organization has ${itemsText}. Deleting this organization will permanently remove all associated data including customers, projects, invoices, receipts, feedback, walls, paths, and all uploaded files. This action cannot be undone.`
+    return `This organization has ${itemsText}. Deleting this organization will permanently remove all associated data including customers, projects, invoices, receipts, feedback, walls, paths, and all uploaded files as well as this account. This action cannot be undone.`
   }
 
   return (

@@ -20,7 +20,7 @@ export default async function page({}: Props) {
   } catch {
     // return redirect('/error')
   }
-  console.log(initialFeedbacks)
+  // console.log(initialFeedbacks)
   return (
     <div  className='w-full py-4 px-6 border border-bexoni'>
       <Suspense fallback={<div>Loading feedbacks...</div>}>

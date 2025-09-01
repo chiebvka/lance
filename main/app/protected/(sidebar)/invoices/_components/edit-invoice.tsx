@@ -5,7 +5,6 @@ import { Trash, Upload, Plus, Minus, GripVertical, Save, Send, Loader2 } from 'l
 import Image from 'next/image'
 import { useInvoice, useUpdateInvoice, type CreateInvoiceData } from '@/hooks/invoices/use-invoices'
 import { useCustomers } from '@/hooks/customers/use-customers'
-import { useOrganization } from '@/hooks/organizations/use-organization'
 import { useBanks } from '@/hooks/banks/use-banks';
 import { Reorder, useDragControls } from "framer-motion";
 import InvoiceReceiptUploader from '@/components/invoice-receipt/uploader'
@@ -30,6 +29,12 @@ import { toast } from 'sonner'
 type Props = {
   invoiceId: string
   userEmail?: string | null
+  organization?: {
+    email: string | null
+    baseCurrency: string | null
+    name: string | null
+    logoUrl: string | null
+  } | null
   onSuccess?: () => void
   onCancel?: () => void
 }
@@ -41,13 +46,13 @@ export interface EditInvoiceRef {
 
 const EditInvoice = forwardRef<EditInvoiceRef, Props>(({ 
   invoiceId,
-  userEmail, 
+  userEmail,
+  organization,
   onSuccess,
   onCancel,
 }, ref) => {
   const { data: invoice, isLoading: invoiceLoading, error: invoiceError } = useInvoice(invoiceId)
   const { data: customers = [], isLoading: customersLoading } = useCustomers()
-  const { data: organization } = useOrganization()
   const { data: banks = [], isLoading: banksLoading } = useBanks()
   const updateInvoiceMutation = useUpdateInvoice()
   const queryClient = useQueryClient()

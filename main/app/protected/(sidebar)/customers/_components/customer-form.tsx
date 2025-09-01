@@ -312,7 +312,7 @@ export default function CustomerForm({ onSuccess, onLoadingChange }: Props) {
                           )}
                         />
                     </div>
-                    <div>
+                    {/* <div>
                       <Label htmlFor="country">Country</Label>
                       <Select
                         // value={addressData.country}
@@ -328,7 +328,7 @@ export default function CustomerForm({ onSuccess, onLoadingChange }: Props) {
                           <SelectItem value="Australia">Australia</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </div>

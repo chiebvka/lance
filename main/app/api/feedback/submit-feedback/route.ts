@@ -1,8 +1,14 @@
 import { ratelimit } from "@/utils/rateLimit";
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceRoleClient } from "@/utils/supabase/server";
 import { feedbackAnswerSchema } from "@/validation/feedback";
 import { NextResponse } from "next/server";
 import { isOrgSubscriptionActive, deriveInactiveReason } from "@/utils/subscription";
+import sendgrid from "@sendgrid/mail";
+import { render } from "@react-email/components";
+import FeedbackAnswer from "@/emails/FeedbackAnswer";
+import { baseUrl } from "@/utils/universal";
+
+sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
 interface Question {
   id: string;
@@ -13,7 +19,8 @@ interface Question {
 }
 
 export async function PATCH(request: Request) {
-  const supabase = await createClient();
+  // Use service role client for updating feedback and creating notifications
+  const supabase = await createServiceRoleClient();
 
   // Rate limit check using IP address (for unauthenticated users)
   const ip = request.headers.get("x-forwarded-for") || "anonymous";
@@ -36,13 +43,29 @@ export async function PATCH(request: Request) {
   const { feedbackId, token, answers } = validationResult.data;
 
   try {
-    // Set the token in the request context for RLS
-    await supabase.rpc('set_feedback_token', { token_param: token });
-
     // Validate the token and check the feedback state
     const { data: feedback, error: fetchError } = await supabase
       .from("feedbacks")
-      .select("id, token, state, questions, dueDate, filledOn")
+      .select(`
+        id, 
+        token, 
+        state, 
+        questions, 
+        dueDate, 
+        filledOn,
+        name,
+        organizationId,
+        customerId,
+        recepientEmail,
+        recepientName,
+        organization:organizationId (
+          id,
+          name,
+          email,
+          logoUrl,
+          feedbackNotifications
+        )
+      `)
       .eq("id", feedbackId)
       .eq("token", token)
       .single();
@@ -69,7 +92,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Update the feedback with answers and state (RLS will now allow this for valid tokens)
+    // Update the feedback with answers and state using service role client
     const currentTimestamp = new Date().toISOString();
     const { error: updateError } = await supabase
       .from("feedbacks")
@@ -85,6 +108,107 @@ export async function PATCH(request: Request) {
     if (updateError) {
       console.error("Error updating feedback:", updateError);
       return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
+    }
+
+    // Create organization notification if enabled (default true unless explicitly false)
+    const organization = (feedback as any)?.organization;
+    if (organization && organization.feedbackNotifications !== false) {
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert({
+          organizationId: feedback.organizationId,
+          title: 'Feedback Form Completed',
+          message: `Feedback form "${feedback.name}" has been completed.`,
+          type: 'success',
+          actionUrl: `${baseUrl}/protected/feedback?feedbackId=${feedbackId}`,
+          metadata: {
+            feedbackId,
+            feedbackName: feedback.name,
+            completedOn: currentTimestamp,
+          },
+          tableName: 'feedbacks',
+          tableId: feedbackId,
+          state: 'active',
+        });
+      if (notifError) {
+        console.error('Notification creation error:', notifError);
+      }
+    }
+
+    // Send confirmation emails to customer and organization
+    try {
+      const logoUrl = organization?.logoUrl || 'https://www.bexoni.com/favicon.ico';
+      const senderName = organization?.name || 'Bexforte';
+      const feedbackLink = `${baseUrl}/f/${feedbackId}?token=${token}`;
+
+      const emailHtml = await render(FeedbackAnswer({
+        senderName,
+        clientName: (feedback as any)?.recepientName || 'Customer',
+        feedbackName: feedback.name,
+        feedbackId: feedback.id,
+        logoUrl: logoUrl,
+        feedbackLink,
+      }));
+
+      const fromEmail = 'no_reply@feedback.bexforte.com';
+      const fromName = senderName;
+
+      // Prepare email targets with proper fallbacks
+      const sendTargets: Array<{ to: string; name?: string; type: 'customer' | 'organization' }> = [];
+      
+      // Add customer email if available
+      const customerEmail = (feedback as any)?.recepientEmail;
+      if (customerEmail) {
+        sendTargets.push({ 
+          to: customerEmail, 
+          name: (feedback as any)?.recepientName || 'Customer', 
+          type: 'customer' 
+        });
+      }
+      
+      // Add organization email if available
+      const organizationEmail = organization?.email;
+      if (organizationEmail) {
+        sendTargets.push({ 
+          to: organizationEmail, 
+          name: organization?.name || 'Organization', 
+          type: 'organization' 
+        });
+      }
+
+      // Send emails to all targets
+      for (const target of sendTargets) {
+        try {
+          await sendgrid.send({
+            to: target.to,
+            from: `${fromName} <${fromEmail}>`,
+            subject: `Feedback Form Completed: ${feedback.name}`,
+            html: emailHtml,
+            customArgs: {
+              feedbackId: feedback.id,
+              feedbackName: feedback.name || '',
+              customerId: feedback.customerId || '',
+              customerName: (feedback as any)?.recepientName || '',
+              organizationId: feedback.organizationId || '',
+              userId: feedback.customerId || '',
+              type: 'feedback_submitted',
+              recipientType: target.type,
+            },
+          });
+          
+          console.log(`[submit-feedback] Email sent successfully to ${target.type}: ${target.to}`);
+        } catch (emailError: any) {
+          console.error(`[submit-feedback] Failed to send email to ${target.type} (${target.to}):`, emailError);
+          // Continue with other emails even if one fails
+        }
+      }
+      
+      if (sendTargets.length === 0) {
+        console.warn('[submit-feedback] No valid email addresses found for customer or organization');
+      }
+      
+    } catch (emailErr: any) {
+      console.error('Feedback answer email error:', emailErr);
     }
 
     return NextResponse.json({ success: true, message: "Feedback submitted successfully" }, { status: 200 });
@@ -118,6 +242,8 @@ export async function GET(request: Request) {
         organizationName,
         organizationLogo,
         organizationEmail,
+        recepientEmail,
+        recepientName,
         organization:organizationId (
           id,
           name,

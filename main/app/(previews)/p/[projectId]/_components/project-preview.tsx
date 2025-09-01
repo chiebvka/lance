@@ -40,6 +40,8 @@ type ProjectData = {
   organizationName?: string | null
   organizationLogo?: string | null
   customers?: { name: string | null; email: string | null } | null
+  recepientEmail?: string | null
+  recepientName?: string | null
   hasServiceAgreement?: boolean | null
   serviceAgreement?: string | null
   hasPaymentTerms?: boolean | null
@@ -131,7 +133,7 @@ export default function ProjectPreview({ projectId, token }: ProjectPreviewProps
         ...payload,
       })
       if (res.data?.success) {
-        toast.success('Project signed successfully')
+        toast.success('Project signed successfully! Notification emails have been sent.')
         setProject((prev) => (prev ? { ...prev, signedOn: res.data.signedOn, status: 'signed', signedStatus: 'signed', signatureType: payload.signatureType, signatureDetails: (payload as any).signatureDetails, serviceAgreement: agreementContent || prev.serviceAgreement } as any : prev))
       } else {
         toast.error(res.data?.error || 'Failed to sign project')
@@ -180,7 +182,7 @@ export default function ProjectPreview({ projectId, token }: ProjectPreviewProps
   const orgName = project.organization?.name || project.organizationName || 'Company'
   const logoUrl = project.organization?.logoUrl || project.organizationLogo || null
   const due = project.endDate ? format(new Date(project.endDate), 'd MMMM yyyy') : 'N/A'
-  const customerName = project.customers?.name || 'Customer'
+  const customerName = project.customers?.name || project.recepientName || 'Customer'
 
   return (
     <div className="min-h-screen md:p-6">
@@ -556,6 +558,18 @@ export default function ProjectPreview({ projectId, token }: ProjectPreviewProps
                                  dueDate: d.dueDate || null,
                                })),
                                serviceAgreement: project.serviceAgreement || null,
+                               // Include relationship data for better PDF generation
+                               customer: project.customers ? {
+                                 id: project.id,
+                                 name: project.customers.name || project.recepientName || 'Customer',
+                                 email: project.customers.email || project.recepientEmail || null
+                               } : null,
+                               organization: project.organization ? {
+                                 id: project.organization.id || '',
+                                 name: project.organization.name || project.organizationName || 'Company',
+                                 email: project.organization.email || '',
+                                 logoUrl: project.organization.logoUrl || project.organizationLogo || ''
+                               } : null,
                              }
                              
                              const filename = project.name 

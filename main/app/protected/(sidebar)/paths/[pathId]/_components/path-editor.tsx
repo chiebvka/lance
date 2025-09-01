@@ -482,7 +482,8 @@ export default function PathEditor({ initialPath }: Props) {
                   <Switch checked={protect} onCheckedChange={setProtect} />
                   <Label>Protect (token required)</Label>
                 </div>
-                {protect ? <div className="p-3 bg-green-50 border border-green-200 rounded-lg"><div className="flex items-start gap-2"><div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div><div className="text-sm"><p className="font-medium text-green-800">Private Path</p><p className="text-green-700 mt-1">This path will be private and only accessible via a secure token link.</p></div></div></div>
+                {protect ? <div className="p-3 bg-green-50 border border-green-200 rounded-lg"><div className="flex items-start gap-2"><div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div><div className="text-sm"><p className="font-medium text-green-800">Private Path</p><p className="text-green-700 mt-1">                          This path will be private and only accessible via the created secure link.                        
+                  Recipients will need the secure link to view it.</p></div></div></div>
                 : <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg"><div className="flex items-start gap-2"><div className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0"></div><div className="text-sm"><p className="font-medium text-amber-800">Public Path</p><p className="text-amber-700 mt-1">This path will be publicly accessible. Anyone with the link can view it.</p></div></div></div>}
               </div>
 

@@ -4,7 +4,6 @@ import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Trash, Upload, Plus, Minus, GripVertical } from 'lucide-react'
 import Image from 'next/image'
 import { useCustomers } from '@/hooks/customers/use-customers'
-import { useOrganization } from '@/hooks/organizations/use-organization'
 import { useBanks } from '@/hooks/banks/use-banks';
 import { Reorder, useDragControls } from "framer-motion";
 import { useReceipts, useCreateReceipt } from '@/hooks/receipts/use-receipts'
@@ -32,6 +31,12 @@ import { toast } from 'sonner';
 
 type Props = {
     userEmail?: string | null
+    organization?: {
+      email: string | null
+      baseCurrency: string | null
+      name: string | null
+      logoUrl: string | null
+    } | null
     layoutOptions?: {
       hasTax: boolean
       hasVat: boolean
@@ -53,7 +58,8 @@ export interface ReceiptFormRef {
   }
 
 const ReceiptForm = forwardRef<ReceiptFormRef, Props>(({ 
-    userEmail, 
+    userEmail,
+    organization,
     layoutOptions, 
     onLayoutOptionChange, 
     selectedCurrency: propSelectedCurrency, 
@@ -68,7 +74,6 @@ const ReceiptForm = forwardRef<ReceiptFormRef, Props>(({
 
     const { data: receipts = [], isLoading } = useReceipts()
     const { data: customers = [], isLoading: customersLoading } = useCustomers()
-    const { data: organization } = useOrganization()
     const { data: banks = [], isLoading: banksLoading } = useBanks()
     const createReceiptMutation = useCreateReceipt()
     const queryClient = useQueryClient()

@@ -92,14 +92,9 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          // Send email reminder if customer email exists
-          const recipientEmail = project.customers?.email || project.recepientEmail;
-          if (recipientEmail) {
-            await sendProjectReminderEmail(supabase, project, organization, recipientEmail, project.token);
-            console.log(`Project reminder email sent for project ${project.id}`);
-          } else {
-            console.log(`Skipping email for project ${project.id} - no customer email available`);
-          }
+          // Send email reminders to both customer and organization
+          await sendProjectReminderEmails(supabase, project, organization);
+          console.log(`Project reminder emails sent for project ${project.id}`);
         } else {
           console.log(`Skipping email and notification for project ${project.id} - organization has projectNotifications disabled`);
         }
@@ -120,11 +115,31 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function sendProjectReminderEmail(supabase: any, project: any, organization: any, recipientEmail: string, token: string) {
+async function sendProjectReminderEmails(supabase: any, project: any, organization: any) {
   try {
-    const fromEmail = 'no_reply@projects.bexforte.com';
-    const fromName = organization?.name || 'Bexforte';
-    const logoUrl = organization?.logoUrl || "https://www.bexoni.com/favicon.ico";
+    // Get organization details with fallbacks
+    let organizationName = 'Bexforte';
+    let organizationEmail = null;
+    let logoUrl = "https://www.bexforte.com/favicon.ico";
+    
+    if (organization) {
+      organizationName = organization.name || project.organizationName || 'Bexforte';
+      organizationEmail = organization.email || project.organizationEmail;
+      logoUrl = organization.logoUrl || project.organizationLogo || "https://www.bexforte.com/favicon.ico";
+    }
+
+    // If no organization email, try to get from profiles table via createdBy
+    if (!organizationEmail && project.createdBy) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('profile_id', project.createdBy)
+        .single();
+      
+      if (profile?.email) {
+        organizationEmail = profile.email;
+      }
+    }
 
     // Ensure project has a token; generate and persist if missing
     let token = project.token;
@@ -132,33 +147,72 @@ async function sendProjectReminderEmail(supabase: any, project: any, organizatio
       token = crypto.randomUUID();
       await supabase.from('projects').update({ token }).eq('id', project.id);
     }
+
+    // Prepare email targets
+    const sendTargets: Array<{ to: string; name?: string; type: 'customer' | 'organization' }> = [];
     
-    const emailHtml = await render(ProjectReminder({
-      projectId: project.id,
-      clientName: project.customers?.name || recipientEmail.split('@')[0],
-      projectName: project.name,
-      logoUrl: logoUrl,
-      // Use public preview link that requires token
-      projectLink: `${baseUrl}/p/${project.id}?token=${token}`
-    }));
+    // Add customer email if available
+    const customerEmail = project.customers?.email || project.recepientEmail;
+    if (customerEmail) {
+      sendTargets.push({ 
+        to: customerEmail, 
+        name: project.customers?.name || customerEmail.split('@')[0], 
+        type: 'customer' 
+      });
+    }
+    
+    // Add organization email if available
+    if (organizationEmail) {
+      sendTargets.push({ 
+        to: organizationEmail, 
+        name: organizationName, 
+        type: 'organization' 
+      });
+    }
 
-    await sendgrid.send({
-      to: recipientEmail,
-      from: `${fromName} <${fromEmail}>`,
-      subject: `Project Overdue - ${project.name}`,
-      html: emailHtml,
-      customArgs: {
-        projectId: project.id,
-        projectName: project.name || '',
-        customerId: project.customerId || '',
-        customerName: project.customers?.name || '',
-        organizationId: project.organizationId || '',
-        userId: project.createdBy || '',
-        type: 'project_overdue',
-      },
-    });
+    // Send emails to all targets
+    for (const target of sendTargets) {
+      try {
+        const emailHtml = await render(ProjectReminder({
+          projectId: project.id,
+          clientName: target.name || 'Customer',
+          projectName: project.name,
+          logoUrl: logoUrl,
+          // Use public preview link that requires token
+          projectLink: `${baseUrl}/p/${project.id}?token=${token}`
+        }));
 
-    console.log("Project reminder email sent to:", recipientEmail);
+        const fromEmail = 'no_reply@projects.bexforte.com';
+        const fromName = organizationName;
+
+        await sendgrid.send({
+          to: target.to,
+          from: `${fromName} <${fromEmail}>`,
+          subject: `Project Overdue - ${project.name}`,
+          html: emailHtml,
+          customArgs: {
+            projectId: project.id,
+            projectName: project.name || '',
+            customerId: project.customerId || '',
+            customerName: project.customers?.name || '',
+            organizationId: project.organizationId || '',
+            userId: project.createdBy || '',
+            type: 'project_overdue',
+            recipientType: target.type,
+          },
+        });
+        
+        console.log(`Project reminder email sent to ${target.type}: ${target.to}`);
+      } catch (emailError: any) {
+        console.error(`Failed to send email to ${target.type} (${target.to}):`, emailError);
+        // Continue with other emails even if one fails
+      }
+    }
+    
+    if (sendTargets.length === 0) {
+      console.warn(`No valid email addresses found for project ${project.id}`);
+    }
+    
   } catch (emailError: any) {
     console.error("SendGrid Project Reminder Error:", emailError);
   }

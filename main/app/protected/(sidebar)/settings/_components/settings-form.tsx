@@ -136,7 +136,7 @@ export default function SettingsForm() {
 
       <SettingsDelete
         title="Delete team"
-        description="Permanently remove your Team and all of its contents from the Lance platform. This action is not reversible — please continue with caution."
+        description="Permanently remove your Team, account and all of its contents from the Lance platform. This action is not reversible — please continue with caution."
         onDelete={() => setIsDeleteModalOpen(true)}
         loading={deleteOrganization.isPending}
         itemType="team"

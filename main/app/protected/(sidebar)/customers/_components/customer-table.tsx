@@ -188,7 +188,7 @@ export default function CustomerTable({ customer, onCustomerSelect }: CustomerTa
   }
 
   return (
-    <div className="py-0 border space-y-2">
+    <div className="py-0  space-y-2">
 
     {/* <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-4 p-4 border border-bexoni bg-bexoni/10 ">
       <div className="flex items-center gap-2">
@@ -277,13 +277,13 @@ export default function CustomerTable({ customer, onCustomerSelect }: CustomerTa
 
                           {/* Customer card */}
                           <div
-                            className="w-full cursor-pointer shadow-sm hover:shadow-lg border-bexoni transition-shadow border p-2 m-0"
+                            className="w-full cursor-pointer shadow-sm hover:shadow-lg  transition-shadow border border-bexoni p-2 m-0"
                             onClick={() => handleCustomerClick(customer)}
                           >
                             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between md:gap-2 gap-1">
                               {/* Left side: Avatar, name, and email (stays on left for both mobile and desktop) */}
                               <div className="flex items-center gap-2 flex-1">
-                                <Avatar className="h-8 w-8 md:h-12 md:w-12 flex-shrink-0">
+                                <Avatar className="h-8 w-8 md:h-12 md:w-12 flex-shrink-0 ">
                                   {/* <AvatarImage src={customer.avatar || "/placeholder.svg"} /> */}
                                   <AvatarFallback>
                                     {customer.name
