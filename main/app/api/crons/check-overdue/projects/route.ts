@@ -183,7 +183,7 @@ async function sendProjectReminderEmails(supabase: any, project: any, organizati
         }));
 
         const fromEmail = 'no_reply@projects.bexforte.com';
-        const fromName = organizationName;
+        const fromName = 'Bexbot';
 
         await sendgrid.send({
           to: target.to,

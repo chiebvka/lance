@@ -9,6 +9,7 @@ export const metadata: Metadata = createPageMetadata({
 });
 import Header from "@/components/header";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import Footer from "@/components/footer";
 
 export default async function Layout({
   children,
@@ -23,8 +24,7 @@ export default async function Layout({
           <div className=" w-full  p-5">
             {children}
           </div>
-
-        
+          <Footer />
         </div>
       </main>
     </div>

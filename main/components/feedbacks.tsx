@@ -313,10 +313,10 @@ export default function Feedbacks() {
     <section className="py-12 md:py-20">
       <div className="container mx-auto px-4">
         <div className="text-center mb-10 md:mb-16">
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold ">
+          <h2 className="text-lg md:text-3xl lg:text-4xl font-bold ">
             7000+ users growing on all platforms
           </h2>
-          <p className="mt-3 md:mt-4 text-md md:text-lg  max-w-xl mx-auto">
+          <p className="mt-3 text-xs md:text-sm lg:text-base  max-w-xl mx-auto">
             Posting and scheduling their social content using Post bridge
           </p>
         </div>

@@ -21,8 +21,8 @@ export default function SettingsDelete({
   itemType = 'team'
 }: SettingsDeleteProps) {
   return (
-    <Card className="border-red-200 bg-red-50">
-      <CardHeader>
+    <Card className="border-red-600 bg-red-50">
+      <CardHeader variant="delete">
         <CardTitle className="text-red-700 flex items-center gap-2">
           <Trash2 className="h-5 w-5" />
           {title}

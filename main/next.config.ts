@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'images.pexels.com',
+        pathname: '/**'
+      },
+      {
+        protocol: 'https',
         hostname: 'files.bexforte.com',
         pathname: '/**'
       },

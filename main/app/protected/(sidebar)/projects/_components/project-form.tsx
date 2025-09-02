@@ -1244,8 +1244,8 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
                                     htmlFor="currencyEnabled"
                                     className={`cursor-pointer transition-all duration-300 ease-in-out ${
                                       field.value && projectType !== "personal"
-                                        ? "text-[#9948fb] font-medium scale-[1.1] transform"
-                                        : "text-gray-700 scale-100 transform"
+                                        ? "text-primary font-medium scale-[1.1] transform"
+                                        : " scale-100 transform"
                                     } ${projectType === "personal" ? "cursor-not-allowed opacity-50" : ""}`}
                                   >
                                     Specify Currency
@@ -1690,7 +1690,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
                                   htmlFor="deliverablesEnabled"
                                   className={`cursor-pointer transition-all duration-300 ease-in-out ${
                                     field.value
-                                      ? "text-[#9948fb] font-medium scale-[1.1] transform"
+                                      ? "text-primary font-medium scale-[1.1] transform"
                                       : " scale-100 transform"
                                   }`}
                                 >
@@ -2372,7 +2372,7 @@ const ProjectForm = forwardRef<ProjectFormRef, ProjectFormProps>(({
                                   className={`cursor-pointer transition-all duration-300 ease-in-out ${
                                     field.value
                                       ? "text-[#9948fb] font-medium scale-[1.1] transform"
-                                      : "text-gray-700 scale-100 transform"
+                                      : " scale-100 transform"
                                   } ${projectType === "personal" ? "cursor-not-allowed opacity-50" : ""}`}
                                 >
                                   Enable Service Agreement

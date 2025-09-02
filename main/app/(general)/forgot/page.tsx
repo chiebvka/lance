@@ -44,12 +44,10 @@ export default function page({}: Props) {
         {/* Frosted glass quote component */}
         <div className="absolute bottom-0  w-full p-6  backdrop-blur-md bg-white/20 border border-white/30 shadow-lg">
         <blockquote >
-                <p className="text-lg">
-                &ldquo;This library has saved me countless hours of work and
-                helped me deliver stunning designs to my clients faster than
-                ever before.&rdquo;
+                <p className="md:text-base text-sm ">
+                &ldquo;No worries: Reset and reclaim your invoices, projects, and secure walls on Bexforte.&rdquo;
                 </p>
-                <footer className="text-sm">Sofia Davis</footer>
+                <footer className="text-sm"> Bexforte by <Link href="https://www.bexoni.com/" target="_blank" className="font-bold text-primary hover:underline">Bexoni Labs</Link></footer>
             </blockquote>
         </div>
 

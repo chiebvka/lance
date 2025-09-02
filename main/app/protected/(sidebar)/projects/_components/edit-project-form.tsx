@@ -1322,8 +1322,8 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
                                     htmlFor="currencyEnabled"
                                     className={`cursor-pointer transition-all duration-300 ease-in-out ${
                                       field.value && projectType !== "personal"
-                                        ? "text-[#9948fb] font-medium scale-[1.1] transform"
-                                        : "text-gray-700 scale-100 transform"
+                                        ? "text-primary font-medium scale-[1.1] transform"
+                                        : " scale-100 transform"
                                     } ${projectType === "personal" ? "cursor-not-allowed opacity-50" : ""}`}
                                   >
                                     Specify Currency
@@ -1755,20 +1755,20 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
                             render={({ field }) => (
                                               <FormItem className="flex items-center space-x-3">
                                   <FormControl>
-                                                  <Switch
-                                                    id="deliverablesEnabled"
-                                                    checked={field.value}
-                                                    onCheckedChange={(value) => {
-                                                      field.onChange(value)
-                                                      setDeliverablesEnabledWithUpdates(value)
-                                                    }}
-                                                  />
+                                    <Switch
+                                      id="deliverablesEnabled"
+                                      checked={field.value}
+                                      onCheckedChange={(value) => {
+                                        field.onChange(value)
+                                        setDeliverablesEnabledWithUpdates(value)
+                                      }}
+                                    />
                                   </FormControl>
                                                 <FormLabel
                                                   htmlFor="deliverablesEnabled"
                                                   className={`cursor-pointer transition-all duration-300 ease-in-out ${
                                                     field.value
-                                                      ? "text-[#9948fb] font-medium scale-[1.1] transform"
+                                                      ? "text-primary font-medium scale-[1.1] transform"
                                                       : " scale-100 transform"
                                                   }`}
                                                 >
@@ -2446,23 +2446,23 @@ const EditProjectForm = forwardRef<EditProjectFormRef, EditProjectFormProps>(({
                             render={({ field }) => (
                                               <FormItem className="flex items-center space-x-3">
                                 <FormControl>
-                                                  <Switch
-                                                    id="serviceAgreement"
+                                  <Switch
+                                    id="serviceAgreement"
                                     checked={field.value}
                                     onCheckedChange={field.onChange}
-                                                    disabled={projectType === "personal"}
+                                    disabled={projectType === "personal"}
                                   />
                                 </FormControl>
-                                                <FormLabel
-                                                  htmlFor="serviceAgreement"
-                                                  className={`cursor-pointer transition-all duration-300 ease-in-out ${
-                                                    field.value
-                                                      ? "text-[#9948fb] font-medium scale-[1.1] transform"
-                                                      : "text-gray-700 scale-100 transform"
-                                                  } ${projectType === "personal" ? "cursor-not-allowed opacity-50" : ""}`}
-                                                >
-                                                  Enable Service Agreement
-                                                </FormLabel>
+                                  <FormLabel
+                                    htmlFor="serviceAgreement"
+                                    className={`cursor-pointer transition-all duration-300 ease-in-out ${
+                                      field.value
+                                        ? "text-primary font-medium scale-[1.1] transform"
+                                        : " scale-100 transform"
+                                    } ${projectType === "personal" ? "cursor-not-allowed opacity-50" : ""}`}
+                                  >
+                                    Enable Service Agreement
+                                  </FormLabel>
                               </FormItem>
                             )}
                           />

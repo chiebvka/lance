@@ -1317,7 +1317,7 @@ export default function FeedbackBuilder({}: Props) {
                         checked={editingQuestionData.required}
                         onCheckedChange={(checked) => updateQuestion(editingQuestionData.id, { required: checked })}
                       />
-                                              <Label className="text-sm">Required</Label>
+                        <Label className="text-sm">Required</Label>
                     </div>
                   </div>
                 ) : (
@@ -1415,17 +1415,17 @@ export default function FeedbackBuilder({}: Props) {
               <div>
                 <div className="flex items-center space-x-2 mb-2">
                   <Switch checked={sendToCustomer} onCheckedChange={setSendToCustomer} />
-                                      <Label className="">Send to existing customer</Label>
+                     <Label className="text-sm">Send to existing customer</Label>
                 </div>
                 {sendToCustomer ? (
-                                      <ComboBox
-                                          items={customerOptions}
-                                          value={selectedCustomer}
-                                          onValueChange={setSelectedCustomer}
-                                          placeholder="Choose a customer"
-                                          searchPlaceholder="Search customers..."
-                                          emptyMessage="No customers found."
-                                      />
+                  <ComboBox
+                      items={customerOptions}
+                      value={selectedCustomer}
+                      onValueChange={setSelectedCustomer}
+                      placeholder="Choose a customer"
+                      searchPlaceholder="Search customers..."
+                      emptyMessage="No customers found."
+                  />
                 ) : (
                   <div className="space-y-2">
                     <Input
@@ -1449,7 +1449,7 @@ export default function FeedbackBuilder({}: Props) {
               <div>
                 <div className="flex items-center space-x-2 mb-2">
                   <Switch checked={attachToProject} onCheckedChange={setAttachToProject} />
-                                      <Label className="">Attach to project</Label>
+                  <Label className="text-sm">Attach to project</Label>
                 </div>
                 {attachToProject && (
                                       <ComboBox

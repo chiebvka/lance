@@ -11,7 +11,7 @@ type Props = {}
 
 export default async function page({}: Props) {
   return (
-    <div className="border border-bexoni">
+    <div className="">
       {/* <Toaster richColors /> */}
       <div className="grid min-h-svh lg:grid-cols-2">
         <div className="flex flex-col gap-4 p-6 md:p-10">
@@ -45,12 +45,12 @@ export default async function page({}: Props) {
         {/* Frosted glass quote component */}
         <div className="absolute bottom-0  w-full p-6  backdrop-blur-md bg-white/20 border border-white/30 shadow-lg">
         <blockquote >
-              <p className="text-lg">
-                &ldquo;This library has saved me countless hours of work and
-                helped me deliver stunning designs to my clients faster than
-                ever before.&rdquo;
+              <p className="md:text-base text-sm ">
+                &ldquo;Welcome back:
+                Let's keep on managing your operations in one place be you a freelancer, small business, influenecer or aganecy from one platform. 
+                Bexforte takes care of everything for you.&rdquo;
               </p>
-              <footer className="text-sm">Sofia Davis</footer>
+              <footer className="text-sm">Bexforte by <Link href="https://www.bexoni.com/" target="_blank" className="font-bold text-primary hover:underline">Bexoni Labs</Link></footer>
             </blockquote>
         </div>
 

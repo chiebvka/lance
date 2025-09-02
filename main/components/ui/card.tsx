@@ -19,11 +19,15 @@ Card.displayName = "Card"
 
 const CardHeader = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { variant?: "default" | "delete" }
+>(({ className, variant = "default", ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-2 mb-2 border-b border-primary shadow-md p-6", className)}
+    className={cn(
+      "flex flex-col space-y-2 mb-2 p-6",
+      variant === "delete" ? "border-b border-red-600" : "border-b border-primary shadow-md",
+      className
+    )}
     {...props}
   />
 ))

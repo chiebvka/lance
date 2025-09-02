@@ -60,7 +60,7 @@ export function SignupForm({
           <div className="flex items-center">
             <Label htmlFor="password">Password</Label>
             <Link
-              href="/forgot-password"
+              href="/forgot"
               className="ml-auto text-sm underline-offset-4 hover:underline"
             >
               Forgot your password?

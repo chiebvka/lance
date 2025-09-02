@@ -75,8 +75,8 @@ export default function SettingsForm() {
   return (
     <div className="space-y-6">
       <SettingsFileUpload
-        label="Company Logo"
-        description="This is your company's logo. Click on the logo to upload a custom one from your files."
+        label="Organization Logo"
+        description="This is your organization's logo. Click on the logo to upload a custom one from your files."
         value={organization?.logoUrl || null}
         onChange={setCompanyLogo}
         onSave={() => companyLogo && uploadLogo.mutate(companyLogo)}
@@ -85,32 +85,32 @@ export default function SettingsForm() {
       />
 
       <SettingsInput
-        label="Company Name"
-        description="This is your company's visible name within Lance. For example, the name of your company or department."
+        label="Organization Name"
+        description="This is your organization's visible name within Bexforte. For example, the name of your company, small business or influencer account."
         value={getCurrentValue("name")}
         onChange={(value) => updateUserInput("name", value)}
         onSave={() => handleSaveField("name")}
-        placeholder="Enter company name"
+        placeholder="Enter organization name"
         maxLength={32}
         loading={mutatingField === 'name'} 
         // loading={updateOrganizationMutation.isPending}
       />
 
       <SettingsInput
-        label="Company Email"
-        description="This is the email address that will be used to receive emails from Lance."
+        label="Organization Email"
+        description="This is the email address that will be used to receive emails from Bexforte."
         value={getCurrentValue("email")}
         onChange={(value) => updateUserInput("email", value)}
         onSave={() => handleSaveField("email")}
         type="email"
-        placeholder="Enter company email"
+        placeholder="Enter organization email"
         loading={mutatingField === 'email'}
         // loading={updateOrganizationMutation.isPending}
       />
 
       <SettingsCombobox
-        label="Company country"
-        description="This is your company's country of origin."
+        label="Organization country"
+        description="This is you or your organization's country of origin to help you with localizations."
         value={getCurrentValue("country")}
         onChange={(value) => updateUserInput("country", value)}
         onSave={() => handleSaveField("country")}
@@ -122,8 +122,8 @@ export default function SettingsForm() {
       />
 
       <SettingsCombobox
-        label="Company currency"
-        description="This is your company's default currency."
+        label="Organization currency"
+        description="This is your organization's default currency that Bexforte defaults to when calculating prices."
         value={getCurrentValue("baseCurrency")}
         onChange={(value) => updateUserInput("baseCurrency", value)}
         onSave={() => handleSaveField("baseCurrency")}
@@ -135,8 +135,8 @@ export default function SettingsForm() {
       />
 
       <SettingsDelete
-        title="Delete team"
-        description="Permanently remove your Team, account and all of its contents from the Lance platform. This action is not reversible — please continue with caution."
+        title="Delete Organization"
+        description="Permanently remove your organization, account and all of its contents from the Bexforte platform. This action is not reversible — please continue with caution."
         onDelete={() => setIsDeleteModalOpen(true)}
         loading={deleteOrganization.isPending}
         itemType="team"
