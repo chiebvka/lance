@@ -10,7 +10,7 @@ import { projectFaqs } from '@/data/faqs'
 export const metadata: Metadata = createPageMetadata({
   title: 'Project Management',
   description: 'Plan, track, and deliver projects on time with intuitive project management tools. Collaborate seamlessly with your team and keep stakeholders informed.',
-  path: '/features/projects',
+  path: '/projects',
   keywords: ['project management', 'task tracking', 'team collaboration', 'time tracking', 'resource management']
 });
 
@@ -27,8 +27,8 @@ export default function page({}: Props) {
   }
 
   const dashboardContent = {
-    lightModeImage: "https://images.pexels.com/photos/32515533/pexels-photo-32515533.jpeg",
-    darkModeImage: "https://images.pexels.com/photos/32515533/pexels-photo-32515533.jpeg",
+    lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalEFk5MFWz1tQwX0JNF6KcaSlyfbP3LCsve8g7",
+    darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalb6AtmWlplS6xJwfnDrFWdsIHeh7XLYzK42T0",
     altText: "Project management dashboard preview"
   }
 
@@ -37,40 +37,46 @@ export default function page({}: Props) {
     description: "Comprehensive project management solutions that adapt to your workflow and help you deliver exceptional results.",
     cards: [
       {
-        title: "Task Management & Tracking",
-        description: "Organize tasks with kanban boards, timelines, and priority-based workflows.",
-        imageUrl: "https://images.pexels.com/photos/33596336/pexels-photo-33596336.jpeg",
-        altText: "Task management and tracking interface"
+        title: "Due Projects Calendar & Analytics",
+        description: "Manage your projects due dates and get analytics on your projects.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalhXbmeyMaxo6yjW4Y9LTnczgpIvH7mJSRPAbk",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalzhVjI9Kb2ZVmS0XDQyx1pMYUfg6CrdsaGB5k",
+        altText: "Due projects calendar and analytics"
       },
       {
-        title: "Team Collaboration",
-        description: "Real-time collaboration with comments, file sharing, and team communication tools.",
-        imageUrl: "https://images.pexels.com/photos/33529180/pexels-photo-33529180.jpeg",
-        altText: "Team collaboration workspace"
+        title: "Quick Reminders",
+        description: "Send out quick reminders about your projects to your customers.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalUPgcXs1xo83NBPKislcvQEqaT7nYWruI0A64",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaleZFYzbUsY31vlpytouB8rVH6mA9DQjC4nFzR",
+        altText: "quick project reminders"
       },
       {
-        title: "Time Tracking & Reporting",
-        description: "Monitor project progress and team productivity with detailed time tracking.",
-        imageUrl: "https://images.pexels.com/photos/33588195/pexels-photo-33588195.jpeg",
-        altText: "Time tracking and reporting dashboard"
+        title: "Recent Activities",
+        description: "See recent activities on your projects sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalr9uNrlb169hY57pVFn2ABom0RXGCZjWJLuSQ",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalWkgb2PSkoYzVLWgHt3GDZfaM8seAhrw49NJS",
+        altText: "Custom survey builder interface"
       },
       {
-        title: "Resource Management",
-        description: "Optimize resource allocation and manage team workload effectively.",
-        imageUrl: "https://images.pexels.com/photos/33042614/pexels-photo-33042614.jpeg",
-        altText: "Resource management system"
+        title: "Quick Previews",
+        description: "Preview your projects sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalN35H9alpnDvIXpPQzyA1lrGTk67iF3KVs8xW",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbi7rp0lplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        altText: "Quick previews dashboard"
       },
       {
-        title: "Gantt Charts & Timelines",
-        description: "Visualize project schedules and dependencies with interactive Gantt charts.",
-        imageUrl: "https://images.pexels.com/photos/33543175/pexels-photo-33543175.jpeg",
-        altText: "Gantt charts and timeline visualization"
+        title: "Quick Actions",
+        description: "Perform quick actions on your projects sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaldsHIvbD3z9vTNenx26LV1yjRE8mHPGQ4bKil",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdal99RqbMaqswE6goNW3AxvPBaDkcUQyZ2pnrSC",
+        altText: "Quick actions dashboard"
       },
       {
-        title: "Client Portal",
-        description: "Keep clients updated with secure access to project progress and deliverables.",
-        imageUrl: "https://images.pexels.com/photos/32878855/pexels-photo-32878855.jpeg",
-        altText: "Client portal interface"
+        title: "Peronalized emails ",
+        description: "Share project insights across teams and departments for better decision-making.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbP9hjElplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbP9hjElplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        altText: "Team collaboration on project insights"
       },
     ]
   }

@@ -21,7 +21,7 @@ export default async function page({}: Props) {
   console.log(initialWalls);
 
   return (
-    <div className='w-full py-4 px-6 border border-bexoni'>
+    <div className='w-full py-4 px-6'>
       <Suspense fallback={<div>Loading walls...</div>}>
         <WallClient initialWalls={initialWalls} userEmail={user?.email ?? null} />
       </Suspense>

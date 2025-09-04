@@ -87,7 +87,7 @@ export default function Footer({}: Props) {
                                 </Link>
                             </li>
                             <li className='text-sm'>
-                                <Link href="/upcoming" className=" hover:text-purple-600 hover:underline">
+                                <Link href="/features" className=" hover:text-purple-600 hover:underline">
                                 Upcoming features
                                 </Link>
                             </li>

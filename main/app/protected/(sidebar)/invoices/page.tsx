@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import React, { Suspense } from 'react'
 import InvoiceClient from './_components/invoice-client';
 import { getOrganizationInvoices } from '@/lib/invoice';
+import ProjectClientSkeleton from '../projects/_components/project-client-skeleton';
 
 
 type Props = {}
@@ -22,8 +23,8 @@ export default async function page({}: Props) {
   // console.log(initialInvoices)
 
   return (
-    <div className='w-full py-4 px-6 border border-bexoni'>
-      <Suspense fallback={<div>Loading invoices...</div>}>
+    <div className='w-full py-4 px-6 '>
+      <Suspense fallback={<ProjectClientSkeleton />}>
         <InvoiceClient initialInvoices={initialInvoices} userEmail={user?.email ?? null} />
       </Suspense>
     </div>

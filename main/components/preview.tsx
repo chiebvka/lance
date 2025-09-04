@@ -1,7 +1,20 @@
 "use client";
 
-import React, { useState } from 'react';
-import { CheckCircle, FileText, Users, Briefcase, MessageSquare, RefreshCw, Clock, Rocket, BarChart2 } from 'lucide-react'; // Assuming lucide-react for icons
+import React, { useState, useEffect } from 'react';
+import { 
+  CheckCircle, 
+  Clock, 
+  Rocket, 
+  BarChart2,
+  FolderKanban,
+  Receipt,
+  ReceiptText,
+  MessagesSquare,
+  BrickWall,
+  Split,
+  CalendarCheck,
+} from 'lucide-react'; // Assuming lucide-react for icons
+import { useTheme } from 'next-themes';
 
 interface FeatureItem {
   id: string;
@@ -9,7 +22,8 @@ interface FeatureItem {
   description: string;
   icon: React.ElementType;
   gifPlaceholder: string; // Text for the GIF placeholder
-  mediaUrl?: string; // CDN URL for GIF/video
+  mediaUrlLight?: string; // CDN URL for light mode GIF/video
+  mediaUrlDark?: string; // CDN URL for dark mode GIF/video
 }
 
 const features: FeatureItem[] = [
@@ -17,45 +31,65 @@ const features: FeatureItem[] = [
     id: 'invoices',
     name: 'Invoices',
     description: 'Manage and send professional invoices to your clients with ease and track payment status.',
-    icon: FileText,
-    gifPlaceholder: 'Invoice Management GIF/Video'
+    icon: Receipt,
+    gifPlaceholder: 'Invoice Management GIF/Video',
+    mediaUrlLight: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaloqdIcUtNS4VUITP3CrtpHjw5yDhg7G8Knfi9',
+    mediaUrlDark: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalFGOQfEyO0PCjZfaWMUiLY2oz4h8ENslA9bSB'
   },
   {
     id: 'receipts',
     name: 'Receipts',
     description: 'Generate and store digital receipts for all transactions, keeping your records organized.',
-    icon: FileText,
+    icon: ReceiptText,
     gifPlaceholder: 'Receipt Generation GIF/Video',
-    mediaUrl: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalvZQ7tg0PNqaV5zUDX7I06FbjMkvcBdEnmu8S'
+    mediaUrlLight: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalGZDH5A4G6vKMBc7jnSCz2dEZpQtOghsaDqX9',
+    mediaUrlDark: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalvZQ7tg0PNqaV5zUDX7I06FbjMkvcBdEnmu8S'
   },
   {
     id: 'feedback',
     name: 'Feedback Form',
     description: 'Collect valuable client feedback through customizable forms to improve your services.',
-    icon: MessageSquare,
-    gifPlaceholder: 'Feedback Form Showcase GIF/Video'
+    icon: MessagesSquare,
+    gifPlaceholder: 'Feedback Form Showcase GIF/Video',
+    mediaUrlLight: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalzdU88V9Kb2ZVmS0XDQyx1pMYUfg6CrdsaGB5',
+    mediaUrlDark: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdala6YSWwe5bDN6EOxVYX0m2feFkncBs7j3Lpug'
   },
   {
-    id: 'clientMgmt',
-    name: 'Client Management',
-    description: 'Keep all client information, communication logs, and project details in one central place.',
-    icon: Users,
-    gifPlaceholder: 'Client Management System GIF/Video'
-  },
-  {
-    id: 'serviceAgreements',
-    name: 'Service Agreements',
+    id: 'wall',
+    name: 'Walls',
     description: 'Create, send, and manage digital service agreements and contracts efficiently.',
-    icon: Briefcase,
-    gifPlaceholder: 'Service Agreements Workflow GIF/Video'
+    icon: BrickWall,
+    gifPlaceholder: 'Service Agreements Workflow GIF/Video',
+    mediaUrlLight: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalGQ709r4G6vKMBc7jnSCz2dEZpQtOghsaDqX9',
+    mediaUrlDark: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalMnN9bVmd7PZECBwRWjxVT0t6hYMS4po2kLbi'
+  },
+  {
+    id: 'paths',
+    name: 'Paths',
+    description: 'Create, send, and manage digital service agreements and contracts efficiently.',
+    icon: Split,
+    gifPlaceholder: 'Paths Workflow GIF/Video',
+    mediaUrlLight: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalUMrPwEp1xo83NBPKislcvQEqaT7nYWruI0A6',
+    mediaUrlDark: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalGZkkEO4G6vKMBc7jnSCz2dEZpQtOghsaDqX9'
   },
   {
     id: 'projectUpdates',
     name: 'Project Updates',
     description: 'Share progress updates with clients and your team, ensuring everyone is on the same page.',
-    icon: RefreshCw,
-    gifPlaceholder: 'Project Updates Showcase GIF/Video'
+    icon: FolderKanban,
+    gifPlaceholder: 'Project Updates Showcase GIF/Video',
+    mediaUrlLight: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalEFk5MFWz1tQwX0JNF6KcaSlyfbP3LCsve8g7',
+    mediaUrlDark: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalb6AtmWlplS6xJwfnDrFWdsIHeh7XLYzK42T0'
   },
+  // {
+  //   id: 'clientMgmt',
+  //   name: 'Client Management',
+  //   description: 'Keep all client information, communication logs, and project details in one central place.',
+  //   icon: Users,
+  //   gifPlaceholder: 'Client Management System GIF/Video',
+  //   mediaUrlLight: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalvZQ7tg0PNqaV5zUDX7I06FbjMkvcBdEnmu8S',
+  //   mediaUrlDark: 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalvZQ7tg0PNqaV5zUDX7I06FbjMkvcBdEnmu8S'
+  // },
 ];
 
 const StatCard = ({ icon: Icon, value, label, subLabel, colorClass }: {
@@ -65,26 +99,38 @@ const StatCard = ({ icon: Icon, value, label, subLabel, colorClass }: {
   subLabel: string;
   colorClass: string;
 }) => (
-  <div className={`flex-1 p-4 md:p-6 rounded-lg shadow-lg flex items-center space-x-3 md:space-x-4 ${colorClass}`}>
+  <div className={`flex-1 p-4 md:p-6 rounded-none shadow-lg flex items-center space-x-3 md:space-x-4 ${colorClass}`}>
     <Icon className="w-8 h-8 md:w-10 md:h-10 text-opacity-80" />
     <div>
-      <p className="text-2xl md:text-3xl font-bold">{value}</p>
-      <p className="text-sm text-gray-700 text-opacity-90">{label}</p>
-      <p className="text-xs text-gray-500 text-opacity-80">{subLabel}</p>
+      <p className="text-lg md:text-3xl font-bold">{value}</p>
+      <p className="text-xs md:text-sm text-gray-700 text-opacity-90">{label}</p>
+      <p className="text-xs md:text-sm text-gray-500 text-opacity-80">{subLabel}</p>
     </div>
   </div>
 );
 
 export default function Preview() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState<boolean>(false);
   const [activeFeature, setActiveFeature] = useState<FeatureItem>(features[0]);
   const [imageFailed, setImageFailed] = useState<boolean>(false);
 
   const isGifUrl = (url: string) => /\.gif($|\?)/i.test(url);
   const isVideoUrl = (url: string) => /\.(mp4|webm|mov)($|\?)/i.test(url);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const activeUrl = mounted
+    ? (resolvedTheme === 'dark'
+        ? (activeFeature.mediaUrlDark || activeFeature.mediaUrlLight)
+        : (activeFeature.mediaUrlLight || activeFeature.mediaUrlDark))
+    : undefined;
+
   React.useEffect(() => {
     setImageFailed(false);
-  }, [activeFeature]);
+  }, [activeFeature, activeUrl]);
 
   return (
     <section className="py-12 md:py-20">
@@ -133,23 +179,28 @@ export default function Preview() {
           </div>
 
           {/* Right Column: GIF/Video Display */}
-          <div className="md:col-span-2 bg-gray-100 rounded-xl shadow-inner flex items-center justify-center p-8 min-h-[300px] md:min-h-full">
-            {activeFeature.mediaUrl ? (
+          <div className="md:col-span-2 bg-lightCard dark:bg-darkCard rounded-none shadow-inner flex items-center justify-center p-8 min-h-[300px] md:min-h-full">
+            {!activeUrl ? (
+              <div className="w-full h-full flex items-center justify-center animate-pulse">
+                <div className="w-3/4 h-3/4 bg-muted rounded" />
+              </div>
+            ) : (
               <div className="w-full h-full flex items-center justify-center">
-                {(!isVideoUrl(activeFeature.mediaUrl) && !imageFailed) || isGifUrl(activeFeature.mediaUrl) ? (
+                {(!isVideoUrl(activeUrl) && !imageFailed) || isGifUrl(activeUrl) ? (
                   <img
-                    src={activeFeature.mediaUrl}
+                    key={activeUrl}
+                    src={activeUrl}
                     alt={`${activeFeature.name} media`}
                     loading="lazy"
                     referrerPolicy="no-referrer"
-                    className="max-w-full max-h-full rounded-lg shadow-lg object-contain"
+                    className="max-w-full max-h-full rounded-none shadow-lg object-contain"
                     style={{ maxHeight: '400px' }}
                     onError={() => setImageFailed(true)}
                   />
                 ) : (
                   <video
-                    key={activeFeature.id}
-                    src={activeFeature.mediaUrl}
+                    key={activeUrl}
+                    src={activeUrl}
                     autoPlay
                     loop
                     muted
@@ -161,14 +212,6 @@ export default function Preview() {
                   />
                 )}
               </div>
-            ) : (
-              <div className="text-center">
-                <p className="text-xl font-semibold text-gray-700">{activeFeature.gifPlaceholder}</p>
-                <p className="text-sm text-gray-500 mt-2">Content for {activeFeature.name} will be displayed here.</p>
-                <div className="mt-6 w-full h-64 bg-gray-300 rounded-lg flex items-center justify-center animate-pulse">
-                  <p className="text-gray-500">Loading GIF/Video...</p>
-                </div>
-              </div>
             )}
           </div>
         </div>
@@ -178,23 +221,23 @@ export default function Preview() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             <StatCard 
               icon={Clock} 
-              value="3h 4m" 
+              value="4h 27m" 
               label="Weekly Time Saved" 
               subLabel="Per active user" 
               colorClass="bg-green-50 text-green-700"
             />
             <StatCard 
-              icon={Rocket} 
-              value="13 entire days" 
+              icon={CalendarCheck} 
+              value="10 entire days" 
               label="Yearly Time Saved" 
               subLabel="Based on weekly average" 
               colorClass="bg-blue-50 text-blue-700"
             />
             <StatCard 
               icon={BarChart2} 
-              value="202,851" 
-              label="Posts Published" 
-              subLabel="+69% engagement" 
+              value="8,851" 
+              label="Operations Managed" 
+              subLabel="+69% Increased Productivity" 
               colorClass="bg-red-50 text-red-700"
             />
           </div>

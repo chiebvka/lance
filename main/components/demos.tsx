@@ -6,12 +6,17 @@ import { useTheme } from 'next-themes';
 
 export default function Demos() {
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState<boolean>(false);
   const [imageFailed, setImageFailed] = useState<boolean>(false);
 
-  const mediaUrlLight = 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalvZQ7tg0PNqaV5zUDX7I06FbjMkvcBdEnmu8S';
-  const mediaUrlDark = 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalvZQ7tg0PNqaV5zUDX7I06FbjMkvcBdEnmu8S';
+  const mediaUrlLight = 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalr1Dqipb169hY57pVFn2ABom0RXGCZjWJLuSQ';
+  const mediaUrlDark = 'https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalGtmDjs4G6vKMBc7jnSCz2dEZpQtOghsaDqX9';
 
-  const activeUrl = resolvedTheme === 'dark' ? mediaUrlDark : mediaUrlLight;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const activeUrl = mounted ? (resolvedTheme === 'dark' ? mediaUrlDark : mediaUrlLight) : undefined;
 
   const isGifUrl = (url: string) => /\.gif($|\?)/i.test(url);
   const isVideoUrl = (url: string) => /\.(mp4|webm|mov)($|\?)/i.test(url);
@@ -32,10 +37,14 @@ export default function Demos() {
           </p>
         </div>
 
-        <div className=" mx-auto border border-gray-200 bg-background">
+        <div className=" mx-auto border shadow-md bg-lightCard dark:bg-darkCard">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
             <div className="relative w-full h-[320px] sm:h-[420px] lg:h-[520px] flex items-center justify-center bg-muted/20">
-              {(!isVideoUrl(activeUrl) && !imageFailed) || isGifUrl(activeUrl) ? (
+              {!activeUrl ? (
+                <div className="w-full h-full flex items-center justify-center animate-pulse">
+                  <div className="w-3/4 h-3/4 bg-muted rounded" />
+                </div>
+              ) : ((!isVideoUrl(activeUrl) && !imageFailed) || isGifUrl(activeUrl)) ? (
                 <img
                   src={activeUrl}
                   alt="Demo media"
@@ -60,13 +69,13 @@ export default function Demos() {
             </div>
 
             <div className="p-6 sm:p-10 lg:p-12 flex flex-col justify-center">
-              <h3 className="font-medium text-xl md:text-2xl mb-3">Financial overview</h3>
+              <h3 className="font-medium text-xl md:text-2xl text-primary mb-3">Dashboard overview</h3>
               <p className="text-muted-foreground mb-6 md:mb-8 max-w-prose">
-                Bring your own bank. We connect to over 20 000+ banks in 33 countries across US, Canada, UK and Europe. Keep tabs on your expenses and income, and gain a clearer picture of your business's financial track record and current situation.
+                Gain quick insights and perform quick actions on existing content, tasks and projects and have customers and clients updated in seconds.
               </p>
               <ul className="space-y-3 text-sm md:text-base">
-                {['Revenue', 'Burnrate', 'Expenses', 'Unified currency overview across all your accounts'].map((item) => (
-                  <li key={item} className="flex items-center gap-3">
+                {['Upcoming due dates', 'Invoice Ratings', 'Feedback Ratings', 'Recent customer Activities'].map((item) => (
+                  <li key={item} className="flex text-primary items-center gap-3">
                     <Check className="w-5 h-5" />
                     <span>{item}</span>
                   </li>

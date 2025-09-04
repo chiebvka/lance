@@ -10,7 +10,7 @@ import { wallFaqs } from '@/data/faqs'
 export const metadata: Metadata = createPageMetadata({
   title: 'Collaborative Walls & Canvas',
   description: 'Create collaborative digital spaces where you can organize and share project-related content, documents, and updates with clients and team members.',
-  path: '/features/walls',
+  path: '/walls',
   keywords: ['collaborative walls', 'digital canvas', 'project collaboration', 'content organization', 'team workspace']
 });
 
@@ -26,8 +26,8 @@ export default function page({}: Props) {
   }
 
   const dashboardContent = {
-    lightModeImage: "https://images.pexels.com/photos/33611917/pexels-photo-33611917.jpeg",
-    darkModeImage: "https://images.pexels.com/photos/13517407/pexels-photo-13517407.jpeg",
+    lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalGQ709r4G6vKMBc7jnSCz2dEZpQtOghsaDqX9",
+    darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalMnN9bVmd7PZECBwRWjxVT0t6hYMS4po2kLbi",
     altText: "Collaborative walls and canvas interface"
   }
 
@@ -36,40 +36,46 @@ export default function page({}: Props) {
     description: "Powerful tools for creating organized, collaborative spaces that streamline communication and keep projects moving forward.",
     cards: [
       {
-        title: "Visual Organization",
-        description: "Organize content visually with drag-and-drop layouts, categories, and custom sections for intuitive navigation.",
-        imageUrl: "https://images.pexels.com/photos/33596336/pexels-photo-33596336.jpeg",
-        altText: "Visual content organization interface"
+        title: "Due Walls Calendar & Analytics",
+        description: "Manage your walls due dates and get analytics on your invoices.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalJYWsKdcVAgnJOSDTGi0a721q8PwEr39xjMNy",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdals84WGrgF0bT8wYz5iGdZ4u6vc1egp97rmtlP",
+        altText: "Due walls calendar and analytics"
       },
       {
-        title: "Real-Time Collaboration",
-        description: "Work together in real-time with live updates, comments, and collaborative editing capabilities.",
-        imageUrl: "https://images.pexels.com/photos/33529180/pexels-photo-33529180.jpeg",
-        altText: "Real-time collaboration features"
+        title: "Quick Reminders",
+        description: "Send out quick reminders about your walls to your customers.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalUPgcXs1xo83NBPKislcvQEqaT7nYWruI0A64",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaleZFYzbUsY31vlpytouB8rVH6mA9DQjC4nFzR",
+        altText: "quick project reminders"
       },
       {
-        title: "Content Management",
-        description: "Easily add, organize, and manage various content types including documents, images, links, and notes.",
-        imageUrl: "https://images.pexels.com/photos/33588195/pexels-photo-33588195.jpeg",
-        altText: "Content management system"
+        title: "Recent Activities",
+        description: "See recent activities on your walls sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalr9uNrlb169hY57pVFn2ABom0RXGCZjWJLuSQ",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalWkgb2PSkoYzVLWgHt3GDZfaM8seAhrw49NJS",
+        altText: "Custom survey builder interface"
       },
       {
-        title: "Permission Control",
-        description: "Set granular permissions to control who can view, edit, or comment on specific content and sections.",
-        imageUrl: "https://images.pexels.com/photos/33042614/pexels-photo-33042614.jpeg",
-        altText: "Permission and access control"
+        title: "Quick Previews",
+        description: "Preview your walls sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalL8i3Uz7Qeags4wEbTGImBp0SUc3yMjvnxH9k",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalz5seXh9Kb2ZVmS0XDQyx1pMYUfg6CrdsaGB5",
+        altText: "Quick previews dashboard"
       },
       {
-        title: "Client Collaboration",
-        description: "Invite clients to contribute to walls with controlled access levels and professional presentation.",
-        imageUrl: "https://images.pexels.com/photos/33543175/pexels-photo-33543175.jpeg",
-        altText: "Client collaboration interface"
+        title: "Quick Actions",
+        description: "Perform quick actions on your walls sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaldsHIvbD3z9vTNenx26LV1yjRE8mHPGQ4bKil",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdal99RqbMaqswE6goNW3AxvPBaDkcUQyZ2pnrSC",
+        altText: "Quick actions dashboard"
       },
       {
-        title: "Mobile Accessibility",
-        description: "Access and contribute to walls from anywhere with our responsive mobile interface and app.",
-        imageUrl: "https://images.pexels.com/photos/32878855/pexels-photo-32878855.jpeg",
-        altText: "Mobile wall access interface"
+        title: "Peronalized emails ",
+        description: "Share project insights across teams and departments for better decision-making.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbP9hjElplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbP9hjElplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        altText: "Team collaboration on project insights"
       },
     ]
   }

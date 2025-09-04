@@ -140,7 +140,7 @@ export default function NotificationSettingsForm() {
         <div className="space-y-0">
           <SettingsSwitch
             label="Invoice Overdue"
-            description="Receive notifications about overdue invoices."
+            description="You and your customers will receive notifications about overdue invoices."
             value={getCurrentValue('invoiceNotifications')}
             onChange={(value) => updateUserInput('invoiceNotifications', value)}
             onSave={handleSaveInvoiceOverdue}
@@ -149,7 +149,7 @@ export default function NotificationSettingsForm() {
           
           <SettingsSwitch
             label="Project Signoff"
-            description="Receive notifications about projects that are late to sign off."
+            description="You and your customers will receive notifications about projects that are late to sign off."
             value={getCurrentValue('projectNotifications')}
             onChange={(value) => updateUserInput('projectNotifications', value)}
             onSave={handleSaveProjectSignoff}
@@ -158,7 +158,7 @@ export default function NotificationSettingsForm() {
           
           <SettingsSwitch
             label="Overdue Feedbacks"
-            description="Receive notifications about overdue feedbacks."
+            description="You and your customers will receive notifications about overdue feedbacks."
             value={getCurrentValue('feedbackNotifications')}
             onChange={(value) => updateUserInput('feedbackNotifications', value)}
             onSave={handleSaveOverdueFeedbacks}

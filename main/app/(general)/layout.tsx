@@ -17,7 +17,7 @@ export default async function Layout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="max-w-7xl w-full border-2 border-green-500 mt-24 md:mt-28 items-start">
+    <div className="max-w-7xl w-full mt-24 md:mt-28 items-start">
       <main className="min-h-screen  w-full ">
         <div className=" w-full ">
           <Header />

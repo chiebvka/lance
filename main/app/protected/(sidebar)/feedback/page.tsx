@@ -5,6 +5,7 @@ import { getOrganizationFeedback } from '@/lib/feedback';
 import FeedbackClient from './_components/feedback-client';
 import { getAuthenticatedUser } from '@/utils/auth';
 import { Feedbacks } from '@/hooks/feedbacks/use-feedbacks';
+import ProjectClientSkeleton from '../projects/_components/project-client-skeleton';
 
 type Props = {}
 
@@ -22,8 +23,8 @@ export default async function page({}: Props) {
   }
   // console.log(initialFeedbacks)
   return (
-    <div  className='w-full py-4 px-6 border border-bexoni'>
-      <Suspense fallback={<div>Loading feedbacks...</div>}>
+    <div  className='w-full py-4 px-6 '>
+      <Suspense fallback={<ProjectClientSkeleton />}>
         <FeedbackClient initialFeedbacks={initialFeedbacks}   />
       </Suspense>
     </div>

@@ -1,13 +1,20 @@
 
-import RealtimeCodingPreviews from "./bento/real-time-previews"
-import OneClickIntegrationsIllustration from "./bento/one-click-integrations-illustration"
-import MCPConnectivityIllustration from "./bento/mcp-connectivity-illustration" // Updated import
-import EasyDeployment from "./bento/easy-deployment"
-import ParallelCodingAgents from "./bento/parallel-agents" // Updated import
-import AiCodeReviews from "./bento/ai-code-reviews"
+"use client"
 
+import dynamic from 'next/dynamic'
+import { useTheme } from 'next-themes'
 
-const BentoCard = ({ title, description, imageUrl, altText }: { title: string, description: string, imageUrl: string, altText: string }) => (
+const BentoCardComponent = ({ title, description, lightModeImage, darkModeImage, altText }: { 
+  title: string, 
+  description: string, 
+  lightModeImage: string, 
+  darkModeImage: string, 
+  altText: string 
+}) => {
+  const { resolvedTheme } = useTheme();
+  const imageUrl = resolvedTheme === 'dark' ? darkModeImage : lightModeImage;
+
+  return (
   <div className="overflow-hidden rounded-none border border-white/20 bg-lightCard dark:bg-darkCard flex flex-col justify-start items-start relative h-full">
     {/* Background with blur effect */}
     <div
@@ -23,7 +30,7 @@ const BentoCard = ({ title, description, imageUrl, altText }: { title: string, d
 
     <div className="self-stretch p-4 md:p-6 flex flex-col justify-start items-start gap-2 relative z-10">
       <div className="self-stretch flex flex-col justify-start items-start gap-1.5">
-        <p className="self-stretch text-foreground text-base md:text-lg font-normal leading-6 md:leading-7">
+        <p className="self-stretch text-primary text-base md:text-lg font-normal leading-6 md:leading-7">
           {title} <br />
           <span className="text-muted-foreground text-xs md:text-sm lg:text-base">{description}</span>
         </p>
@@ -48,7 +55,13 @@ const BentoCard = ({ title, description, imageUrl, altText }: { title: string, d
       </div>
     </div>
   </div>
-)
+  )
+}
+
+// Export as dynamic component with SSR disabled
+const BentoCard = dynamic(() => Promise.resolve(BentoCardComponent), {
+  ssr: false
+})
 
 interface BentoSectionProps {
   title: string
@@ -56,7 +69,8 @@ interface BentoSectionProps {
   cards: Array<{
     title: string
     description: string
-    imageUrl: string
+    lightModeImage: string
+    darkModeImage: string
     altText: string
   }>
 }
@@ -79,7 +93,14 @@ export function BentoSection({ title, description, cards }: BentoSectionProps) {
         </div>
         <div className="self-stretch grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 z-10">
           {cards.map((card) => (
-            <BentoCard key={card.title} {...card} />
+            <BentoCard 
+              key={card.title} 
+              title={card.title}
+              description={card.description}
+              lightModeImage={card.lightModeImage}
+              darkModeImage={card.darkModeImage}
+              altText={card.altText}
+            />
           ))}
         </div>
       </div>

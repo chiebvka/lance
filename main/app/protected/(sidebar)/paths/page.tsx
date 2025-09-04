@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import React, { Suspense } from 'react'
 import PathClient from './_components/path-client';
+import ProjectClientSkeleton from '../projects/_components/project-client-skeleton';
 
 type Props = {}
 
@@ -19,8 +20,8 @@ export default async function page({}: Props) {
   }
 
   return (
-    <div className='w-full py-4 px-6 border border-bexoni'>
-    <Suspense fallback={<div>Loading walls...</div>}>
+    <div className='w-full py-4 px-6'>
+    <Suspense fallback={<ProjectClientSkeleton />}>
       <PathClient initialPaths={initialPaths} userEmail={user?.email ?? null} />
     </Suspense>
   </div>

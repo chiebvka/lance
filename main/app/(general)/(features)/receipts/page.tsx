@@ -10,7 +10,7 @@ import { receiptFaqs } from '@/data/faqs'
 export const metadata: Metadata = createPageMetadata({
   title: 'Receipt Management',
   description: 'Capture, categorize, and store receipts automatically with AI-powered expense tracking. Never lose a receipt again and simplify your expense management.',
-  path: '/features/receipts',
+  path: '/receipts',
   keywords: ['receipt management', 'expense tracking', 'OCR scanning', 'expense reports']
 });
 
@@ -27,8 +27,8 @@ export default function page({}: Props) {
   }
 
   const dashboardContent = {
-    lightModeImage: "https://images.pexels.com/photos/33611917/pexels-photo-33611917.jpeg",
-    darkModeImage: "https://images.pexels.com/photos/13517407/pexels-photo-13517407.jpeg",
+    lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalGZDH5A4G6vKMBc7jnSCz2dEZpQtOghsaDqX9",
+    darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalvZQ7tg0PNqaV5zUDX7I06FbjMkvcBdEnmu8S",
     altText: "Receipt management dashboard preview"
   }
 
@@ -37,40 +37,46 @@ export default function page({}: Props) {
     description: "Transform how you handle receipts with intelligent automation, smart categorization, and seamless expense tracking.",
     cards: [
       {
-        title: "Smart Receipt Scanning",
-        description: "Use your phone camera to instantly capture and digitize receipts with OCR technology.",
-        imageUrl: "https://images.pexels.com/photos/33596336/pexels-photo-33596336.jpeg",
-        altText: "Smart receipt scanning with mobile camera"
+        title: "Due Receipts Calendar & Analytics",
+        description: "Manage your invoices due dates and get analytics on your invoices.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalJYWsKdcVAgnJOSDTGi0a721q8PwEr39xjMNy",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdals84WGrgF0bT8wYz5iGdZ4u6vc1egp97rmtlP",
+        altText: "Due receipts calendar and analytics"
       },
       {
-        title: "Automatic Categorization",
-        description: "AI-powered categorization that learns your spending patterns and organizes receipts automatically.",
-        imageUrl: "https://images.pexels.com/photos/33529180/pexels-photo-33529180.jpeg",
-        altText: "Automatic receipt categorization system"
+        title: "Quick Reminders",
+        description: "Send out quick reminders about your receipts to your customers.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalUPgcXs1xo83NBPKislcvQEqaT7nYWruI0A64",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaleZFYzbUsY31vlpytouB8rVH6mA9DQjC4nFzR",
+        altText: "quick project reminders"
       },
       {
-        title: "Expense Tracking & Reports",
-        description: "Generate detailed expense reports and track spending across categories and time periods.",
-        imageUrl: "https://images.pexels.com/photos/33588195/pexels-photo-33588195.jpeg",
-        altText: "Expense tracking and reporting dashboard"
+        title: "Recent Activities",
+        description: "See recent activities on your receipts sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalr9uNrlb169hY57pVFn2ABom0RXGCZjWJLuSQ",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalWkgb2PSkoYzVLWgHt3GDZfaM8seAhrw49NJS",
+        altText: "Custom survey builder interface"
       },
       {
-        title: "Cloud Storage & Backup",
-        description: "Secure cloud storage ensures your receipts are safe and accessible from anywhere.",
-        imageUrl: "https://images.pexels.com/photos/33042614/pexels-photo-33042614.jpeg",
-        altText: "Cloud storage and backup system"
+        title: "Quick Previews",
+        description: "Preview your receipts sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalvmvlkk0PNqaV5zUDX7I06FbjMkvcBdEnmu8S",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalyCwoJuHQhceKxZzqp6UWYbsARv4PTwiC2uan",
+        altText: "Quick previews dashboard"
       },
       {
-        title: "Tax Preparation Ready",
-        description: "Export organized data in formats ready for tax preparation and accounting software.",
-        imageUrl: "https://images.pexels.com/photos/33543175/pexels-photo-33543175.jpeg",
-        altText: "Tax preparation and export tools"
+        title: "Quick Actions",
+        description: "Perform quick actions on your receipts sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaldsHIvbD3z9vTNenx26LV1yjRE8mHPGQ4bKil",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdal99RqbMaqswE6goNW3AxvPBaDkcUQyZ2pnrSC",
+        altText: "Quick actions dashboard"
       },
       {
-        title: "Team Expense Management",
-        description: "Manage team expenses with role-based access and approval workflows.",
-        imageUrl: "https://images.pexels.com/photos/32878855/pexels-photo-32878855.jpeg",
-        altText: "Team expense management interface"
+        title: "Peronalized emails ",
+        description: "Share project insights across teams and departments for better decision-making.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbP9hjElplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbP9hjElplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        altText: "Team collaboration on project insights"
       },
     ]
   }

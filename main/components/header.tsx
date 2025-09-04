@@ -69,15 +69,15 @@ export default function Header({}: Props) {
   return (
     <div>
       <nav className="flex fixed top-0 left-0 right-0 z-40 justify-center p-4 md:p-6 text-foreground">
-        <div className="md:w-[85%] w-full flex justify-between items-center bg-background/80 backdrop-blur-md  border border-primary  px-6 py-2">
+        <div className="md:w-[85%] w-full flex justify-between items-center bg-background/80 backdrop-blur-md  border  px-6 py-2">
           <Logo height={40} width={40} />
 
           <div className="hidden md:flex items-center bg-secondary/80 dark:bg-white/10 backdrop-blur-sm   px-1 py-1">
             <Link
               href="/"
-              className="nav-item flex items-center justify-center w-10 h-10 rounded-none bg-secondary dark:bg-white/10 mx-1 hover:bounce-x"
+              className="nav-item flex items-center justify-center w-10 h-10 rounded-none bg-bexoni/10 dark:bg-white/10 mx-1 hover:bounce-x"
             >
-              <Home className="w-5 h-5" />
+              <Home className="w-5 h-5 text-primary" />
             </Link>
             
             {/* Features Navigation Menu with better positioning */}
@@ -144,14 +144,14 @@ export default function Header({}: Props) {
               </NavigationMenuList>
             </NavigationMenu>
             
-            <Link href="/works" className="nav-item px-4 py-2 hover:text-primary transition-colors hover:bounce-x">
-              Works
+            <Link href="/pricing" className="nav-item px-4 py-2 hover:text-primary transition-colors hover:bounce-x">
+              Pricing
             </Link>
-            <Link href="/blog" className="nav-item px-4 py-2 hover:text-primary transition-colors hover:bounce-x">
-              Blog
+            <Link href="/#faqs" className="nav-item px-4 py-2 hover:text-primary transition-colors hover:bounce-x">
+              FAQs
             </Link>
-            <Link href="/testimonials" className="nav-item px-4 py-2 hover:text-primary transition-colors hover:bounce-x">
-              Testimonials
+            <Link href="/story" className="nav-item px-4 py-2 hover:text-primary transition-colors hover:bounce-x">
+              Story
             </Link>
             <Button>
               <Link href="/login">
@@ -217,13 +217,12 @@ export default function Header({}: Props) {
                         )}
                       </div>
                       
-                      <MobileNavLink href="/board" label="Executive Members" onClick={() => setIsSheetOpen(false)} />
-                      <MobileNavLink href="/about" label="About" onClick={() => setIsSheetOpen(false)} />
-                      <MobileNavLink href="/gallery" label="Media Gallery" onClick={() => setIsSheetOpen(false)} />
-                      <MobileNavLink href="/blog" label="Projects & News" onClick={() => setIsSheetOpen(false)} />
-                      <MobileNavLink href="/members" label="Membership" onClick={() => setIsSheetOpen(false)} />
+                      <MobileNavLink href="/branding" label="Branding" onClick={() => setIsSheetOpen(false)} />
+                      <MobileNavLink href="/story" label="Story" onClick={() => setIsSheetOpen(false)} />
+                      <MobileNavLink href="/#faqs" label="FAQs" onClick={() => setIsSheetOpen(false)} />
+                      {/* <MobileNavLink href="/members" label="Membership" onClick={() => setIsSheetOpen(false)} />
                       <MobileNavLink href="/events" label="Events" onClick={() => setIsSheetOpen(false)} />
-                      <MobileNavLink href="/donation" label="Donate" onClick={() => setIsSheetOpen(false)} />
+                      <MobileNavLink href="/donation" label="Donate" onClick={() => setIsSheetOpen(false)} /> */}
                       <Button>
                         <Link href="/login">
                           Start for free

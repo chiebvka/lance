@@ -11,7 +11,7 @@ import { invoiceFaqs } from '@/data/faqs'
 export const metadata: Metadata = createPageMetadata({
   title: 'Invoice Management',
   description: 'Create, send, and track professional invoices with automated reminders and seamless payment processing. Save time and get paid faster with Bexforte Invoices.',
-  path: '/features/invoices',
+  path: '/invoices',
   keywords: ['invoice management', 'payment processing', 'automated reminders', 'professional invoices']
 });
 
@@ -28,8 +28,8 @@ export default function page({}: Props) {
   }
 
   const dashboardContent = {
-    lightModeImage: "https://images.pexels.com/photos/7512566/pexels-photo-7512566.jpeg",
-    darkModeImage: "https://images.pexels.com/photos/7512566/pexels-photo-7512566.jpeg",
+    lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaloqdIcUtNS4VUITP3CrtpHjw5yDhg7G8Knfi9",
+    darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalFGOQfEyO0PCjZfaWMUiLY2oz4h8ENslA9bSB",
     altText: "Invoice management dashboard preview"
   }
 
@@ -38,40 +38,46 @@ export default function page({}: Props) {
     description: "Everything you need to manage invoices efficiently, track payments, and maintain professional client relationships.",
     cards: [
       {
-        title: "Professional Invoice Templates",
-        description: "Beautiful, customizable templates that reflect your brand and impress clients.",
-        imageUrl: "https://images.pexels.com/photos/33596336/pexels-photo-33596336.jpeg",
-        altText: "Professional invoice template design"
+        title: "Due Invoices Calendar & Analytics",
+        description: "Manage your invoices due dates and get analytics on your invoices.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdal0YEEwGPD8ZOnksMh6KA45pc9rUEGH1YfdoiL",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalKliJnhweYwSMUFm16DjdW394icZxaO5sJVNH",
+        altText: "Due invoices calendar and analytics"
       },
       {
-        title: "Automated Payment Reminders",
-        description: "Never chase payments again with smart, automated reminder systems.",
-        imageUrl: "https://images.pexels.com/photos/33529180/pexels-photo-33529180.jpeg",
-        altText: "Automated payment reminder system"
+        title: "Quick Reminders",
+        description: "Send out quick reminders about your invoices to your customers.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalUPgcXs1xo83NBPKislcvQEqaT7nYWruI0A64",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaleZFYzbUsY31vlpytouB8rVH6mA9DQjC4nFzR",
+        altText: "quick project reminders"
       },
       {
-        title: "Multi-Currency Support",
-        description: "Accept payments in any currency with real-time exchange rate calculations.",
-        imageUrl: "https://images.pexels.com/photos/33588195/pexels-photo-33588195.jpeg",
-        altText: "Multi-currency payment support"
+        title: "Recent Activities",
+        description: "See recent activities on your invoices sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalr9uNrlb169hY57pVFn2ABom0RXGCZjWJLuSQ",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalWkgb2PSkoYzVLWgHt3GDZfaM8seAhrw49NJS",
+        altText: "Custom survey builder interface"
       },
       {
-        title: "Client Portal Access",
-        description: "Give clients secure access to view and pay invoices online.",
-        imageUrl: "https://images.pexels.com/photos/33042614/pexels-photo-33042614.jpeg",
-        altText: "Secure client portal interface"
+        title: "Quick Previews",
+        description: "Preview your invoices sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalvmvlkk0PNqaV5zUDX7I06FbjMkvcBdEnmu8S",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalyCwoJuHQhceKxZzqp6UWYbsARv4PTwiC2uan",
+        altText: "Quick previews dashboard"
       },
       {
-        title: "Advanced Analytics & Reporting",
-        description: "Track cash flow, payment trends, and business performance insights.",
-        imageUrl: "https://images.pexels.com/photos/33543175/pexels-photo-33543175.jpeg",
-        altText: "Analytics and reporting dashboard"
+        title: "Quick Actions",
+        description: "Perform quick actions on your invoices sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaldsHIvbD3z9vTNenx26LV1yjRE8mHPGQ4bKil",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdal99RqbMaqswE6goNW3AxvPBaDkcUQyZ2pnrSC",
+        altText: "Quick actions dashboard"
       },
       {
-        title: "Mobile-First Design",
-        description: "Create and manage invoices on the go with our responsive mobile app.",
-        imageUrl: "https://images.pexels.com/photos/32878855/pexels-photo-32878855.jpeg",
-        altText: "Mobile invoice management app"
+        title: "Peronalized emails ",
+        description: "Share project insights across teams and departments for better decision-making.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbP9hjElplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbP9hjElplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        altText: "Team collaboration on project insights"
       },
     ]
   }

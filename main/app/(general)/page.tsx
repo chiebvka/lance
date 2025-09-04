@@ -1,22 +1,21 @@
 import Demos from "@/components/demos";
 import Feedbacks from "@/components/feedbacks";
-import Galleria from "@/components/galleria";
 import Hero from "@/components/hero";
-import Heroes from "@/components/heroes";
 import Preview from "@/components/preview";
-import StartTrial from "@/components/start-trial";
-import ConnectSupabaseSteps from "@/components/tutorial/connect-supabase-steps";
-import SignUpUserSteps from "@/components/tutorial/sign-up-user-steps";
 import FaqAccordian from "@/components/faqs/faq-accordian";
 import { homeFaqs } from "@/data/faqs";
-import { hasEnvVars } from "@/utils/supabase/check-env-vars";
+
+import MainParnters from "@/components/main-partners";
+import Comparison from "../../components/comparison";
 
 export default async function Home() {
   
   return (
     <div className="w-full">
       <Hero />
-      <Galleria />
+      <MainParnters />
+      {/* <Galleria /> */}
+      <Comparison />
       <Demos />
       {/* <StartTrial /> */}
       <Feedbacks />

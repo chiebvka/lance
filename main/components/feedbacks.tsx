@@ -20,163 +20,126 @@ interface Testimonial {
 }
 
 // Text components for cleaner data structure
-const MyFirstEver = () => <>My first ever IM view video. This has been a <span className="font-semibold text-yellow-500">monumental boost for [my app]</span> ScoutR.</>;
-const LiterallyNoEasier = () => <>Literally no easier way to interface would multi-account posting, and for 10x cheaper. every creator should be <span className="font-semibold text-yellow-500">using this</span></>;
-const PostBridgeBest = () => <>Post-bridge is <span className="font-semibold text-yellow-500">the best investment I made in months</span>. It's simple and works, exactly what I was searching to handle multiple channels. So good to invest in products from the community 💙 Thanks so much for this product bro!</>;
-const IHateHow = () => <>I hate how every social media has a different scheduling and post management provider, thankfully post bridge solves that and I love the experience so far, <span className="font-semibold text-yellow-500">it just works</span>.</>;
-const IWantedToSay = () => <>I wanted to say thank you for creating post-bridge. Your content studio has <span className="font-semibold text-yellow-500">saved me WEEKS of time</span> in literally less than a couple hours. This software is goated brotha.</>;
-const FirstPostsMade = () => <>First posts made on YT and TT with post bridge [to advertise my product]. So happy I finally took the first step to prioritizing marketing daily. Jack built <span className="font-semibold text-yellow-500">an amazing app</span> here.</>;
-const TheContentStudio = () => <>[the content studio] has slowly been bringing in customers tho and i appreciate you so much for that 🙏 <span className="font-semibold text-yellow-500">+ saves me soooo much time</span>. can spend days just building new sh!t cause all the marketing on autopilot. Love it</>;
-const GameChangerText = () => <>This is a <span className="font-semibold text-green-500">total game-changer</span> for content scheduling. I can plan weeks ahead in minutes!</>;
+// const MyFirstEver = () => <>My first ever IM view video. This has been a <span className="font-semibold text-yellow-500">monumental boost for [my app]</span> ScoutR.</>;
+// const LiterallyNoEasier = () => <>Literally no easier way to interface would multi-account posting, and for 10x cheaper. every creator should be <span className="font-semibold text-yellow-500">using this</span></>;
+// const PostBridgeBest = () => <>Post-bridge is <span className="font-semibold text-yellow-500">the best investment I made in months</span>. It's simple and works, exactly what I was searching to handle multiple channels. So good to invest in products from the community 💙 Thanks so much for this product bro!</>;
+// const IHateHow = () => <>I hate how every social media has a different scheduling and post management provider, thankfully post bridge solves that and I love the experience so far, <span className="font-semibold text-yellow-500">it just works</span>.</>;
+// const IWantedToSay = () => <>I wanted to say thank you for creating post-bridge. Your content studio has <span className="font-semibold text-yellow-500">saved me WEEKS of time</span> in literally less than a couple hours. This software is goated brotha.</>;
+// const FirstPostsMade = () => <>First posts made on YT and TT with post bridge [to advertise my product]. So happy I finally took the first step to prioritizing marketing daily. Jack built <span className="font-semibold text-yellow-500">an amazing app</span> here.</>;
+// const TheContentStudio = () => <>[the content studio] has slowly been bringing in customers tho and i appreciate you so much for that 🙏 <span className="font-semibold text-yellow-500">+ saves me soooo much time</span>. can spend days just building new sh!t cause all the marketing on autopilot. Love it</>;
+// const GameChangerText = () => <>This is a <span className="font-semibold text-green-500">total game-changer</span> for content scheduling. I can plan weeks ahead in minutes!</>;
+const MyFirstEver = () => <>My first invoice generated and sent in under 5 minutes. This has been a <span className="font-semibold text-yellow-500">monumental boost for my freelance business</span> - finally feels professional!</>;
+
+const LiterallyNoEasier = () => <>Literally no easier way to manage client projects and invoicing in one place. Everything flows seamlessly and <span className="font-semibold text-yellow-500">saves me hours every week</span></>;
+
+const PostBridgeBest = () => <>This platform is <span className="font-semibold text-yellow-500">the best investment I made this year</span>. It's intuitive and powerful, exactly what I needed to organize my business operations. So glad I found this gem! 💙</>;
+
+const IHateHow = () => <>I hate how I used to juggle 5 different tools for invoicing, projects, and client communication. This platform solves everything and <span className="font-semibold text-yellow-500">it just works perfectly</span>.</>;
+
+const IWantedToSay = () => <>I wanted to say thank you for creating this business platform. Your service agreement feature has <span className="font-semibold text-yellow-500">saved me countless hours</span> and made me look so much more professional to clients.</>;
+
+const FirstPostsMade = () => <>First digital service agreement sent through the platform and client signed it immediately! The whole process was seamless. You've built <span className="font-semibold text-yellow-500">something truly amazing</span> here.</>;
+
+const TheContentStudio = () => <>The project tracking has been bringing in repeat clients because of how organized everything looks 🙏 <span className="font-semibold text-yellow-500">+ saves me so much admin time</span>. Can focus on actual work instead of paperwork now!</>;
+
+const GameChangerText = () => <>This is a <span className="font-semibold text-green-500">total game-changer</span> for freelance business management. I can handle 3x more clients without the stress!</>;
+
 const SupportIsFantastic = () => <>The support team is fantastic and always responsive. <span className="font-semibold text-blue-500">Love the personal touch!</span></>;
 const MakingContentFun = () => <>Making content creation fun again! No more spreadsheet nightmares. <span className="font-semibold text-pink-500">Thank you Post Bridge!</span></>;
 
 const testimonialsData: Testimonial[] = [
   {
     id: '1',
-    name: 'Ollie Warren',
-    handle: '@ollie_warren99',
-    avatarUrl: 'https://via.placeholder.com/40/FFA07A/FFFFFF?text=OW',
-    socialPlatform: 'twitter',
+    name: 'Bexoni',
+    handle: '@bexonilabs',
+    avatarUrl: 'https://www.bexoni.com/favicon.ico',
+    socialPlatform: 'other',
     text: <MyFirstEver />,
-    imageUrl: 'https://via.placeholder.com/300x200/E0E0E0/808080?text=Record+Games',
+    // imageUrl: 'https://www.bexoni.com/favicon.ico',
   },
   {
     id: '2',
-    name: 'Noah Solomon',
-    handle: '@noah_solomon1',
-    avatarUrl: 'https://via.placeholder.com/40/ADD8E6/FFFFFF?text=NS',
+    name: 'Ndi Enugu Scottland ',
+    handle: '@ndi_enugu_scottland',
+    avatarUrl: 'https://www.ndienuguscotland.org/favicon.ico',
     socialPlatform: 'other',
     text: <LiterallyNoEasier />,
   },
   {
     id: '3',
-    name: 'Fer',
-    handle: '@fer_chws',
-    avatarUrl: 'https://via.placeholder.com/40/90EE90/FFFFFF?text=F',
+    name: 'Foreversake',
+    handle: '@foreversake',
+    avatarUrl: 'https://www.foreversake.com/favicon.ico',
     socialPlatform: 'twitter',
     text: <PostBridgeBest />,
   },
   {
     id: '4',
-    name: 'Ryan Vogel',
-    handle: '@ryandavogel',
-    avatarUrl: 'https://via.placeholder.com/40/FFC0CB/FFFFFF?text=RV',
+    name: 'Unitellas',
+    handle: '@unitellasintl',
+    avatarUrl: 'https://www.unitellas.com/favicon.ico',
     socialPlatform: 'twitter',
     text: <IHateHow />,
   },
   {
     id: '5',
-    name: 'Dominick',
-    handle: '@dominickbdiaz',
-    avatarUrl: 'https://via.placeholder.com/40/D3D3D3/FFFFFF?text=D',
+    name: 'Bobby',
+    handle: '@bobbyamali',
+    avatarUrl: 'https://www.bobbyamali.com/logo.svg',
     socialPlatform: 'twitter',
     text: <IWantedToSay />,
   },
   {
     id: '6',
-    name: 'David',
-    handle: '@ninthdensity',
-    avatarUrl: 'https://via.placeholder.com/40/B0E0E6/FFFFFF?text=D',
-    socialPlatform: 'twitter',
-    text: "Finally, social media posting tool for the rest of us. Thanks Jack!",
+    name: 'Marachic',
+    handle: '@marachic__',
+    avatarUrl: 'https://www.marachic.com/favicon.ico',
+    socialPlatform: 'other',
+    text: <SupportIsFantastic />,
   },
   {
     id: '7',
-    name: 'Max Blade',
-    handle: '@_MaxBlade',
-    avatarUrl: 'https://via.placeholder.com/40/FFB6C1/FFFFFF?text=MB',
-    socialPlatform: 'twitter',
+    name: 'Deluccis',
+    handle: '@_deluccis',
+    avatarUrl: 'https://www.deluccis.com/favicon.ico',
+    socialPlatform: 'other',
     text: <FirstPostsMade />,
-    imageUrl: 'https://via.placeholder.com/300x400/E0E0E0/808080?text=Thumbs+Up',
+    // imageUrl: 'https://via.placeholder.com/300x400/E0E0E0/808080?text=Thumbs+Up',
   },
   {
     id: '8',
-    name: 'Patty',
-    handle: '@pattybuilds',
-    avatarUrl: 'https://via.placeholder.com/40/E6E6FA/FFFFFF?text=P',
-    socialPlatform: 'twitter',
+    name: 'Lancefortes',
+    handle: '@lancefortes',
+    avatarUrl: 'https://www.lancefortes.com/favicon.ico',
+    socialPlatform: 'other',
     text: <TheContentStudio />,
-    imageUrl: 'https://via.placeholder.com/300x150/E0E0E0/808080?text=Analytics',
+    // imageUrl: 'https://via.placeholder.com/300x150/E0E0E0/808080?text=Analytics',
   },
   {
     id: '9',
-    name: 'Sarah Miller',
-    handle: '@sarahm',
-    avatarUrl: 'https://via.placeholder.com/40/F0E68C/FFFFFF?text=SM',
-    socialPlatform: 'twitter',
+    name: 'Bolabmh',
+    handle: '@bolabmh',
+    avatarUrl: 'https://bolabmh.vercel.app/favicon.ico',
+    socialPlatform: 'other',
     text: "This app changed my workflow completely! Highly recommend.",
   },
   {
     id: '10',
-    name: 'James Brown',
-    handle: '@jamesb',
-    avatarUrl: 'https://via.placeholder.com/40/D2B48C/FFFFFF?text=JB',
+    name: 'The Beat boulevard',
+    handle: '@thebeatboulevard',
+    avatarUrl: 'https://thebeatboulevard.vercel.app/favicon.ico',
     text: "Absolutely essential for anyone managing multiple social accounts. A true time saver.",
-    imageUrl: 'https://via.placeholder.com/300x250/D3D3D3/FFFFFF?text=Calendar+View',
+    // imageUrl: 'https://via.placeholder.com/300x250/D3D3D3/FFFFFF?text=Calendar+View',
   },
   {
     id: '11',
-    name: 'Linda Green',
-    handle: '@lindag',
-    avatarUrl: 'https://via.placeholder.com/40/98FB98/FFFFFF?text=LG',
+    name: 'The Ivy Mark',
+    handle: '@theivymark',
+    avatarUrl: 'https://www.theivymark.com/favicon.ico',
     socialPlatform: 'other',
     text: <GameChangerText />,
   },
-  {
-    id: '12',
-    name: 'Kevin White',
-    handle: '@kevinw',
-    avatarUrl: 'https://via.placeholder.com/40/E0FFFF/000000?text=KW',
-    socialPlatform: 'twitter',
-    text: "The scheduling feature is top-notch. My engagement has skyrocketed.",
-  },
-  {
-    id: '13',
-    name: 'Jessica Blue',
-    handle: '@jessicab',
-    avatarUrl: 'https://via.placeholder.com/40/AFEEEE/FFFFFF?text=JB',
-    text: "If you are a content creator, you NEED this. So intuitive and powerful.",
-  },
-  {
-    id: '14',
-    name: 'Michael Black',
-    handle: '@michaelb',
-    avatarUrl: 'https://via.placeholder.com/40/A9A9A9/FFFFFF?text=MB',
-    socialPlatform: 'twitter',
-    text: <SupportIsFantastic />,
-    imageUrl: 'https://via.placeholder.com/300x180/C0C0C0/FFFFFF?text=Team+Chat',
-  },
-  {
-    id: '15',
-    name: 'Emily Purple',
-    handle: '@emilyp',
-    avatarUrl: 'https://via.placeholder.com/40/E6E6FA/000000?text=EP',
-    text: "Used many tools before, but this one stands out for its simplicity and effectiveness.",
-  },
-  {
-    id: '16',
-    name: 'Daniel Yellow',
-    handle: '@daniely',
-    avatarUrl: 'https://via.placeholder.com/40/FFFFE0/000000?text=DY',
-    socialPlatform: 'other',
-    text: "The analytics provided are super helpful for my strategy. Worth every penny!",
-  },
-  {
-    id: '17',
-    name: 'Olivia Red',
-    handle: '@oliviar',
-    avatarUrl: 'https://via.placeholder.com/40/FF7F7F/FFFFFF?text=OR',
-    socialPlatform: 'twitter',
-    text: <MakingContentFun />,
-  },
-  {
-    id: '18',
-    name: 'William Orange',
-    handle: '@williamo',
-    avatarUrl: 'https://via.placeholder.com/40/FFA500/FFFFFF?text=WO',
-    text: "A must-have for marketing agencies. Manages all our client accounts seamlessly.",
-  },
+
 ];
 
 const FeedbackCard = ({ testimonial }: { testimonial: Testimonial }) => {
@@ -197,7 +160,7 @@ const FeedbackCard = ({ testimonial }: { testimonial: Testimonial }) => {
         <img 
           src={testimonial.avatarUrl} 
           alt={testimonial.name} 
-          className="w-10 h-10 md:w-11 md:h-11 rounded-full mr-3 border-2 border-gray-200"
+          className="w-10 h-10 md:w-11 md:h-11 rounded-none mr-3 border-2 border-primary"
         />
         <div className="flex-grow">
           <p className="font-semibold text-sm md:text-md">{testimonial.name}</p>

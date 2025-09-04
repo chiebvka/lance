@@ -479,7 +479,7 @@ export default function DashboardCarousel() {
 
 // Mini recent activity card for carousel
 function RecentActivityMini() {
-  const { data: activities = [] } = useRecentCustomerActivities(10, true)
+  const { data: activities = [] } = useRecentCustomerActivities(50, true)
   const items = activities.map(a => {
     const d = generateActivityDisplayText(a)
     return {

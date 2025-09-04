@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import React, { Suspense } from 'react';
 import ReceiptClient from './_components/receipt-client';
 import { getOrganizationReceipts } from '@/lib/receipt'; // Import shared
+import ProjectClientSkeleton from '../projects/_components/project-client-skeleton';
 
 type Props = {}
 
@@ -19,8 +20,8 @@ export default async function page({}: Props) {
   }
 
   return (
-    <div className='w-full py-4 px-6 border border-bexoni'>
-      <Suspense fallback={<div>Loading receipts...</div>}>
+    <div className='w-full py-4 px-6'>
+      <Suspense fallback={<ProjectClientSkeleton />}>
         <ReceiptClient initialReceipts={initialReceipts} userEmail={user?.email ?? null} />
       </Suspense>
     </div>

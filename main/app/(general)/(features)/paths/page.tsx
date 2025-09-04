@@ -10,7 +10,7 @@ import { pathFaqs } from '@/data/faqs'
 export const metadata: Metadata = createPageMetadata({
   title: 'Learning Paths & Workflows',
   description: 'Create structured links, and one click communications and workflows that guide clients through your processes and effective communication. Standardize work processes and ensure nothing gets missed with our intuitive path builder.',
-  path: '/features/paths',
+  path: '/paths',
   keywords: ['learning paths', 'workflows', 'process automation', 'client onboarding', 'project management']
 });
 
@@ -27,8 +27,8 @@ export default function page({}: Props) {
   }
 
   const dashboardContent = {
-    lightModeImage: "https://images.pexels.com/photos/30548810/pexels-photo-30548810.jpeg",
-    darkModeImage: "https://images.pexels.com/photos/30548810/pexels-photo-30548810.jpeg",
+    lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalUMrPwEp1xo83NBPKislcvQEqaT7nYWruI0A6",
+    darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalGZkkEO4G6vKMBc7jnSCz2dEZpQtOghsaDqX9",
     altText: "Learning path creation dashboard preview"
   }
 
@@ -37,40 +37,46 @@ export default function page({}: Props) {
     description: "Comprehensive tools for creating, managing, and optimizing learning experiences that engage and educate your audience.",
     cards: [
       {
-        title: "Path Builder",
-        description: "Create structured learning paths with our intuitive drag-and-drop path builder.",
-        imageUrl: "https://images.pexels.com/photos/33596336/pexels-photo-33596336.jpeg",
-        altText: "Learning path builder interface"
+        title: "Due Paths Calendar & Analytics",
+        description: "Manage your paths due dates and get analytics on your paths.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalJYWsKdcVAgnJOSDTGi0a721q8PwEr39xjMNy",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdals84WGrgF0bT8wYz5iGdZ4u6vc1egp97rmtlP",
+        altText: "Due paths calendar and analytics"
       },
       {
-        title: "Content Management",
-        description: "Organize and manage learning content with smart categorization and tagging.",
-        imageUrl: "https://images.pexels.com/photos/33529180/pexels-photo-33529180.jpeg",
-        altText: "Content management system"
+        title: "Quick Reminders",
+        description: "Send out quick reminders about your paths to your customers.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalUPgcXs1xo83NBPKislcvQEqaT7nYWruI0A64",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaleZFYzbUsY31vlpytouB8rVH6mA9DQjC4nFzR",
+        altText: "quick project reminders"
       },
       {
-        title: "Progress Tracking",
-        description: "Monitor learner progress and engagement with detailed analytics and insights.",
-        imageUrl: "https://images.pexels.com/photos/33588195/pexels-photo-33588195.jpeg",
-        altText: "Progress tracking dashboard"
+        title: "Recent Activities",
+        description: "See recent activities on your paths sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalr9uNrlb169hY57pVFn2ABom0RXGCZjWJLuSQ",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalWkgb2PSkoYzVLWgHt3GDZfaM8seAhrw49NJS",
+        altText: "Custom survey builder interface"
       },
       {
-        title: "Interactive Elements",
-        description: "Add quizzes, assessments, and interactive content to enhance learning engagement.",
-        imageUrl: "https://images.pexels.com/photos/33042614/pexels-photo-33042614.jpeg",
-        altText: "Interactive learning elements"
+        title: "Quick Previews",
+        description: "Preview your paths sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalk3aOfuJW3L1NhVRJAFUTpBvkS4IiC0saD8fd",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdal1y7fXth3T2JhikX8DazNcpKP9SFxB46fvq5o",
+        altText: "Quick previews dashboard"
       },
       {
-        title: "Personalization",
-        description: "Adapt learning paths based on individual progress and preferences.",
-        imageUrl: "https://images.pexels.com/photos/33543175/pexels-photo-33543175.jpeg",
-        altText: "Personalized learning paths"
+        title: "Quick Actions",
+        description: "Perform quick actions on your paths sent out to customers and clients.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdaldsHIvbD3z9vTNenx26LV1yjRE8mHPGQ4bKil",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdal99RqbMaqswE6goNW3AxvPBaDkcUQyZ2pnrSC",
+        altText: "Quick actions dashboard"
       },
       {
-        title: "Multi-Format Support",
-        description: "Support various content formats including video, text, audio, and interactive elements.",
-        imageUrl: "https://images.pexels.com/photos/32878855/pexels-photo-32878855.jpeg",
-        altText: "Multi-format content support"
+        title: "Peronalized emails ",
+        description: "Share project insights across teams and departments for better decision-making.",
+        lightModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbP9hjElplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        darkModeImage: "https://fwixzks0fh.ufs.sh/f/g1CtryXUYdalbP9hjElplS6xJwfnDrFWdsIHeh7XLYzK42T0",
+        altText: "Team collaboration on project insights"
       },
     ]
   }
