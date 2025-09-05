@@ -2,6 +2,12 @@
 *.sql
 *dump*.sql
 backups/
+changes_made.md
+DEPLOYMENT_CHECKLIST.md
+DEPLOYMENT_SUCCESS_GUIDE.md
+MANUAL_DEPLOYMENT_STEPS.md
+deploy_to_remote.sh
+polishedmigration*/
 supabase_backup_*/
 data_only_dump.sql
 full_database_with_data.sql
