@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     paddingBottom: 5,
   },
   table: {
-    display: 'table',
+    // display: 'table',
     width: 'auto',
     borderStyle: 'solid',
     borderWidth: 1,
