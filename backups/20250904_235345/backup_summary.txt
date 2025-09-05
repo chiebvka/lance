@@ -1,0 +1,14 @@
+total 736
+drwxr-xr-x@ 12 ebuka  staff     384 Sep  4 23:55 .
+drwxr-xr-x@  4 ebuka  staff     128 Sep  4 23:53 ..
+-rw-r--r--@  1 ebuka  staff       0 Sep  4 23:55 backup_summary.txt
+-rw-r--r--@  1 ebuka  staff   10029 Sep  4 23:54 config.toml
+-rw-r--r--@  1 ebuka  staff  232131 Sep  4 23:54 data_only_dump.sql
+-rw-r--r--@  1 ebuka  staff       0 Sep  4 23:53 full_database_with_data.sql
+drwxr-xr-x@  7 ebuka  staff     224 Sep  4 23:54 migrations
+-rw-r--r--@  1 ebuka  staff       0 Sep  4 23:54 schema_only_dump.sql
+-rw-r--r--@  1 ebuka  staff  116934 Sep  4 23:54 supabase_full_dump.sql
+-rw-r--r--@  1 ebuka  staff    1419 Sep  4 23:54 table_list.txt
+-rw-r--r--@  1 ebuka  staff    7965 Sep  4 23:55 table_row_counts.txt
+drwxr-xr-x@  6 ebuka  staff     192 Sep  4 23:54 templates
+Backup completed at Thu Sep  4 23:55:36 ADT 2025

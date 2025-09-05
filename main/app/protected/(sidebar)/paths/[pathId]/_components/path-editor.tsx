@@ -489,7 +489,7 @@ export default function PathEditor({ initialPath }: Props) {
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="ghost" onClick={() => setSendOpen(false)}>Cancel</Button>
-                <Button onClick={async () => { if (validateForm()) { await handlePublish(true); setSendOpen(false); } }} disabled={saving} className="w-full">
+                <Button onClick={async () => { if (validateForm()) { await handlePublish(true); setSendOpen(false); } }} disabled={saving} className="">
                   {saving ? <><Bubbles className="mr-2 h-4 w-4 animate-spin [animation-duration:0.5s]" />Updating...</> : 'Update & Send'}
                 </Button>
               </div>

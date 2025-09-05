@@ -14,7 +14,7 @@ export default async function page(props: {
  
 
   return (
-    <div className="border border-bexoni">
+    <div className="border">
 
       <div className="grid min-h-svh lg:grid-cols-2">
         <div className="flex flex-col gap-4 p-6 md:p-10">

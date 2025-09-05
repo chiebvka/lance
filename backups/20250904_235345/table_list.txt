@@ -1,0 +1,31 @@
+                List of relations
+ Schema |        Name         | Type  |  Owner   
+--------+---------------------+-------+----------
+ public | analytics_events    | table | postgres
+ public | audit_log           | table | postgres
+ public | banks               | table | postgres
+ public | banks_duplicate     | table | postgres
+ public | cancellations       | table | postgres
+ public | customer_activities | table | postgres
+ public | customers           | table | postgres
+ public | deliverables        | table | postgres
+ public | feedback_templates  | table | postgres
+ public | feedbacks           | table | postgres
+ public | invoices            | table | postgres
+ public | link_items          | table | postgres
+ public | members             | table | postgres
+ public | notifications       | table | postgres
+ public | organization        | table | postgres
+ public | paths               | table | postgres
+ public | paymentTerms        | table | postgres
+ public | pricing             | table | postgres
+ public | products            | table | postgres
+ public | profiles            | table | postgres
+ public | projects            | table | postgres
+ public | receipts            | table | postgres
+ public | subscriptions       | table | postgres
+ public | vault               | table | postgres
+ public | wallet              | table | postgres
+ public | walls               | table | postgres
+(26 rows)
+

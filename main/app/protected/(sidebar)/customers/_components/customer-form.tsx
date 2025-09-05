@@ -170,7 +170,7 @@ export default function CustomerForm({ onSuccess, onLoadingChange }: Props) {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="personal" className="border rounded-lg">
+          <AccordionItem value="personal" className="">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-full">

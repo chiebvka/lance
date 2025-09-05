@@ -260,7 +260,7 @@ export default function EditCustomer({ customer, onSuccess, onLoadingChange, onD
         </div> */}
 
         <Accordion type="multiple" defaultValue={["business", "personal"]}>
-          <AccordionItem value="business" className="border rounded-lg">
+          <AccordionItem value="business" className="">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-full bg-primary/10">
@@ -343,7 +343,7 @@ export default function EditCustomer({ customer, onSuccess, onLoadingChange, onD
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="personal" className="border rounded-lg">
+          <AccordionItem value="personal" className="">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-full bg-primary/10">

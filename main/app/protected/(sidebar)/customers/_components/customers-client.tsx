@@ -577,9 +577,9 @@ export default function CustomersClient() {
               Get started by creating your first customer. You can add their contact information, 
               track projects, and manage invoices all in one place.
             </p>
-            <Button onClick={() => closeRef.current?.click()}>
+            {/* <Button onClick={() => closeRef.current?.click()}>
               Create your first customer
-            </Button>
+            </Button> */}
           </div>
         ) : filteredCustomers.length === 0 ? (
           // No results from search/filters

@@ -811,7 +811,7 @@ export default function PathBuilder() {
                     }
                   }} 
                   disabled={saving || (sendEmail && !selectedCustomer) || (!sendEmail && customEmail.trim() !== "" && !isValidEmail(customEmail)) || isLoadingCustomers || isLoadingProjects}
-                  className="w-full"
+                  className=""
                 >
                   {saving ? (
                     <>

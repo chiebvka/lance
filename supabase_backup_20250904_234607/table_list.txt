@@ -1,0 +1,27 @@
+ analytics_events    | BASE TABLE
+ audit_log           | BASE TABLE
+ banks               | BASE TABLE
+ banks_duplicate     | BASE TABLE
+ cancellations       | BASE TABLE
+ customer_activities | BASE TABLE
+ customers           | BASE TABLE
+ deliverables        | BASE TABLE
+ feedback_templates  | BASE TABLE
+ feedbacks           | BASE TABLE
+ invoices            | BASE TABLE
+ link_items          | BASE TABLE
+ members             | BASE TABLE
+ notifications       | BASE TABLE
+ organization        | BASE TABLE
+ paths               | BASE TABLE
+ paymentTerms        | BASE TABLE
+ pricing             | BASE TABLE
+ products            | BASE TABLE
+ profiles            | BASE TABLE
+ projects            | BASE TABLE
+ receipts            | BASE TABLE
+ subscriptions       | BASE TABLE
+ vault               | BASE TABLE
+ wallet              | BASE TABLE
+ walls               | BASE TABLE
+

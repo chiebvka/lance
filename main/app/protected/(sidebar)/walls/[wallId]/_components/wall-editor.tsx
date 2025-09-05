@@ -1362,7 +1362,7 @@ export default function WallEditor({ initialWall }: Props) {
                     }
                   }} 
                   disabled={saving || isLoadingCustomers || isLoadingProjects}
-                  className="w-full"
+                  className=""
                 >
                   {saving ? (uploading ? 'Uploading...' : 'Updating...') : 'Update Wall'}
                 </Button>

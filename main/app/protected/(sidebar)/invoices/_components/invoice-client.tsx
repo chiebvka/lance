@@ -1318,9 +1318,9 @@ export default function InvoiceClient({ initialInvoices, userEmail }: Props) {
                   Get started by creating your first invoice. You can manage payment terms, 
                   track due dates, and send professional invoices to your customers.
                 </p>
-                <Button onClick={() => closeRef.current?.click()}>
+                {/* <Button onClick={() => closeRef.current?.click()}>
                   Create your first invoice
-                </Button>
+                </Button> */}
               </div>
             ) : filteredInvoices.length === 0 ? (
               // No results from search/filters

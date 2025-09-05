@@ -1112,9 +1112,9 @@ export default function ProjectsClient({ initialProjects }: Props) {
                   Get started by creating your first project. You can manage deliverables, 
                   set payment milestones, and track project progress all in one place.
                 </p>
-                <Button onClick={() => closeRef.current?.click()}>
+                {/* <Button onClick={() => closeRef.current?.click()}>
                   Create your first project
-                </Button>
+                </Button> */}
               </div>
             ) : filteredProjects.length === 0 ? (
               // No results from search/filters
