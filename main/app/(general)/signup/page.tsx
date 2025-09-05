@@ -4,8 +4,16 @@ import { Message } from "@/components/form-message";
 import { Bubbles, GalleryVerticalEnd } from 'lucide-react';
 import { Toaster } from "sonner";
 import Link from 'next/link';
+import type { Metadata } from 'next'
+import { createPageMetadata } from '@/lib/seo'
 
 type Props = {}
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Sign Up',
+  description: 'Create your BexForte account to start managing invoices, projects, clients, and more. Join thousands of businesses streamlining their operations.',
+  path: '/signup',
+});
 
 export default async function page(props: {
   searchParams: Promise<Message>;
@@ -23,7 +31,7 @@ export default async function page(props: {
               <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-none">
                 <Bubbles className="size-4" />
               </div>
-              Acme Inc.
+              BexForte
             </Link>
           </div>
           <div className="flex flex-1 items-center justify-center">

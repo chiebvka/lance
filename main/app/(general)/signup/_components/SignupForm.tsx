@@ -11,6 +11,10 @@ import { SubmitButton } from "@/components/submit-button";
 import { signUpAction } from "@/actions/auth/signup";
 import { Message } from "@/components/form-message";
 import Link from "next/link";
+import { Bubbles } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
+import { baseUrl } from "@/utils/universal";
+
 
 const initialState: Message | undefined = undefined;
 
@@ -21,6 +25,7 @@ export function SignupForm({
   const [state, formAction] = useActionState(signUpAction, initialState);
   const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false)
   const [showPassword, setShowPassword] = useState<boolean>(false)
+  const supabase = createClient()
 
   useEffect(() => {
     if (state && "success" in state && state.success) {
@@ -42,6 +47,30 @@ export function SignupForm({
     }
     // Potentially clear state here if desired, e.g., by calling a reset function passed from useFormState or setting a local state
   }, [state]);
+
+
+
+
+  async function signInWithGoogle() {
+    setIsGoogleLoading(true)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${baseUrl}/auth/callback`,
+        },
+      })
+ 
+      if (error) {
+        throw error
+      }
+    } catch (error) {
+      toast.error("There was an error creating your account with Google.")
+      setIsGoogleLoading(false)
+    }
+  }
+
+
 
   return (
     <form action={formAction} className={cn("flex flex-col gap-6", className)} {...props}>
@@ -84,11 +113,12 @@ export function SignupForm({
         </div>
         <Button variant="outline" 
           type="button"      
-          className='border text-primary border-lance'
+          className='border text-primary border-primary'
           disabled={isGoogleLoading}
+          onClick={signInWithGoogle}
         >
           {isGoogleLoading ? (
-            <Icons.spinner className="mr-2 text-lance size-4 animate-spin" />
+            <Bubbles className="mr-2 text-lance size-4 h-4 w-4 animate-spin [animation-duration:0.5s]" />
           ) : (
             <Icons.google className="mr-2 text-lance size-6" />
           )}{" "}

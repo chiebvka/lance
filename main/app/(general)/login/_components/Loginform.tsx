@@ -13,6 +13,8 @@ import { Message } from "@/components/form-message";
 import Link from "next/link";
 import { signInAction } from '@/actions/auth/login';
 import { Bubbles } from 'lucide-react';
+import { createClient } from "@/utils/supabase/client";
+import { baseUrl } from "@/utils/universal";
 
 
 const initialState: Message | undefined = undefined;
@@ -24,6 +26,7 @@ export function LoginForm({
   const [state, formAction] = useActionState(signInAction, initialState);
   const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false)
   const [showPassword, setShowPassword] = useState<boolean>(false)
+  const supabase = createClient()
 
   useEffect(() => {
     if (state && "success" in state && state.success) {
@@ -34,6 +37,25 @@ export function LoginForm({
     }
     // Potentially clear state here if desired, e.g., by calling a reset function passed from useFormState or setting a local state
   }, [state]);
+
+  async function signInWithGoogle() {
+    setIsGoogleLoading(true)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${baseUrl}/auth/callback`,
+        },
+      })
+ 
+      if (error) {
+        throw error
+      }
+    } catch (error) {
+      toast.error("There was an error signing in with Google.")
+      setIsGoogleLoading(false)
+    }
+  }
 
   return (
     <form  action={formAction} className={cn("flex flex-col gap-6", className)} {...props}>
@@ -78,13 +100,14 @@ export function LoginForm({
           type="button"      
           className='border text-primary border-lance'
           disabled={isGoogleLoading}
+          onClick={signInWithGoogle}
         >
           {isGoogleLoading ? (
-            <Bubbles className="mr-2 text-lance size-4 animate-spin [animation-duration:0.5s]" />
+            <Bubbles className="mr-2 text-lance size-4 h-4 w-4 animate-spin [animation-duration:0.5s]" />
           ) : (
             <Icons.google className="mr-2 text-lance size-6" />
           )}{" "}
-          Sign up with Google
+          Sign in with Google
         </Button>
       </div>
       <div className="text-center text-sm">

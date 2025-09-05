@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { createPageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "BexForte – Client operations hub",
+  title: "BexForte – All in one operations hub",
   description:
-    "Docs, pricing, terms, policy, branding assets and product updates for BexForte.",
+    "Streamline your business operations with BexForte's comprehensive suite: invoice management, project tracking, receipt organization, client management, collaborative walls, feedback collection, and automated workflows. Get paid faster, manage projects better, and grow your business with one powerful platform.",
   path: "/",
 });
 import Header from "@/components/header";
