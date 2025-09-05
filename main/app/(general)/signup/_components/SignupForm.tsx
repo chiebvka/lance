@@ -61,11 +61,7 @@ export function SignupForm({
         options: {
           redirectTo: `${baseUrl}/auth/callback${
             next ? `?next=${encodeURIComponent(next)}` : ""
-          }`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
+          }`
         },
       })
  
