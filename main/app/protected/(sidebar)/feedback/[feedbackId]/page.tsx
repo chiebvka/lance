@@ -5,13 +5,13 @@ import EditFeedbackBuilder from './_components/edit-feedback-builder';
 import { getAuthenticatedUser } from '@/utils/auth';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     feedbackId: string
-  }
+  }>
 }
 
 export default async function FeedbackEditPage({ params }: PageProps) {
-  const feedbackId =  params?.feedbackId;
+  const { feedbackId } = await params;
   const supabase = await createClient();
   const user = await getAuthenticatedUser(supabase);
 
