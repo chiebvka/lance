@@ -3,7 +3,7 @@ import { createClient, createServiceRoleClient } from "@/utils/supabase/server";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { notificationId: string } }
+  { params }: { params: Promise<{ notificationId: string }> }
 ) {
   try {
     const supabase = await createServiceRoleClient();
@@ -13,7 +13,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { notificationId } = params;
+    const { notificationId } = await params;
     const body = await request.json();
     const { action } = body;
 

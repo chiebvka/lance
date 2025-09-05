@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { pathId: string } }
+  { params }: { params: Promise<{ pathId: string }> }
 ) {
-  const { pathId } = params
+  const { pathId } = await params
   const token = req.nextUrl.searchParams.get('token')
   const supabase = await createClient()
 

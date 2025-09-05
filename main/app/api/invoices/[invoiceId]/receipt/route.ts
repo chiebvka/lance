@@ -4,11 +4,11 @@ import { ratelimit } from '@/utils/rateLimit';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { invoiceId: string } }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const { invoiceId } = params;
+    const { invoiceId } = await params;
 
     // Check authentication
     const {

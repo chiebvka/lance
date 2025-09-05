@@ -52,9 +52,9 @@ async function getCustomerDetails(supabase: any, customerId: string): Promise<{ 
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { pathId: string } }
+  { params }: { params: Promise<{ pathId: string }> }
 ) {
-  const { pathId } = params;
+  const { pathId } = await params;
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -111,9 +111,9 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { pathId: string } }
+  { params }: { params: Promise<{ pathId: string }> }
 ) {
-  const { pathId } = params;
+  const { pathId } = await params;
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -259,9 +259,9 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { pathId: string } }
+  { params }: { params: Promise<{ pathId: string }> }
 ) {
-  const { pathId } = params;
+  const { pathId } = await params;
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
