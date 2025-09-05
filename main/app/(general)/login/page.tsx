@@ -1,15 +1,11 @@
 import React from 'react';
-import { Message } from "@/components/form-message";
-import { Bubbles, GalleryVerticalEnd } from 'lucide-react';
-
+import { Bubbles } from 'lucide-react';
 import Link from 'next/link';
 import { LoginForm } from './_components/Loginform';
 import type { Metadata } from 'next'
 import { createPageMetadata } from '@/lib/seo'
 
-type Props = {}
-
-export default async function page({}: Props) {
+export default function page() {
   return (
     <div className="">
       {/* <Toaster richColors /> */}

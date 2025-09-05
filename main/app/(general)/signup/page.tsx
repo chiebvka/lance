@@ -1,13 +1,9 @@
 import React from 'react'
 import { SignupForm } from './_components/SignupForm';
-import { Message } from "@/components/form-message";
-import { Bubbles, GalleryVerticalEnd } from 'lucide-react';
-import { Toaster } from "sonner";
+import { Bubbles } from 'lucide-react';
 import Link from 'next/link';
 import type { Metadata } from 'next'
 import { createPageMetadata } from '@/lib/seo'
-
-type Props = {}
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Sign Up',
@@ -15,10 +11,7 @@ export const metadata: Metadata = createPageMetadata({
   path: '/signup',
 });
 
-export default async function page(props: {
-  searchParams: Promise<Message>;
-}) {
-  // const searchParams = await props.searchParams;
+export default function page() {
  
 
   return (
