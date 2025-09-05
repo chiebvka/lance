@@ -183,6 +183,14 @@ async function sendReminderEmails(supabase: any, feedback: any, type: string) {
     // Send emails to all targets
     for (const target of sendTargets) {
       try {
+        // Validate email address before attempting to send
+        if (!target.to || !validator.isEmail(target.to)) {
+          console.warn(`Skipping invalid email address for ${target.type}: ${target.to}`);
+          continue;
+        }
+
+        console.log(`Attempting to send feedback reminder email to ${target.type}: ${target.to} for feedback ${feedback.id}`);
+        
         const emailHtml = await render(FeedbackReminder({
           feedbackId: feedback.id,
           clientName: target.name || 'Customer',
@@ -193,6 +201,8 @@ async function sendReminderEmails(supabase: any, feedback: any, type: string) {
 
         const fromEmail = 'no_reply@feedback.bexforte.com';
         const fromName = 'Bexbot';
+
+        console.log(`Sending feedback reminder email with SendGrid to ${target.to} for feedback ${feedback.id}`);
 
         await sendgrid.send({
           to: target.to,
@@ -212,9 +222,9 @@ async function sendReminderEmails(supabase: any, feedback: any, type: string) {
           },
         });
         
-        console.log(`Feedback reminder email sent to ${target.type}: ${target.to}`);
+        console.log(`✅ Feedback reminder email successfully sent to ${target.type}: ${target.to} for feedback ${feedback.id}`);
       } catch (emailError: any) {
-        console.error(`Failed to send email to ${target.type} (${target.to}):`, emailError);
+        console.error(`❌ Failed to send feedback reminder email to ${target.type} (${target.to}) for feedback ${feedback.id}:`, emailError);
         // Continue with other emails even if one fails
       }
     }

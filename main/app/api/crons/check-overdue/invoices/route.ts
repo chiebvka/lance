@@ -4,6 +4,7 @@ import sendgrid from "@sendgrid/mail";
 import { render } from "@react-email/components";
 import { baseUrl } from "@/utils/universal";
 import InvoiceReminder from "@/emails/InvoiceReminder";
+var validator = require('validator');
 
 sendgrid.setApiKey(process.env.SENDGRID_API_KEY || "");
 
@@ -169,6 +170,14 @@ async function sendInvoiceReminderEmails(supabase: any, invoice: any, organizati
     // Send emails to all targets
     for (const target of sendTargets) {
       try {
+        // Validate email address before attempting to send
+        if (!target.to || !validator.isEmail(target.to)) {
+          console.warn(`Skipping invalid email address for ${target.type}: ${target.to}`);
+          continue;
+        }
+
+        console.log(`Attempting to send invoice reminder email to ${target.type}: ${target.to} for invoice ${invoice.id}`);
+        
         const emailHtml = await render(InvoiceReminder({
           invoiceId: invoice.id,
           clientName: target.name || 'Customer',
@@ -180,6 +189,8 @@ async function sendInvoiceReminderEmails(supabase: any, invoice: any, organizati
 
         const fromEmail = 'no_reply@bexforte.com';
         const fromName = 'Bexbot';
+
+        console.log(`Sending invoice reminder email with SendGrid to ${target.to} for invoice ${invoice.id}`);
 
         await sendgrid.send({
           to: target.to,
@@ -198,9 +209,9 @@ async function sendInvoiceReminderEmails(supabase: any, invoice: any, organizati
           },
         });
         
-        console.log(`Invoice reminder email sent to ${target.type}: ${target.to}`);
+        console.log(`✅ Invoice reminder email successfully sent to ${target.type}: ${target.to} for invoice ${invoice.id}`);
       } catch (emailError: any) {
-        console.error(`Failed to send email to ${target.type} (${target.to}):`, emailError);
+        console.error(`❌ Failed to send invoice reminder email to ${target.type} (${target.to}) for invoice ${invoice.id}:`, emailError);
         // Continue with other emails even if one fails
       }
     }
