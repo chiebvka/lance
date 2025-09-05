@@ -4,7 +4,7 @@ export default function SeoStructuredData() {
     "@type": "Organization",
     name: "BexForte",
     url: "https://bexforte.com",
-    logo: "https://bexforte.com/lance.ico",
+    logo: "https://bexforte.com/favicon.ico",
     founder: {
       "@type": "Organization",
       name: "Bexoni Labs",

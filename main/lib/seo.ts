@@ -76,9 +76,9 @@ export function createPageMetadata(options: CreatePageMetadataOptions): Metadata
       },
     },
     icons: {
-      icon: "/lance.ico",
-      shortcut: "/lance.ico",
-      apple: "/lance.ico",
+      icon: "/favicon.ico",
+      shortcut: "/favicon.ico",
+      apple: "/favicon.ico",
     },
     category: "business",
     creator: siteConfig.creator,
