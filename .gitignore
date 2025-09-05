@@ -1,0 +1,39 @@
+# Database dumps and backups (contain sensitive data)
+*.sql
+*dump*.sql
+backups/
+supabase_backup_*/
+data_only_dump.sql
+full_database_with_data.sql
+schema_only_dump.sql
+supabase_full_dump.sql
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Temporary folders
+tmp/
+temp/
