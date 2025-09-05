@@ -22,13 +22,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/collapsible";
 import {
   Sheet,
   SheetContent,
@@ -54,13 +48,11 @@ import {
   Edit,
   Handshake,
   CalendarIcon,
-  Bubbles,
-  Loader2,
+  Bubbles
 } from "lucide-react"
 import ComboBox from "@/components/combobox"
 import { TipTapEditor } from "@/components/tiptap/tip-tap-editor"
-import { z } from "zod"
-
+import { z } from "zod";
 import deliverableSchema from "@/validation/deliverables"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -91,7 +83,7 @@ import { projectEditSchema } from "@/validation/projects"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import ProjectFormSkeleton from "./project-form-skeleton"
-import CustomerForm from "../../customers/_components/customer-form"
+import CustomerForm from "@/app/protected/(sidebar)/customers/_components/customer-form"
 import Link from "next/link"
 
 type ProjectFormValues = z.infer<typeof projectEditSchema>
