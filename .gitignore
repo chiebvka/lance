@@ -13,6 +13,9 @@ data_only_dump.sql
 full_database_with_data.sql
 schema_only_dump.sql
 supabase_full_dump.sql
+Dockerfile.upgrade
+upgrade_script.sh
+GOOGLE_OAUTH_SETUP.md
 
 # Environment files
 .env

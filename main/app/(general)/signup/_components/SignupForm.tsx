@@ -12,6 +12,7 @@ import { signUpAction } from "@/actions/auth/signup";
 import { Message } from "@/components/form-message";
 import Link from "next/link";
 import { Bubbles } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { baseUrl } from "@/utils/universal";
 
@@ -26,6 +27,7 @@ export function SignupForm({
   const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false)
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const supabase = createClient()
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (state && "success" in state && state.success) {
@@ -49,7 +51,7 @@ export function SignupForm({
   }, [state]);
 
 
-
+  const next = searchParams.get("next")
 
   async function signInWithGoogle() {
     setIsGoogleLoading(true)
@@ -57,7 +59,13 @@ export function SignupForm({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${baseUrl}/auth/callback`,
+          redirectTo: `${baseUrl}/auth/callback${
+            next ? `?next=${encodeURIComponent(next)}` : ""
+          }`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       })
  
@@ -65,7 +73,8 @@ export function SignupForm({
         throw error
       }
     } catch (error) {
-      toast.error("There was an error creating your account with Google.")
+      console.error('Google OAuth error:', error)
+      toast.error("There was an error signing up with Google. Please try again.")
       setIsGoogleLoading(false)
     }
   }

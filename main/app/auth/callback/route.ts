@@ -9,15 +9,15 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const origin = requestUrl.origin;
   const redirectTo = requestUrl.searchParams.get("redirect_to")?.toString();
+  const next = requestUrl.searchParams.get("next")?.toString();
 
   if (code) {
     const supabase = await createClient();
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  if (redirectTo) {
-    return NextResponse.redirect(`${origin}${redirectTo || "/protected"}`);
-  }
-  // URL to redirect to after sign up process completes
-  return NextResponse.redirect(`${origin}/protected`);
+  // Priority: next parameter > redirect_to parameter > default
+  const finalRedirect = next || redirectTo || "/protected";
+  
+  return NextResponse.redirect(`${origin}${finalRedirect}`);
 }

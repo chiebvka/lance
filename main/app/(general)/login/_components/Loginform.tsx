@@ -11,10 +11,11 @@ import { SubmitButton } from "@/components/submit-button";
 import { signUpAction } from "@/actions/auth/signup";
 import { Message } from "@/components/form-message";
 import Link from "next/link";
+import {  useSearchParams } from "next/navigation";
 import { signInAction } from '@/actions/auth/login';
 import { Bubbles } from 'lucide-react';
-import { createClient } from "@/utils/supabase/client";
-import { baseUrl } from "@/utils/universal";
+import { createClient } from '@/utils/supabase/client';
+import { baseUrl } from '@/utils/universal';
 
 
 const initialState: Message | undefined = undefined;
@@ -27,6 +28,7 @@ export function LoginForm({
   const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false)
   const [showPassword, setShowPassword] = useState<boolean>(false)
   const supabase = createClient()
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (state && "success" in state && state.success) {
@@ -38,13 +40,23 @@ export function LoginForm({
     // Potentially clear state here if desired, e.g., by calling a reset function passed from useFormState or setting a local state
   }, [state]);
 
+
+  const next = searchParams.get("next")
+
+
   async function signInWithGoogle() {
     setIsGoogleLoading(true)
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${baseUrl}/auth/callback`,
+          redirectTo: `${baseUrl}/auth/callback${
+            next ? `?next=${encodeURIComponent(next)}` : ""
+          }`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       })
  
@@ -52,7 +64,8 @@ export function LoginForm({
         throw error
       }
     } catch (error) {
-      toast.error("There was an error signing in with Google.")
+      console.error('Google OAuth error:', error)
+      toast.error("There was an error signing in with Google. Please try again.")
       setIsGoogleLoading(false)
     }
   }
