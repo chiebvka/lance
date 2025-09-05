@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
         description: inv.description || `Invoice ${inv.number}`,
         type: "invoice" as const,
         invoice_pdf: inv.invoice_pdf,
-        plan_name: inv.lines.data[0]?.price?.nickname || inv.lines.data[0]?.description,
+        plan_name: inv.lines.data[0]?.description || "Subscription",
       })),
     ].sort((a, b) => b.created - a.created);
 
