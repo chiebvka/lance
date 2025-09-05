@@ -13,7 +13,11 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code);
+    
+    if (error || !user) {
+      return NextResponse.redirect(`${origin}/login?error=auth_failed`);
+    }
   }
 
   // Priority: next parameter > redirect_to parameter > default
