@@ -43,6 +43,9 @@ export function isPublicFile(key: string): boolean {
   const publicPrefixes = [
     'organizations/logos/',
     'organizations/assets/',
+    'walls/images/',
+    'walls/videos/',
+    'walls/files/',
   ];
   
   return publicPrefixes.some(prefix => key.startsWith(prefix));

@@ -1,0 +1,31 @@
+                                                         List of relations
+ Schema |        Name         | Type  |  Owner   | Persistence | Access method |    Size    |              Description              
+--------+---------------------+-------+----------+-------------+---------------+------------+---------------------------------------
+ public | analytics_events    | table | postgres | permanent   | heap          | 8192 bytes | Analytics and tracking data
+ public | audit_log           | table | postgres | permanent   | heap          | 144 kB     | Audit trail for data changes
+ public | banks               | table | postgres | permanent   | heap          | 8192 bytes | Bank account and payment information
+ public | banks_duplicate     | table | postgres | permanent   | heap          | 8192 bytes | This is a duplicate of banks
+ public | cancellations       | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | customer_activities | table | postgres | permanent   | heap          | 16 kB      | 
+ public | customers           | table | postgres | permanent   | heap          | 16 kB      | Customer/client information
+ public | deliverables        | table | postgres | permanent   | heap          | 16 kB      | 
+ public | feedback_templates  | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | feedbacks           | table | postgres | permanent   | heap          | 16 kB      | Customer feedback and surveys
+ public | invoices            | table | postgres | permanent   | heap          | 16 kB      | Invoice management and billing
+ public | link_items          | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | members             | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | notifications       | table | postgres | permanent   | heap          | 8192 bytes | System notifications
+ public | organization        | table | postgres | permanent   | heap          | 16 kB      | Organization/company information
+ public | paths               | table | postgres | permanent   | heap          | 16 kB      | Link pages and content management
+ public | paymentTerms        | table | postgres | permanent   | heap          | 16 kB      | 
+ public | pricing             | table | postgres | permanent   | heap          | 16 kB      | 
+ public | products            | table | postgres | permanent   | heap          | 16 kB      | 
+ public | profiles            | table | postgres | permanent   | heap          | 16 kB      | User profiles and authentication data
+ public | projects            | table | postgres | permanent   | heap          | 64 kB      | Project management data
+ public | receipts            | table | postgres | permanent   | heap          | 16 kB      | Receipt and payment confirmation
+ public | subscriptions       | table | postgres | permanent   | heap          | 16 kB      | Subscription and billing data
+ public | vault               | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | wallet              | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | walls               | table | postgres | permanent   | heap          | 32 kB      | Wall content and analytics
+(26 rows)
+

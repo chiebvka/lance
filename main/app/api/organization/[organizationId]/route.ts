@@ -131,6 +131,13 @@ export async function DELETE(
   request: NextRequest,
   context: any
 ) {
+  // Organization deletion flow:
+  // 1. Clean up R2 assets (walls, paths, logos)
+  // 2. Cancel Stripe subscription (at period end)
+  // 3. Clear organizationId from subscriptions (keep records for audit trail)
+  // 4. Delete organization (no foreign key constraints)
+  // 5. Update user profile (remove organization association)
+  // 6. Delete user from auth.users
   try {
     const supabase = await createClient();
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -404,13 +411,31 @@ export async function DELETE(
         await stripe.subscriptions.update(orgForCancel.subscriptionId, {
           cancel_at_period_end: true,
         });
+        console.log(`✅ Scheduled Stripe subscription cancellation: ${orgForCancel.subscriptionId}`);
       } catch (e) {
         console.error('Error scheduling subscription cancellation:', e);
         // proceed with deletion; webhook will reconcile state if needed
       }
     }
 
-    // Delete the organization
+    // Clear organizationId from subscriptions (keep records for audit trail)
+    const { error: subscriptionUpdateError } = await supabase
+      .from('subscriptions')
+      .update({ organizationId: null })
+      .eq('organizationId', profile.organizationId);
+
+    if (subscriptionUpdateError) {
+      console.error('Error clearing organizationId from subscriptions:', subscriptionUpdateError);
+      return NextResponse.json({ 
+        error: 'Failed to clear subscription references',
+        details: subscriptionUpdateError.message 
+      }, { status: 500 });
+    }
+
+    console.log(`✅ Cleared organizationId from subscriptions for organization: ${profile.organizationId}`);
+
+    // Now delete the organization (should succeed since no foreign key references remain)
+    console.log(`🗑️ Deleting organization: ${profile.organizationId}`);
     const { error: deleteError } = await supabase
       .from('organization')
       .delete()
@@ -421,7 +446,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Failed to delete organization' }, { status: 500 });
     }
 
+    console.log(`✅ Successfully deleted organization: ${profile.organizationId}`);
+
     // Update user profile to remove organization association
+    console.log(`👤 Updating user profile for user: ${user.id}`);
     const { error: profileUpdateError } = await supabase
       .from('profiles')
       .update({ 
@@ -433,12 +461,16 @@ export async function DELETE(
     if (profileUpdateError) {
       console.error('Error updating user profile:', profileUpdateError);
       // Don't fail the deletion if profile update fails
+    } else {
+      console.log(`✅ Updated user profile for user: ${user.id}`);
     }
 
     // Also delete the user from the authentication table (auth.users)
+    console.log(`🔐 Deleting user from auth.users: ${user.id}`);
     try {
       const serviceClient = createServiceRoleClient();
       await serviceClient.auth.admin.deleteUser(user.id);
+      console.log(`✅ Successfully deleted user from auth.users: ${user.id}`);
     } catch (e) {
       console.error('Error deleting user from auth.users:', e);
       // Do not fail the request if auth deletion fails
