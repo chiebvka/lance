@@ -54,7 +54,7 @@ export default function page() {
                 Manage your operations in one place be you a freelancer, small business, influenecer or aganecy from one platform. 
                 Bexforte takes care of everything for you.&rdquo;
               </p>
-              <footer className="text-sm">Bexforte by <Link href="https://www.bexoni.com/" target="_blank" className="font-bold text-primary hover:underline">Bexoni Labs</Link></footer>
+              <footer className="text-sm">Bexforte by <Link href="https://www.bexoni.com/" target="_blank" className="font-bold text-lightCard hover:underline">Bexoni Labs</Link></footer>
             </blockquote>
         </div>
 

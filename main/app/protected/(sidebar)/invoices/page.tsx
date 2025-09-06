@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import React, { Suspense } from 'react'
 import InvoiceClient from './_components/invoice-client';
 import { getOrganizationInvoices } from '@/lib/invoice';
+import {  Invoice } from '@/hooks/invoices/use-invoices'
 import ProjectClientSkeleton from '../projects/_components/project-client-skeleton';
 
 
@@ -13,11 +14,11 @@ export default async function page({}: Props) {
   const supabase = await createClient();
   const user = await getAuthenticatedUser(supabase);
 
-  let initialInvoices = []
+  let initialInvoices:  Invoice[] = [] 
   try {
     initialInvoices = await getOrganizationInvoices(supabase)
   } catch {
-    return redirect('/error')
+    // return redirect('/error')
   }
 
   // console.log(initialInvoices)

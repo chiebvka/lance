@@ -1,0 +1,60 @@
+table_name,constraint_name,column_name,foreign_table_name,foreign_column_name,delete_rule,update_rule
+audit_log,audit_log_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+banks,banks_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+banks,banks_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+banks_duplicate,banks_duplicate_createdBy_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+banks_duplicate,banks_duplicate_organizationId_fkey,organizationId,organization,id,NO ACTION,NO ACTION
+cancellations,cancellations_organizationid_fkey,organizationId,organization,id,NO ACTION,NO ACTION
+customer_activities,customer_activities_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+customer_activities,customer_activities_customerId_fkey,customerId,customers,id,CASCADE,CASCADE
+customer_activities,customer_activities_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+customers,customers_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+customers,customers_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+deliverables,deliverables_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+deliverables,deliverables_projectId_fkey,projectId,projects,id,CASCADE,CASCADE
+feedback_templates,feedback_templates_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+feedback_templates,feedback_templates_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+feedbacks,feedbacks_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+feedbacks,feedbacks_customerId_fkey,customerId,customers,id,SET NULL,CASCADE
+feedbacks,feedbacks_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+feedbacks,feedbacks_projectid_fkey,projectId,projects,id,NO ACTION,NO ACTION
+invoices,invoices_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+invoices,invoices_customerId_fkey,customerId,customers,id,SET NULL,CASCADE
+invoices,invoices_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+invoices,invoices_projectid_fkey,projectId,projects,id,NO ACTION,NO ACTION
+link_items,link_items_page_id_fkey,page_id,paths,id,CASCADE,CASCADE
+members,members_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+notifications,notifications_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+notifications,notifications_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+organization,organization_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+paths,paths_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+paths,paths_customerId_fkey,customerId,customers,id,NO ACTION,CASCADE
+paths,paths_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+paymentTerms,paymentterms_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+paymentTerms,paymentterms_deliverableid_fkey,deliverableId,deliverables,id,NO ACTION,NO ACTION
+paymentTerms,paymentTerms_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+paymentTerms,paymentTerms_projectId_fkey,projectId,projects,id,CASCADE,CASCADE
+pricing,pricing_productid_fkey,productId,products,id,NO ACTION,NO ACTION
+projects,projects_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+projects,projects_customerId_fkey,customerId,customers,id,SET NULL,CASCADE
+projects,projects_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+receipts,receipts_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+receipts,receipts_customerId_fkey,customerId,customers,id,SET NULL,CASCADE
+receipts,receipts_invoiceid_fkey,invoiceId,invoices,id,NO ACTION,NO ACTION
+receipts,receipts_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+receipts,receipts_projectid_fkey,projectId,projects,id,NO ACTION,NO ACTION
+subscriptions,subscriptions_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+subscriptions,subscriptions_organizationId_fkey,organizationId,organization,id,SET NULL,NO ACTION
+vault,vault_createdby_fkey,createdby,profiles,profile_id,NO ACTION,NO ACTION
+vault,vault_customerid_fkey,customerid,customers,id,SET NULL,CASCADE
+vault,vault_feedbackid_fkey,feedbackid,feedbacks,id,NO ACTION,NO ACTION
+vault,vault_invoiceid_fkey,invoiceid,invoices,id,NO ACTION,NO ACTION
+vault,vault_lnikid_fkey,lnikid,paths,id,NO ACTION,NO ACTION
+vault,vault_projectid_fkey,projectid,projects,id,NO ACTION,NO ACTION
+vault,vault_rceeiptid_fkey,rceeiptid,receipts,id,NO ACTION,NO ACTION
+wallet,wallet_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+wallet,wallet_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+walls,walls_createdby_fkey,createdBy,profiles,profile_id,NO ACTION,NO ACTION
+walls,walls_customerId_fkey,customerId,customers,id,SET NULL,CASCADE
+walls,walls_organizationId_fkey,organizationId,organization,id,CASCADE,CASCADE
+walls,walls_projectid_fkey,projectId,projects,id,NO ACTION,NO ACTION

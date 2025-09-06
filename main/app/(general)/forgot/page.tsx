@@ -47,7 +47,7 @@ export default function page({}: Props) {
                 <p className="md:text-base text-sm ">
                 &ldquo;No worries: Reset and reclaim your invoices, projects, and secure walls on Bexforte.&rdquo;
                 </p>
-                <footer className="text-sm"> Bexforte by <Link href="https://www.bexoni.com/" target="_blank" className="font-bold text-primary hover:underline">Bexoni Labs</Link></footer>
+                <footer className="text-sm"> Bexforte by <Link href="https://www.bexoni.com/" target="_blank" className="font-bold text-lightCard hover:underline">Bexoni Labs</Link></footer>
             </blockquote>
         </div>
 

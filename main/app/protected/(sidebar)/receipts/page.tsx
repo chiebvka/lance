@@ -5,6 +5,7 @@ import React, { Suspense } from 'react';
 import ReceiptClient from './_components/receipt-client';
 import { getOrganizationReceipts } from '@/lib/receipt'; // Import shared
 import ProjectClientSkeleton from '../projects/_components/project-client-skeleton';
+import {  Receipt } from '@/hooks/receipts/use-receipts';
 
 type Props = {}
 
@@ -12,11 +13,11 @@ export default async function page({}: Props) {
   const supabase = await createClient();
   const user = await getAuthenticatedUser(supabase); // Still check auth
 
-  let initialReceipts = [];
+  let initialReceipts: Receipt[] = [];
   try {
     initialReceipts = await getOrganizationReceipts(supabase);
   } catch {
-    return redirect('/error');
+    // return redirect('/error');
   }
 
   return (

@@ -4,16 +4,17 @@ import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import { getProjectsWithDetails } from '@/lib/project';
 import { getAuthenticatedUser } from '@/utils/auth';
+import { Project } from '@/validation/forms/project'
 
 export default async function ProjectsPage() {
   const supabase = await createClient();
   const user = await getAuthenticatedUser(supabase);
 
-  let initialProjects = []
+  let initialProjects: Project[] = [];
   try {
     initialProjects = await getProjectsWithDetails(supabase, user.id)
   } catch {
-    return redirect('/error')
+    // return redirect('/error')
   }
 
   return (

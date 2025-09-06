@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import React, { Suspense } from 'react'
 import PathClient from './_components/path-client';
+import {Path } from "@/hooks/paths/use-paths"
 import ProjectClientSkeleton from '../projects/_components/project-client-skeleton';
 
 type Props = {}
@@ -12,11 +13,11 @@ export default async function page({}: Props) {
   const supabase = await createClient();
   const user = await getAuthenticatedUser(supabase);
 
-  let initialPaths = [];
+  let initialPaths: Path[] = [];
   try {
     initialPaths = await getOrganizationPaths(supabase);
   } catch {
-    return redirect('/error');
+    // return redirect('/error');
   }
 
   return (

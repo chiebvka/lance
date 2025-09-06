@@ -4,6 +4,7 @@ import React, { Suspense } from 'react'
 import WallClient from './_components/wall-client';
 import { redirect } from 'next/navigation';
 import { getOrganizationWalls } from '@/lib/wall';
+import { Wall } from '@/hooks/walls/use-walls';
 
 type Props = {}
 
@@ -11,11 +12,11 @@ export default async function page({}: Props) {
   const supabase = await createClient();
   const user = await getAuthenticatedUser(supabase);
 
-  let initialWalls = [];
+  let initialWalls: Wall[] = [];
   try {
     initialWalls = await getOrganizationWalls(supabase);
   } catch {
-    return redirect('/error');
+    // return redirect('/error');
   }
 
   console.log(initialWalls);

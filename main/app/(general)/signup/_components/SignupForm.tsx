@@ -88,7 +88,7 @@ export function SignupForm({
             <Label htmlFor="password">Password</Label>
             <Link
               href="/forgot"
-              className="ml-auto text-sm underline-offset-4 hover:underline"
+              className="ml-auto text-sm underline-offset-4 hover:underline hover:text-primary"
             >
               Forgot your password?
             </Link>
@@ -96,7 +96,7 @@ export function SignupForm({
           <Input id="password" name="password" placeholder="Password" required type={showPassword ? "text" : "password"}  />
         </div>
         <div onClick={() => setShowPassword(!showPassword)} className="cursor-pointer hover:underline">
-          <p className='text-xs'>Show password</p>
+          <p className='text-xs hover:text-primary hover:underline'>Show password</p>
         </div>
         <SubmitButton 
           className="w-full" 

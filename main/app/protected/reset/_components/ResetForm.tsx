@@ -12,6 +12,8 @@ import { signUpAction } from "@/actions/auth/signup";
 import { Message } from "@/components/form-message";
 import Link from "next/link";
 import { resetPasswordAction } from '@/actions/auth/reset';
+import { ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 
 const initialState: Message | undefined = undefined;
@@ -25,6 +27,7 @@ export default function ResetForm({
     const [state, formAction] = useActionState(resetPasswordAction, initialState);
     const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false)
     const [showPassword, setShowPassword] = useState<boolean>(false)
+    const router = useRouter();
   
     useEffect(() => {
       if (state && "success" in state && state.success) {
@@ -37,9 +40,21 @@ export default function ResetForm({
     }, [state]);
 
 
+  const handleGoBack = () => {
+    router.back();
+  };
+
   return (
     <form  action={formAction} className={cn("flex flex-col gap-6", className)} {...props}>
         <div className="flex flex-col items-center gap-2 text-center">
+        <button
+          type="button"
+          onClick={handleGoBack}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors self-start mb-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="text-sm">Back</span>
+        </button>
         <h1 className="text-2xl font-bold">Reset your password</h1>
         <p className="text-muted-foreground text-sm text-balance">
             Enter your new password below 
