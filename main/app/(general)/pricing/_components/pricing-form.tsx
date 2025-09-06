@@ -51,12 +51,15 @@ export function PricingForm({ user, userOrganization, hasActiveSubscription }: P
   // Get features for a plan based on its name
   const getPlanFeatures = (planName: string): string[] => {
     const name = planName.toLowerCase();
-    if (name.includes("starter")) {
-      return planFeatures.starter;
-    } else if (name.includes("pro") || name.includes("professional")) {
-      return planFeatures.professional;
+    if (name.includes("essential")) {
+      return planFeatures.essential;
+    } else if (name.includes("creator")) {
+      return planFeatures.creator;
+    } else if (name.includes("studio")) {
+      return planFeatures.studio;
     }
-    return [];
+    // Default to essential if no match
+    return planFeatures.essential;
   };
 
   // Show loading state
@@ -118,31 +121,31 @@ export function PricingForm({ user, userOrganization, hasActiveSubscription }: P
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4">
+    <div className="w-full  mx-auto px-4">
       {/* Billing Cycle Toggle */}
       <div className="flex justify-center mb-8">
-        <div className="flex items-center space-x-4 bg-gray-100 rounded-lg p-1">
+        <div className="flex items-center space-x-4 bg-lightCard dark:bg-darkCard border-2 border-primary rounded-none p-1">
           <button
             onClick={() => setBillingCycle("monthly")}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-none text-sm font-medium transition-colors ${
               billingCycle === "monthly"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-bexoni/30  shadow-sm"
+                : " hover:text-primary"
             }`}
           >
             Monthly
           </button>
           <button
             onClick={() => setBillingCycle("yearly")}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors relative ${
+            className={`px-4 py-2 rounded-none text-sm font-medium transition-colors relative ${
               billingCycle === "yearly"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-bexoni/30 shadow-sm"
+                : " hover:text-primary"
             }`}
           >
             Yearly
             <Badge className="absolute -top-2 -right-2 text-xs bg-green-500 text-white">
-              Save 17%
+              Save 30%
             </Badge>
           </button>
         </div>
@@ -150,13 +153,28 @@ export function PricingForm({ user, userOrganization, hasActiveSubscription }: P
 
       {/* Pricing Cards */}
       <div className="flex justify-center">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
-          {products.map((product: StripeProduct) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl w-full">
+          {products
+            .sort((a, b) => {
+              // Sort to ensure: Essential (left), Creator (middle), Studio (right)
+              const aName = a.name.toLowerCase();
+              const bName = b.name.toLowerCase();
+              
+              // Define order: essential, creator, studio
+              const getOrder = (name: string) => {
+                if (name.includes('essential')) return 1;
+                if (name.includes('creator')) return 2;
+                if (name.includes('studio')) return 3;
+                return 4; // fallback for unknown plans
+              };
+              
+              return getOrder(aName) - getOrder(bName);
+            })
+            .map((product: StripeProduct) => {
             const price = getPriceForCycle(product, billingCycle);
             if (!price) return null;
 
-            const isPopular = product.name.toLowerCase().includes("pro") || 
-                             product.name.toLowerCase().includes("professional");
+            const isPopular = product.name.toLowerCase().includes("creator");
             const features = getPlanFeatures(product.name);
 
             return (
@@ -183,11 +201,19 @@ export function PricingForm({ user, userOrganization, hasActiveSubscription }: P
                   </CardDescription>
                   <div className="mt-4">
                     <span className="text-4xl font-bold">
-                      {formatPrice(price.unit_amount, price.currency)}
+                      {billingCycle === "yearly" 
+                        ? formatPrice(price.unit_amount / 12, price.currency)
+                        : formatPrice(price.unit_amount, price.currency)
+                      }
                     </span>
                     <span className="text-lg">
-                      /{billingCycle === "monthly" ? "month" : "year"}
+                      /month
                     </span>
+                    {billingCycle === "yearly" && (
+                      <div className="text-sm text-gray-500 mt-1">
+                        Billed annually ({formatPrice(price.unit_amount, price.currency)}/year)
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
 

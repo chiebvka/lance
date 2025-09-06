@@ -27,6 +27,10 @@ function mapStripeStatusToDbStatus(stripeStatus: string, hasPaymentMethod: boole
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
+// Determine environment based on Stripe key
+const isLiveMode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_');
+const environment = isLiveMode ? 'live' : 'test';
+
 export async function POST(request: NextRequest) {
   try {
     // Get the raw body as text (this is crucial for signature verification)
@@ -92,7 +96,17 @@ export async function POST(request: NextRequest) {
             
             // Get product to determine plan type
             const product = await stripe.products.retrieve(price.product as string);
-            planType = product.name.toLowerCase().includes("pro") ? "pro" : "starter";
+            const productName = product.name.toLowerCase();
+            if (productName.includes("essential")) {
+              planType = "starter";
+            } else if (productName.includes("creator")) {
+              planType = "pro";
+            } else if (productName.includes("studio")) {
+              planType = "corporate";
+            } else {
+              // Fallback for old names
+              planType = productName.includes("pro") ? "pro" : "starter";
+            }
           }
 
           // Check if subscription has payment method
@@ -282,7 +296,17 @@ export async function POST(request: NextRequest) {
           
           // Get product to determine plan type
           const updatedProduct = await stripe.products.retrieve(updatedPrice.product as string);
-          updatedPlanType = updatedProduct.name.toLowerCase().includes("pro") ? "pro" : "starter";
+          const updatedProductName = updatedProduct.name.toLowerCase();
+          if (updatedProductName.includes("essential")) {
+            updatedPlanType = "starter";
+          } else if (updatedProductName.includes("creator")) {
+            updatedPlanType = "pro";
+          } else if (updatedProductName.includes("studio")) {
+            updatedPlanType = "corporate";
+          } else {
+            // Fallback for old names
+            updatedPlanType = updatedProductName.includes("pro") ? "pro" : "starter";
+          }
         }
         
         // Check if subscription has payment method for updated subscription
@@ -651,6 +675,7 @@ export async function POST(request: NextRequest) {
             stripeProductId: product.id,
             name: product.name,
             description: product.description || null,
+            environment: environment,
             metadata: {
               ...product.metadata,
               eventId: event.id,
@@ -678,6 +703,7 @@ export async function POST(request: NextRequest) {
           .update({
             name: updatedProduct.name,
             description: updatedProduct.description || null,
+            environment: environment,
             metadata: {
               ...updatedProduct.metadata,
               eventId: event.id,
@@ -851,6 +877,54 @@ export async function POST(request: NextRequest) {
         } else {
           console.log(`✅ Price deleted successfully: ${deletedPrice.id}`);
         }
+        break;
+
+      case "customer.created":
+        const createdCustomer = event.data.object as Stripe.Customer;
+        console.log(`Processing customer.created: ${createdCustomer.id}`);
+        // Customer created - no specific action needed for now
+        break;
+
+      case "customer.updated":
+        const updatedCustomer = event.data.object as Stripe.Customer;
+        console.log(`Processing customer.updated: ${updatedCustomer.id}`);
+        // Customer updated - no specific action needed for now
+        break;
+
+      case "customer.deleted":
+        const deletedCustomer = event.data.object as Stripe.Customer;
+        console.log(`Processing customer.deleted: ${deletedCustomer.id}`);
+        // Customer deleted - no specific action needed for now
+        break;
+
+      case "setup_intent.created":
+        const setupIntent = event.data.object as Stripe.SetupIntent;
+        console.log(`Processing setup_intent.created: ${setupIntent.id}`);
+        // Setup intent created - no specific action needed for now
+        break;
+
+      case "invoice.created":
+        const createdInvoice = event.data.object as Stripe.Invoice;
+        console.log(`Processing invoice.created: ${createdInvoice.id}`);
+        // Invoice created - no specific action needed for now
+        break;
+
+      case "invoice.finalized":
+        const finalizedInvoice = event.data.object as Stripe.Invoice;
+        console.log(`Processing invoice.finalized: ${finalizedInvoice.id}`);
+        // Invoice finalized - no specific action needed for now
+        break;
+
+      case "invoice.paid":
+        const paidInvoice = event.data.object as Stripe.Invoice;
+        console.log(`Processing invoice.paid: ${paidInvoice.id}`);
+        // Invoice paid - no specific action needed for now
+        break;
+
+      case "invoice.payment_succeeded":
+        const paymentSucceededInvoice = event.data.object as Stripe.Invoice;
+        console.log(`Processing invoice.payment_succeeded: ${paymentSucceededInvoice.id}`);
+        // Invoice payment succeeded - no specific action needed for now
         break;
 
       default:

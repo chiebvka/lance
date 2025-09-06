@@ -20,9 +20,9 @@ export default async function CreateTeamPage() {
     <div className="container mx-auto max-w-2xl py-8">
       <div className="space-y-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Create Your Team</h1>
+          <h1 className="text-3xl font-bold">Create Your Organization</h1>
           <p className="text-muted-foreground mt-2">
-            Set up your organization to get started with Lance
+            Set up your organization to get started with <span className="text-primary"> Bexforte.</span>
           </p>
         </div>
         

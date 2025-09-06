@@ -81,12 +81,15 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
   // Get features for a plan based on its name
   const getPlanFeatures = (planName: string): string[] => {
     const name = planName.toLowerCase();
-    if (name.includes("starter")) {
-      return planFeatures.starter;
-    } else if (name.includes("pro") || name.includes("professional")) {
-      return planFeatures.professional;
+    if (name.includes("essential")) {
+      return planFeatures.essential;
+    } else if (name.includes("creator")) {
+      return planFeatures.creator;
+    } else if (name.includes("studio")) {
+      return planFeatures.studio;
     }
-    return [];
+    // Default to essential if no match
+    return planFeatures.essential;
   };
 
   // Show loading state
@@ -262,13 +265,28 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
 
         {/* Pricing Cards */}
         <div className="flex justify-center">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl w-full">
-            {products.map((product: StripeProduct) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl w-full">
+            {products
+              .sort((a, b) => {
+                // Sort to ensure: Essential (left), Creator (middle), Studio (right)
+                const aName = a.name.toLowerCase();
+                const bName = b.name.toLowerCase();
+                
+                // Define order: essential, creator, studio
+                const getOrder = (name: string) => {
+                  if (name.includes('essential')) return 1;
+                  if (name.includes('creator')) return 2;
+                  if (name.includes('studio')) return 3;
+                  return 4; // fallback for unknown plans
+                };
+                
+                return getOrder(aName) - getOrder(bName);
+              })
+              .map((product: StripeProduct) => {
             const price = getPriceForCycle(product, billingCycle);
             if (!price) return null;
 
-            const isPopular = product.name.toLowerCase().includes("pro") || 
-                            product.name.toLowerCase().includes("professional");
+            const isPopular = product.name.toLowerCase().includes("creator");
             const features = getPlanFeatures(product.name);
 
             return (
@@ -295,11 +313,19 @@ export default function SubscribeForm({ user, userOrganization, hasActiveSubscri
                     </CardDescription>
                     <div className="mt-4">
                     <span className="text-4xl font-bold">
-                        {formatPrice(price.unit_amount, price.currency)}
+                        {billingCycle === "yearly" 
+                          ? formatPrice(price.unit_amount / 12, price.currency)
+                          : formatPrice(price.unit_amount, price.currency)
+                        }
                     </span>
                     <span className="text-lg">
-                        /{billingCycle === "monthly" ? "month" : "year"}
+                        /month
                     </span>
+                    {billingCycle === "yearly" && (
+                      <div className="text-sm text-gray-500 mt-1">
+                        Billed annually ({formatPrice(price.unit_amount, price.currency)}/year)
+                      </div>
+                    )}
                     </div>
                 </CardHeader>
 

@@ -217,7 +217,7 @@ export default function Header({}: Props) {
                         )}
                       </div>
                       
-                      <MobileNavLink href="/branding" label="Branding" onClick={() => setIsSheetOpen(false)} />
+                      <MobileNavLink href="/pricing" label="Pricing" onClick={() => setIsSheetOpen(false)} />
                       <MobileNavLink href="/story" label="Story" onClick={() => setIsSheetOpen(false)} />
                       <MobileNavLink href="/#faqs" label="FAQs" onClick={() => setIsSheetOpen(false)} />
                       {/* <MobileNavLink href="/members" label="Membership" onClick={() => setIsSheetOpen(false)} />

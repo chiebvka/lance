@@ -28,6 +28,10 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     
+    // Determine environment based on Stripe key
+    const isLiveMode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_');
+    const environment = isLiveMode ? 'live' : 'test';
+    
     // Get the authenticated user
     const {
       data: { user },
@@ -67,18 +71,157 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get default starter plan price for monthly billing
-    const { data: starterPrice } = await supabase
+    // Get the most basic plan price for monthly billing by product name and environment
+    console.log(`🔍 Looking for basic plan in environment: ${environment}`);
+    
+    // First, let's see what products exist
+    const { data: allProducts } = await supabase
+      .from("products")
+      .select("name, environment, stripeProductId, isActive")
+      .eq("environment", environment);
+    
+    console.log(`🔍 All products in database:`, allProducts);
+    
+    // Check if we have any pricing records at all
+    const { data: allPricing, error: pricingCheckError } = await supabase
       .from("pricing")
-      .select("stripePriceId")
+      .select(`
+        stripePriceId,
+        stripeProductId,
+        billingCycle,
+        isActive,
+        product:products!inner (
+          name,
+          environment
+        )
+      `)
+      .eq("products.environment", environment)
+      .eq("isActive", true);
+    
+    console.log(`🔍 All pricing records in ${environment} environment:`, allPricing);
+    if (pricingCheckError) {
+      console.error(`❌ Error checking pricing records:`, pricingCheckError);
+    }
+    
+    // Try to find Essential plan first, then fallback to Starter, then any available plan
+    let basicPrice = null;
+    let priceError = null;
+    
+    // Try Essential plan first (new plan structure)
+    console.log(`🔍 Trying Essential plan...`);
+    const { data: essentialPrice, error: essentialError } = await supabase
+      .from("pricing")
+      .select(`
+        stripePriceId,
+        billingCycle,
+        productId,
+        stripeProductId,
+        product:products!inner (
+          name,
+          environment,
+          stripeProductId
+        )
+      `)
       .eq("billingCycle", "monthly")
       .eq("isActive", true)
+      .eq("products.name", "Essential")
+      .eq("products.environment", environment)
       .limit(1)
       .single();
 
-    if (!starterPrice?.stripePriceId) {
+    console.log(`🔍 Essential price query result:`, { essentialPrice, essentialError });
+
+    if (essentialPrice?.stripePriceId) {
+      basicPrice = essentialPrice;
+      console.log(`✅ Found Essential pricing:`, basicPrice);
+    } else {
+      console.log(`❌ Essential pricing not found. Error:`, essentialError);
+      // Try Starter plan as fallback (old plan structure)
+      console.log(`🔍 Essential not found, trying Starter as fallback...`);
+      
+      const { data: starterPrice, error: starterError } = await supabase
+        .from("pricing")
+        .select(`
+          stripePriceId,
+          billingCycle,
+          productId,
+          stripeProductId,
+          product:products!inner (
+            name,
+            environment,
+            stripeProductId
+          )
+        `)
+        .eq("billingCycle", "monthly")
+        .eq("isActive", true)
+        .eq("products.name", "Starter")
+        .eq("products.environment", environment)
+        .limit(1)
+        .single();
+      
+      console.log(`🔍 Starter price query result:`, { starterPrice, starterError });
+      
+      if (starterPrice?.stripePriceId) {
+        basicPrice = starterPrice;
+      } else {
+        // Last resort: get any available monthly plan
+        console.log(`🔍 No specific plan found, trying any available monthly plan...`);
+        
+        const { data: anyPrice, error: anyError } = await supabase
+          .from("pricing")
+          .select(`
+            stripePriceId,
+            billingCycle,
+            productId,
+            stripeProductId,
+            product:products!inner (
+              name,
+              environment,
+              stripeProductId
+            )
+          `)
+          .eq("billingCycle", "monthly")
+          .eq("isActive", true)
+          .eq("products.environment", environment)
+          .limit(1)
+          .single();
+        
+        console.log(`🔍 Any available price query result:`, { anyPrice, anyError });
+        
+        if (anyPrice?.stripePriceId) {
+          basicPrice = anyPrice;
+          console.log(`✅ Found fallback pricing:`, basicPrice);
+        } else {
+          console.error(`❌ No pricing records found for any products in ${environment} environment`);
+          console.error(`❌ Products found:`, allProducts);
+          return NextResponse.json(
+            { error: `No active pricing available for ${environment} environment. Please contact support.` },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    // Check if the Stripe product is active
+    console.log(`🔍 Checking Stripe product status for: ${basicPrice.stripeProductId}`);
+    try {
+      const stripeProduct = await stripe.products.retrieve(basicPrice.stripeProductId);
+      console.log(`🔍 Stripe product status:`, { 
+        id: stripeProduct.id, 
+        active: stripeProduct.active,
+        name: stripeProduct.name 
+      });
+      
+      if (!stripeProduct.active) {
+        return NextResponse.json(
+          { error: "Selected plan is currently inactive. Please contact support." },
+          { status: 500 }
+        );
+      }
+    } catch (stripeError) {
+      console.error(`🔍 Error checking Stripe product:`, stripeError);
       return NextResponse.json(
-        { error: "No pricing plan available. Please contact support." },
+        { error: "Unable to verify plan status. Please contact support." },
         { status: 500 }
       );
     }
@@ -106,7 +249,7 @@ export async function POST(request: NextRequest) {
     // Create Stripe subscription with 7-day trial (incomplete)
     const stripeSubscription = await stripe.subscriptions.create({
       customer: stripeCustomer.id,
-      items: [{ price: starterPrice.stripePriceId }],
+      items: [{ price: basicPrice.stripePriceId }],
       payment_behavior: 'allow_incomplete',
       trial_period_days: 7,
       metadata: {
@@ -132,12 +275,15 @@ export async function POST(request: NextRequest) {
         trialEndsAt: stripeSubscription.trial_end 
           ? new Date(stripeSubscription.trial_end * 1000).toISOString() 
           : null,
-        planType: "starter",
+        planType: (basicPrice.product as any).name.toLowerCase().includes("essential") ? "starter" : 
+                 (basicPrice.product as any).name.toLowerCase().includes("starter") ? "starter" : 
+                 (basicPrice.product as any).name.toLowerCase().includes("creator") ? "pro" : 
+                 (basicPrice.product as any).name.toLowerCase().includes("studio") ? "corporate" : "starter",
         billingCycle: "monthly",
         stripeMetadata: {
           customerId: stripeCustomer.id,
           subscriptionId: stripeSubscription.id,
-          priceId: starterPrice.stripePriceId,
+          priceId: basicPrice.stripePriceId,
         },
       })
       .select()
@@ -169,7 +315,10 @@ export async function POST(request: NextRequest) {
         stripeSubscriptionId: stripeSubscription.id,
         stripeCustomerId: stripeCustomer.id,
         subscriptionStatus: mapStripeStatusToDbStatus(stripeSubscription.status, false), // No payment method for initial trial
-        planType: "starter",
+        planType: (basicPrice.product as any).name.toLowerCase().includes("essential") ? "starter" : 
+                 (basicPrice.product as any).name.toLowerCase().includes("starter") ? "starter" : 
+                 (basicPrice.product as any).name.toLowerCase().includes("creator") ? "pro" : 
+                 (basicPrice.product as any).name.toLowerCase().includes("studio") ? "corporate" : "starter",
         billingCycle: "monthly",
         amount: (stripeSubscription.items.data[0]?.price.unit_amount || 0) / 100,
         currency: stripeSubscription.items.data[0]?.price.currency || baseCurrency.toLowerCase(),
@@ -182,7 +331,7 @@ export async function POST(request: NextRequest) {
         createdBy: user.id,
         stripeMetadata: {
           customerId: stripeCustomer.id,
-          priceId: starterPrice.stripePriceId,
+          priceId: basicPrice.stripePriceId,
           trialStart: stripeSubscription.trial_start,
           trialEnd: stripeSubscription.trial_end,
         },

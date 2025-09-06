@@ -4,8 +4,15 @@ import { createClient } from "@/utils/supabase/server";
 export async function GET() {
   try {
     const supabase = await createClient();
+    
+    // Determine environment based on Stripe key
+    const isLiveMode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_');
+    const environment = isLiveMode ? 'live' : 'test';
+    
+    console.log(`🔍 Pricing API - Environment: ${environment} (isLiveMode: ${isLiveMode})`);
 
-    // Fetch active products with their pricing
+    // Fetch active products with their pricing for current environment
+    // Only show Essential, Creator, and Studio plans
     const { data: products, error: productsError } = await supabase
       .from("products")
       .select(`
@@ -15,6 +22,7 @@ export async function GET() {
         description,
         metadata,
         isActive,
+        environment,
         pricing (
           id,
           stripePriceId,
@@ -25,9 +33,15 @@ export async function GET() {
         )
       `)
       .eq("isActive", true)
+      .eq("environment", environment)
+      .in("name", ["Essential", "Creator", "Studio"])
       .order("name");
 
     if (productsError) throw productsError;
+
+    console.log(`🔍 Pricing API - Found ${products?.length || 0} products for ${environment} environment:`, 
+      products?.map(p => ({ name: p.name, environment: p.environment, pricingCount: p.pricing?.length || 0 }))
+    );
 
     // Format the data for the frontend
     const formattedProducts = products?.map(product => ({
